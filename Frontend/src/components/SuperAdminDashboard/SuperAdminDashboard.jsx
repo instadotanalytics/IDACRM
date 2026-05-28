@@ -6,286 +6,680 @@ import {
   FaBuilding, FaBriefcase, FaMoneyBillWave, FaTasks,
   FaCalendarCheck, FaFileContract, FaCog, FaSignOutAlt,
   FaUserCircle, FaBell, FaSearch, FaGraduationCap,
-  FaClock, FaSchool, FaCheck, FaExclamationCircle,
+  FaClock, FaSchool, FaCheck, FaChevronLeft, FaChevronRight,
+  FaChevronDown,
+  FaPlus, FaUserPlus, FaRocket, FaClipboardList,
+  FaDatabase, FaServer, FaHdd, FaUserFriends,
+  FaEnvelope, FaClipboard, FaChartLine, FaFunnelDollar,
+  FaStar, FaHeadset, FaChalkboardTeacher, FaEye,
+  FaSlidersH, FaChartPie, FaUserTie, FaBullseye,
+  FaBars, FaTimes, FaPaperPlane, FaReply, FaTrash,
+  FaCheckCircle, FaExclamationTriangle, FaInfoCircle,
+  FaSpinner, FaFileInvoice, FaHandshake, FaArrowUp,
+  FaArrowDown, FaFilter, FaDownload, FaCalendarAlt,
+  FaCircle, FaRegCircle, FaImage, FaVideo, FaFile
 } from 'react-icons/fa';
+import { 
+  FiUsers, FiTrendingUp, FiDollarSign,
+  FiActivity, FiBookOpen, FiBarChart2, FiSend
+} from 'react-icons/fi';
+import {
+  LineChart, Line, AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell
+} from 'recharts';
 import styles from './SuperAdminDashboard.module.css';
-import { authAPI } from '../../services/api';
 
-/* ─── static nav config ─── */
+/* ============================================================ */
+/* NAVIGATION CONFIGURATION
+/* ============================================================ */
 const NAV = [
-  { section: 'Main' },
-  { label: 'Dashboard',  icon: FaThLarge,       path: '/super-admin-dashboard', badge: null },
-  { section: 'CRM' },
-  { label: 'Students',   icon: FaUsers,          path: '/students',   badge: null },
-  { label: 'Leads',      icon: FaChartBar,       path: '/leads',      badge: 'leads' },
-  { label: 'Admissions', icon: FaFileAlt,        path: '/admissions', badge: null },
-  { section: 'Placement' },
-  { label: 'Companies',  icon: FaBuilding,       path: '/companies',  badge: null },
-  { label: 'Drives',     icon: FaBriefcase,      path: '/drives',     badge: 'drives' },
-  { section: 'Operations' },
-  { label: 'Revenue',    icon: FaMoneyBillWave,  path: '/revenue',    badge: null },
-  { label: 'Tasks',      icon: FaTasks,          path: '/tasks',      badge: null },
-  { label: 'Attendance', icon: FaCalendarCheck,  path: '/attendance', badge: null },
-  { label: 'Reports',    icon: FaFileContract,   path: '/reports',    badge: null },
-  { section: 'System' },
-  { label: 'Settings',   icon: FaCog,            path: '/settings',   badge: null },
+  { label: 'Dashboard', icon: FaThLarge, path: '/super-admin-dashboard' },
+  { label: 'Students', icon: FaUsers, path: '/students' },
+  { label: 'Counselor & Admissions', icon: FaHeadset, path: '/admissions' },
+  { label: 'Leads', icon: FaChartBar, path: '/leads' },
+  { label: 'Placement', icon: FaGraduationCap, path: '/placements' },
+  { label: 'HR & Placement Drive', icon: FaUserTie, path: '/hr-management' },
+  { label: 'Sales', icon: FaChartLine, path: '/sales-dashboard' },
+  { label: 'Revenue', icon: FaMoneyBillWave, path: '/revenue' },
+  { label: 'Reports & Analytics', icon: FaFileContract, path: '/reports' },
+  { label: 'Tasks & Admin', icon: FaTasks, path: '/tasks' },
+  { label: 'Employee Monitoring', icon: FaEye, path: '/employees' },
+  { label: 'Trainer & Batch', icon: FaChalkboardTeacher, path: '/trainers' },
+  { label: 'Audit Logs', icon: FaClipboard, path: '/audit-logs' },
+  { label: 'Notifications', icon: FaBell, path: '/notifications' },
+  { label: 'Settings', icon: FaCog, path: '/settings' },
 ];
 
-/* ─── recent leads (replaced by API in production) ─── */
-const RECENT_LEADS_STATIC = [
-  { initials: 'AK', name: 'Ankit Kumar',  course: 'Full Stack Dev', status: 'New',       statusClass: 'sNew' },
-  { initials: 'PS', name: 'Priya Sharma', course: 'Data Science',   status: 'Follow-up', statusClass: 'sFollowup' },
-  { initials: 'RV', name: 'Rohit Verma',  course: 'UI/UX Design',   status: 'Interested',statusClass: 'sInterested' },
-  { initials: 'NP', name: 'Neha Patel',   course: 'DevOps',         status: 'Demo',      statusClass: 'sDemo' },
+/* ============================================================ */
+// CHART DATA
+/* ============================================================ */
+const revenueData = [
+  { name: 'Jan', revenue: 4200, bookings: 3800 },
+  { name: 'Feb', revenue: 3800, bookings: 3400 },
+  { name: 'Mar', revenue: 5100, bookings: 4600 },
+  { name: 'Apr', revenue: 4600, bookings: 4200 },
+  { name: 'May', revenue: 5400, bookings: 4900 },
+  { name: 'Jun', revenue: 5800, bookings: 5300 },
+  { name: 'Jul', revenue: 6200, bookings: 5600 },
 ];
 
-/* ─── tasks ─── */
-const TASKS_STATIC = [
-  { text: 'Review Q2 sales report',    priority: 'High',   done: true },
-  { text: 'Call TCS HR for drive',     priority: 'High',   done: false },
-  { text: 'Update fee records – May',  priority: 'Medium', done: false },
-  { text: 'Assign trainer to batch B7',priority: 'Low',    done: false },
+const placementData = [
+  { name: 'Placed', value: 72, color: '#10b981' },
+  { name: 'Training', value: 18, color: '#f59e0b' },
+  { name: 'Not Placed', value: 10, color: '#ef4444' },
 ];
 
-/* ─── activity ─── */
-const ACTIVITY_STATIC = [
-  { text: 'New admission — Priya S.',    color: '#15a7ea', time: '2m' },
-  { text: 'Drive confirmed — Infosys',   color: '#3b6d11', time: '14m' },
-  { text: 'Fee due — Rohit V.',          color: '#854f0b', time: '1h' },
-  { text: 'Task assigned to Meena',      color: '#534ab7', time: '2h' },
-  { text: 'Lead rejected — No contact',  color: '#a32d2d', time: '3h' },
+const leadFunnel = [
+  { stage: 'New Leads', count: 3482, percentage: 100 },
+  { stage: 'Contacted', count: 2450, percentage: 70 },
+  { stage: 'Interested', count: 1650, percentage: 47 },
+  { stage: 'Demo', count: 820, percentage: 24 },
+  { stage: 'Converted', count: 420, percentage: 12 },
 ];
 
-/* ─── upcoming drives ─── */
-const DRIVES_STATIC = [
-  { abbr: 'TC', name: 'TCS',     role: 'Full Stack Dev', date: '2 Jun',  mode: 'Hybrid' },
-  { abbr: 'IN', name: 'Infosys', role: 'Data Analyst',   date: '8 Jun',  mode: 'Offline' },
-  { abbr: 'WP', name: 'Wipro',   role: 'QA Engineer',    date: '15 Jun', mode: 'Online' },
+/* ============================================================ */
+// QUICK ACCESS MODULES
+/* ============================================================ */
+const QUICK_MODULES = [
+  { name: 'Students', icon: FiUsers, color: '#3b82f6', path: '/students', bg: 'rgba(59,130,246,0.1)' },
+  { name: 'Leads', icon: FaChartBar, color: '#f59e0b', path: '/leads', bg: 'rgba(245,158,11,0.1)' },
+  { name: 'Placements', icon: FaGraduationCap, color: '#10b981', path: '/placements', bg: 'rgba(16,185,129,0.1)' },
+  { name: 'Revenue', icon: FiDollarSign, color: '#8b5cf6', path: '/revenue', bg: 'rgba(139,92,246,0.1)' },
+  { name: 'Companies', icon: FaBuilding, color: '#06b6d4', path: '/companies', bg: 'rgba(6,182,212,0.1)' },
+  { name: 'Tasks', icon: FaTasks, color: '#ec4899', path: '/tasks', bg: 'rgba(236,72,153,0.1)' },
+  { name: 'HR', icon: FaUserTie, color: '#f43f5e', path: '/hr-management', bg: 'rgba(244,63,94,0.1)' },
+  { name: 'Reports', icon: FaFileContract, color: '#6366f1', path: '/reports', bg: 'rgba(99,102,241,0.1)' },
 ];
 
-/* ─── sales perf ─── */
-const PERF_STATIC = [
-  { name: 'Meena R.',  pct: 82 },
-  { name: 'Arjun K.',  pct: 67 },
-  { name: 'Sunita P.', pct: 55 },
-  { name: 'Dev M.',    pct: 40 },
+/* ============================================================ */
+// STATS CARDS DATA
+/* ============================================================ */
+const STATS = [
+  { title: 'Total Students', value: '1,284', change: '+12%', trend: 'up', color: '#3b82f6', icon: FiUsers },
+  { title: 'Total Revenue', value: '₹62.4L', change: '+18%', trend: 'up', color: '#10b981', icon: FiDollarSign },
+  { title: 'Placement Rate', value: '74.2%', change: '+5%', trend: 'up', color: '#8b5cf6', icon: FiTrendingUp },
+  { title: 'Active Leads', value: '482', change: '-3%', trend: 'down', color: '#f59e0b', icon: FaChartBar },
+  { title: 'Companies', value: '156', change: '+8%', trend: 'up', color: '#06b6d4', icon: FaBuilding },
+  { title: 'Avg. Satisfaction', value: '4.8/5', change: '+0.3', trend: 'up', color: '#ec4899', icon: FaStar },
 ];
 
-/* ────────────────────────────────────── */
+/* ============================================================ */
+// RECENT ACTIVITIES
+/* ============================================================ */
+const RECENT_ACTIVITIES = [
+  { id: 1, user: 'Rahul Sharma', action: 'New Admission', target: 'Full Stack Development', time: '5 min ago', icon: FaUserPlus, color: '#3b82f6' },
+  { id: 2, user: 'Priya Patel', action: 'Lead Converted', target: 'Data Science Course', time: '15 min ago', icon: FaCheckCircle, color: '#10b981' },
+  { id: 3, user: 'Ankit Verma', action: 'Payment Received', target: '₹45,000', time: '1 hour ago', icon: FaMoneyBillWave, color: '#f59e0b' },
+  { id: 4, user: 'Microsoft HR', action: 'Drive Scheduled', target: 'Tech Recruitment Drive', time: '2 hours ago', icon: FaBriefcase, color: '#8b5cf6' },
+  { id: 5, user: 'Neha Gupta', action: 'New Company', target: 'Amazon Added', time: '3 hours ago', icon: FaBuilding, color: '#06b6d4' },
+];
 
+/* ============================================================ */
+// NOTIFICATIONS DATA
+/* ============================================================ */
+const NOTIFICATIONS_DATA = [
+  { id: 1, title: 'New Student Registration', message: 'Rahul Sharma has registered for Full Stack course', time: '5 min ago', read: false, type: 'student', icon: FaUserPlus, color: '#3b82f6' },
+  { id: 2, title: 'Payment Received', message: '₹45,000 received from Priya Patel', time: '1 hour ago', read: false, type: 'payment', icon: FaMoneyBillWave, color: '#10b981' },
+  { id: 3, title: 'Placement Drive', message: 'TCS placement drive scheduled for tomorrow', time: '2 hours ago', read: true, type: 'drive', icon: FaBriefcase, color: '#f59e0b' },
+  { id: 4, title: 'New Company Added', message: 'Microsoft has been added as hiring partner', time: '5 hours ago', read: true, type: 'company', icon: FaBuilding, color: '#8b5cf6' },
+  { id: 5, title: 'Task Assigned', message: 'Review monthly report assigned to you', time: '1 day ago', read: true, type: 'task', icon: FaTasks, color: '#ec4899' },
+  { id: 6, title: 'System Update', message: 'New version v2.0 available', time: '2 days ago', read: true, type: 'system', icon: FaServer, color: '#6366f1' },
+];
+
+/* ============================================================ */
+// MESSAGES DATA
+/* ============================================================ */
+const MESSAGES_DATA = [
+  { id: 1, name: 'Rahul Sharma', role: 'Student', avatar: 'R', message: 'Sir, when will the next batch start?', time: '10:30 AM', unread: true, online: true },
+  { id: 2, name: 'Priya Patel', role: 'Sales Executive', avatar: 'P', message: 'Client meeting scheduled for tomorrow', time: '9:15 AM', unread: false, online: true },
+  { id: 3, name: 'Amit Kumar', role: 'Trainer', avatar: 'A', message: 'Course materials uploaded for React batch', time: 'Yesterday', unread: false, online: false },
+  { id: 4, name: 'Neha Gupta', role: 'HR Executive', avatar: 'N', message: 'New placement drive details shared', time: 'Yesterday', unread: true, online: true },
+  { id: 5, name: 'Microsoft HR', role: 'Company', avatar: 'M', message: 'Interview schedule for selected candidates', time: '2 days ago', unread: false, online: false },
+];
+
+/* ============================================================ */
+// UPCOMING EVENTS
+/* ============================================================ */
+const UPCOMING_EVENTS = [
+  { id: 1, title: 'TCS Placement Drive', date: 'June 15, 2024', time: '10:00 AM', type: 'drive', color: '#ef4444' },
+  { id: 2, title: 'Faculty Meeting', date: 'June 16, 2024', time: '2:00 PM', type: 'meeting', color: '#f59e0b' },
+  { id: 3, title: 'New Batch Orientation', date: 'June 18, 2024', time: '11:00 AM', type: 'orientation', color: '#10b981' },
+  { id: 4, title: 'Fee Deadline', date: 'June 20, 2024', time: '11:59 PM', type: 'deadline', color: '#ef4444' },
+];
+
+/* ============================================================ */
+// HELPER FUNCTIONS
+/* ============================================================ */
+const getDayFromDate = (dateStr) => {
+  return dateStr.split(',')[0].split(' ')[1];
+};
+
+const getMonthFromDate = (dateStr) => {
+  return dateStr.split(',')[0].split(' ')[0];
+};
+
+/* ============================================================ */
+// MAIN COMPONENT
+/* ============================================================ */
 const SuperAdminDashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser]   = useState(null);
-  const [stats, setStats] = useState(null);
+  const [user, setUser] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState('This Month');
+  const [hoveredItem, setHoveredItem] = useState(null);
+  
+  // Panel States
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [newMessage, setNewMessage] = useState('');
+  const [notifications, setNotifications] = useState(NOTIFICATIONS_DATA);
+  const [messages, setMessages] = useState(MESSAGES_DATA);
+  const [chatHistory, setChatHistory] = useState({});
 
   useEffect(() => {
-    const raw = localStorage.getItem('user');
-    if (raw) setUser(JSON.parse(raw));
-    fetchStats();
+    const userData = localStorage.getItem('user');
+    if (userData) setUser(JSON.parse(userData));
   }, []);
 
-  const fetchStats = async () => {
-    try {
-      const res = await authAPI.getStats();
-      if (res.data.success) setStats(res.data.stats);
-    } catch (e) {
-      console.error('Stats fetch error:', e);
-    }
-  };
-
-  const handleLogout = async () => {
-    try { await authAPI.logout(); } catch {}
+  const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     toast.success('Logged out successfully');
     navigate('/super-admin-login');
   };
 
-  const fmt  = (n) => (n != null ? n.toLocaleString('en-IN') : '—');
-  const fmtR = (n) => (n != null ? `₹${n.toLocaleString('en-IN')}` : '—');
-  const fmtP = (n) => (n != null ? `${n}%` : '—');
+  // Notification Functions
+  const toggleNotifications = () => {
+    setShowNotifications(!showNotifications);
+    if (showMessages) setShowMessages(false);
+    if (!showNotifications) {
+      // Mark all as read when opened
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+    }
+  };
 
-  const STAT_CARDS = [
-    { label: 'Total students',    value: fmt(stats?.totalStudents),    icon: FaUsers,          cls: 'siBlue',   sub: '+8 this month' },
-    { label: 'Active leads',      value: fmt(stats?.totalLeads),       icon: FaChartBar,       cls: 'siAmber',  sub: '12 follow-up today' },
-    { label: 'Revenue (month)',   value: fmtR(stats?.monthRevenue),    icon: FaMoneyBillWave,  cls: 'siGreen',  sub: `Pending: ${fmtR(stats?.pendingFees)}` },
-    { label: 'Placement %',       value: fmtP(stats?.placementPct),   icon: FaBriefcase,      cls: 'siPurple', sub: '3 drives upcoming' },
-    { label: 'Companies',         value: fmt(stats?.totalCompanies),   icon: FaBuilding,       cls: 'siTeal',   sub: '5 new this month' },
-    { label: 'Pending fees',      value: fmtR(stats?.pendingFees),     icon: FaExclamationCircle, cls: 'siRed', sub: '18 students overdue' },
-    { label: 'Active trainers',   value: fmt(stats?.activeTrainers),   icon: FaSchool,         cls: 'siBlue',   sub: '9 batches running' },
-    { label: 'Pending tasks',     value: fmt(stats?.pendingTasks),     icon: FaTasks,          cls: 'siAmber',  sub: '4 overdue' },
-  ];
+  // Message Functions
+  const toggleMessages = () => {
+    setShowMessages(!showMessages);
+    if (showNotifications) setShowNotifications(false);
+    if (!showMessages) {
+      setSelectedChat(null);
+    }
+  };
 
-  const today = new Date().toLocaleDateString('en-IN', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  });
+  const closePanels = () => {
+    setShowNotifications(false);
+    setShowMessages(false);
+    setSelectedChat(null);
+  };
+
+  const openChat = (message) => {
+    setSelectedChat(message);
+    // Mark as read
+    setMessages(messages.map(m => 
+      m.id === message.id ? { ...m, unread: false } : m
+    ));
+  };
+
+  const sendMessage = () => {
+    if (newMessage.trim() && selectedChat) {
+      const newChat = {
+        id: Date.now(),
+        text: newMessage,
+        sender: 'admin',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      
+      setChatHistory(prev => ({
+        ...prev,
+        [selectedChat.id]: [...(prev[selectedChat.id] || []), newChat]
+      }));
+      
+      toast.success(`Message sent to ${selectedChat.name}`);
+      setNewMessage('');
+    }
+  };
+
+  const deleteNotification = (id) => {
+    setNotifications(notifications.filter(n => n.id !== id));
+    toast.success('Notification deleted');
+  };
+
+  const markNotificationAsRead = (id) => {
+    setNotifications(notifications.map(n => 
+      n.id === id ? { ...n, read: true } : n
+    ));
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadMessageCount = messages.filter(m => m.unread).length;
+
+  const StatCard = ({ title, value, change, trend, color, icon: Icon }) => (
+    <div className={styles.statCard}>
+      <div className={styles.statHeader}>
+        <span className={styles.statTitle}>{title}</span>
+        <div className={styles.statIcon} style={{ backgroundColor: `${color}10`, color: color }}>
+          <Icon size={20} />
+        </div>
+      </div>
+      <div className={styles.statValue}>{value}</div>
+      <div className={styles.statChange}>
+        {trend === 'up' ? <FaArrowUp size={12} /> : <FaArrowDown size={12} />}
+        <span style={{ color: trend === 'up' ? '#10b981' : '#ef4444' }}>{change}</span>
+        <span className={styles.statPeriod}> vs last month</span>
+      </div>
+    </div>
+  );
+
+  const ActivityItem = ({ user, action, target, time, icon: Icon, color }) => (
+    <div className={styles.activityItem}>
+      <div className={styles.activityIcon} style={{ backgroundColor: `${color}10`, color: color }}>
+        <Icon size={14} />
+      </div>
+      <div className={styles.activityContent}>
+        <span className={styles.activityUser}>{user}</span>
+        <span className={styles.activityAction}>{action}</span>
+        <span className={styles.activityTarget}>{target}</span>
+        <div className={styles.activityTime}>{time}</div>
+      </div>
+    </div>
+  );
 
   return (
-    <div className={styles.app}>
-      {/* ── SIDEBAR ── */}
-      <aside className={styles.sidebar}>
-        <div className={styles.brand}>
-          <div className={styles.brandLogo}><FaShieldAlt /></div>
-          <div>
-            <div className={styles.brandName}>IDA ERP CRM</div>
-            <div className={styles.brandRole}>Super Admin</div>
-          </div>
-        </div>
+    <div className={`${styles.app} ${sidebarCollapsed ? styles.appCollapsed : ''}`}>
+      
+      {/* Overlay for panels */}
+      {(showNotifications || showMessages) && (
+        <div className={styles.panelOverlay} onClick={closePanels}></div>
+      )}
 
-        <nav className={styles.nav}>
-          {NAV.map((item, i) =>
-            item.section ? (
-              <div key={i} className={styles.navSection}>{item.section}</div>
-            ) : (
-              <NavLink
-                key={i}
-                to={item.path}
-                className={({ isActive }) =>
-                  `${styles.navItem} ${isActive ? styles.navActive : ''}`
-                }
-              >
-                <item.icon className={styles.navIcon} />
-                <span>{item.label}</span>
-                {item.badge === 'leads'  && stats?.totalLeads  > 0 && <span className={styles.badge}>{stats.totalLeads}</span>}
-                {item.badge === 'drives' && stats?.upcomingDrives > 0 && <span className={styles.badge}>{stats.upcomingDrives}</span>}
-              </NavLink>
-            )
-          )}
-        </nav>
-
-        <div className={styles.sidebarBottom}>
-          <div className={styles.userRow}>
-            <div className={styles.avatar}>{user?.name?.charAt(0).toUpperCase() || 'A'}</div>
-            <div>
-              <div className={styles.userName}>{user?.name || 'Super Admin'}</div>
-              <div className={styles.userRole}>Owner</div>
-            </div>
-          </div>
-          <button className={styles.logoutBtn} onClick={handleLogout}>
-            <FaSignOutAlt /> Logout
+      {/* ============================================================ */}
+      {/* NOTIFICATION PANEL - SLIDE FROM RIGHT */}
+      {/* ============================================================ */}
+      <div className={`${styles.slidePanel} ${showNotifications ? styles.slidePanelOpen : ''}`}>
+        <div className={styles.panelHeader}>
+          <h3>
+            <FaBell /> Notifications
+            {unreadCount > 0 && <span className={styles.panelBadge}>{unreadCount}</span>}
+          </h3>
+          <button className={styles.panelClose} onClick={toggleNotifications}>
+            <FaTimes />
           </button>
         </div>
-      </aside>
-
-      {/* ── MAIN ── */}
-      <div className={styles.main}>
-        {/* topbar */}
-        <header className={styles.topbar}>
-          <div>
-            <h2 className={styles.pageTitle}>Dashboard</h2>
-            <p className={styles.pageDate}>{today}</p>
-          </div>
-          <div className={styles.topbarRight}>
-            <button className={styles.iconBtn} aria-label="Search"><FaSearch /></button>
-            <button className={styles.iconBtn} aria-label="Notifications" style={{ position: 'relative' }}>
-              <FaBell />
-              <span className={styles.notifDot} />
-            </button>
-            <button className={styles.iconBtn} aria-label="Profile"><FaUserCircle /></button>
-          </div>
-        </header>
-
-        {/* scrollable content */}
-        <div className={styles.content}>
-          {/* stat cards */}
-          <div className={styles.statsGrid}>
-            {STAT_CARDS.map((s, i) => (
-              <div key={i} className={styles.statCard}>
-                <div className={`${styles.statIcon} ${styles[s.cls]}`}>
-                  <s.icon />
+        <div className={styles.panelContent}>
+          {notifications.length === 0 ? (
+            <div className={styles.emptyState}>
+              <FaBell size={40} />
+              <p>No notifications</p>
+            </div>
+          ) : (
+            notifications.map(notif => (
+              <div key={notif.id} className={`${styles.notifCard} ${!notif.read ? styles.unread : ''}`}>
+                <div className={styles.notifCardIcon} style={{ backgroundColor: `${notif.color}15`, color: notif.color }}>
+                  <notif.icon size={18} />
                 </div>
-                <div className={styles.statBody}>
-                  <div className={styles.statLabel}>{s.label}</div>
-                  <div className={styles.statVal}>{s.value}</div>
-                  <div className={styles.statSub}>{s.sub}</div>
+                <div className={styles.notifCardContent}>
+                  <div className={styles.notifCardTitle}>{notif.title}</div>
+                  <div className={styles.notifCardMessage}>{notif.message}</div>
+                  <div className={styles.notifCardTime}>{notif.time}</div>
+                </div>
+                <div className={styles.notifCardActions}>
+                  {!notif.read && (
+                    <button onClick={() => markNotificationAsRead(notif.id)} title="Mark as read">
+                      <FaCheckCircle size={14} />
+                    </button>
+                  )}
+                  <button onClick={() => deleteNotification(notif.id)} title="Delete">
+                    <FaTrash size={14} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* ============================================================ */}
+      {/* MESSAGE PANEL - SLIDE FROM RIGHT */}
+      {/* ============================================================ */}
+      <div className={`${styles.slidePanel} ${showMessages ? styles.slidePanelOpen : ''}`}>
+        <div className={styles.panelHeader}>
+          <h3>
+            <FaEnvelope /> Messages
+            {unreadMessageCount > 0 && <span className={styles.panelBadge}>{unreadMessageCount}</span>}
+          </h3>
+          <button className={styles.panelClose} onClick={toggleMessages}>
+            <FaTimes />
+          </button>
+        </div>
+        
+        {!selectedChat ? (
+          // User List View
+          <div className={styles.panelContent}>
+            {messages.map(msg => (
+              <div 
+                key={msg.id} 
+                className={`${styles.chatUserCard} ${msg.unread ? styles.unreadChat : ''}`}
+                onClick={() => openChat(msg)}
+              >
+                <div className={styles.chatUserAvatar}>
+                  {msg.avatar}
+                  {msg.online && <span className={styles.onlineDot}></span>}
+                </div>
+                <div className={styles.chatUserInfo}>
+                  <div className={styles.chatUserName}>{msg.name}</div>
+                  <div className={styles.chatUserRole}>{msg.role}</div>
+                  <div className={styles.chatUserLastMsg}>{msg.message}</div>
+                </div>
+                <div className={styles.chatUserTime}>
+                  {msg.time}
+                  {msg.unread && <span className={styles.unreadDot}></span>}
                 </div>
               </div>
             ))}
           </div>
-
-          {/* row 2: leads + tasks */}
-          <div className={styles.row2}>
-            <div className={styles.card}>
-              <div className={styles.cardHdr}>
-                <span className={styles.cardTitle}>Recent leads</span>
-                <span className={styles.cardLink} onClick={() => navigate('/leads')}>View all →</span>
+        ) : (
+          // Chat View
+          <div className={styles.chatView}>
+            <div className={styles.chatViewHeader}>
+              <button className={styles.backBtn} onClick={() => setSelectedChat(null)}>
+                <FaChevronLeft />
+              </button>
+              <div className={styles.chatViewUser}>
+                <div className={styles.chatViewAvatar}>{selectedChat.avatar}</div>
+                <div>
+                  <div className={styles.chatViewName}>{selectedChat.name}</div>
+                  <div className={styles.chatViewRole}>{selectedChat.role}</div>
+                </div>
               </div>
-              {RECENT_LEADS_STATIC.map((l, i) => (
-                <div key={i} className={styles.leadItem}>
-                  <div className={styles.leadInit}>{l.initials}</div>
-                  <div>
-                    <div className={styles.leadName}>{l.name}</div>
-                    <div className={styles.leadCourse}>{l.course}</div>
-                  </div>
-                  <span className={`${styles.leadStatus} ${styles[l.statusClass]}`}>{l.status}</span>
+              <div className={styles.chatViewStatus}>
+                {selectedChat.online && <span className={styles.onlineStatus}>Online</span>}
+              </div>
+            </div>
+            <div className={styles.chatMessages}>
+              {chatHistory[selectedChat.id]?.map(msg => (
+                <div key={msg.id} className={msg.sender === 'admin' ? styles.messageSent : styles.messageReceived}>
+                  <div className={styles.messageBubble}>{msg.text}</div>
+                  <div className={styles.messageTime}>{msg.time}</div>
                 </div>
               ))}
+              {/* Default welcome message if no history */}
+              {(!chatHistory[selectedChat.id] || chatHistory[selectedChat.id].length === 0) && (
+                <div className={styles.messageReceived}>
+                  <div className={styles.messageBubble}>Hello! How can I help you today?</div>
+                  <div className={styles.messageTime}>Just now</div>
+                </div>
+              )}
+            </div>
+            <div className={styles.chatInput}>
+              <input 
+                type="text" 
+                placeholder="Type your message..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+              />
+              <button onClick={sendMessage}>
+                <FiSend />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ============================================================ */}
+      {/* SIDEBAR */}
+      {/* ============================================================ */}
+      <aside className={`${styles.sidebar} ${sidebarCollapsed ? styles.sidebarCollapsed : ''} ${mobileMenuOpen ? styles.sidebarMobile : ''}`}>
+        <div className={styles.sidebarHeader}>
+          <div className={styles.logo}>
+            <div className={styles.logoIcon}>
+              <FaShieldAlt />
+            </div>
+            {!sidebarCollapsed && <span className={styles.logoText}>IDA ERP CRM</span>}
+          </div>
+          {!sidebarCollapsed && (
+            <button className={styles.collapseBtn} onClick={() => setSidebarCollapsed(true)}>
+              <FaChevronLeft />
+            </button>
+          )}
+          {sidebarCollapsed && (
+            <button className={styles.expandBtn} onClick={() => setSidebarCollapsed(false)}>
+              <FaChevronRight />
+            </button>
+          )}
+        </div>
+
+        <nav className={styles.nav}>
+          {NAV.map((item, index) => (
+            <NavLink
+              key={index}
+              to={item.path}
+              className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
+              onMouseEnter={() => { if (sidebarCollapsed) setHoveredItem(index); }}
+              onMouseLeave={() => setHoveredItem(null)}
+            >
+              <item.icon className={styles.navIcon} />
+              {!sidebarCollapsed && <span className={styles.navLabel}>{item.label}</span>}
+              {sidebarCollapsed && hoveredItem === index && (
+                <div className={styles.navTooltip}>{item.label}</div>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className={styles.sidebarFooter}>
+          <button className={styles.logoutBtn} onClick={handleLogout}>
+            <FaSignOutAlt /> {!sidebarCollapsed && 'Logout'}
+          </button>
+        </div>
+      </aside>
+
+      {/* ============================================================ */}
+      {/* MAIN CONTENT */}
+      {/* ============================================================ */}
+      <main className={styles.main}>
+        
+        {/* Header */}
+        <header className={styles.header}>
+          <div className={styles.headerLeft}>
+            <button className={styles.menuToggle} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              <FaBars />
+            </button>
+            <div className={styles.searchBar}>
+              <FaSearch className={styles.searchIcon} />
+              <input type="text" placeholder="Search anything..." className={styles.searchInput} />
+              <kbd className={styles.searchKbd}>⌘K</kbd>
+            </div>
+          </div>
+          <div className={styles.headerRight}>
+            <button className={styles.iconBtn} onClick={toggleMessages}>
+              <FaEnvelope />
+              {unreadMessageCount > 0 && <span className={styles.badge}>{unreadMessageCount}</span>}
+            </button>
+            <button className={styles.iconBtn} onClick={toggleNotifications}>
+              <FaBell />
+              {unreadCount > 0 && <span className={styles.badge}>{unreadCount}</span>}
+            </button>
+            <div className={styles.userProfile}>
+              <div className={styles.avatar}>A</div>
+              <div className={styles.userInfo}>
+                <span className={styles.userName}>Admin User</span>
+                <span className={styles.userRole}>Super Admin</span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className={styles.content}>
+          
+        
+          {/* Stats Grid */}
+          <div className={styles.statsGrid}>
+            {STATS.map((stat, idx) => (
+              <StatCard key={idx} {...stat} />
+            ))}
+          </div>
+
+          {/* Charts Section */}
+          <div className={styles.chartsSection}>
+            {/* Revenue Chart */}
+            <div className={styles.chartCard}>
+              <div className={styles.chartHeader}>
+                <div>
+                  <h3 className={styles.chartTitle}>Revenue Overview</h3>
+                  <p className={styles.chartSubtitle}>Monthly revenue & bookings</p>
+                </div>
+                <select className={styles.chartSelect} value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)}>
+                  <option>This Month</option>
+                  <option>Last Month</option>
+                  <option>This Quarter</option>
+                  <option>This Year</option>
+                </select>
+              </div>
+              <div className={styles.chartContainer}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={revenueData}>
+                    <defs>
+                      <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
+                    <YAxis stroke="#94a3b8" fontSize={12} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                    />
+                    <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fill="url(#revenueGradient)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="bookings" stroke="#8b5cf6" fill="none" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
-            <div className={styles.card}>
-              <div className={styles.cardHdr}>
-                <span className={styles.cardTitle}>Tasks</span>
-                <span className={styles.cardLink} onClick={() => navigate('/tasks')}>View all →</span>
+            {/* Placement Chart */}
+            <div className={styles.chartCard}>
+              <div className={styles.chartHeader}>
+                <h3 className={styles.chartTitle}>Placement Overview</h3>
               </div>
-              {TASKS_STATIC.map((t, i) => (
-                <div key={i} className={styles.taskItem}>
-                  <div className={`${styles.taskCheck} ${t.done ? styles.taskDone : ''}`}>
-                    {t.done && <FaCheck />}
+              <div className={styles.placementStats}>
+                <div className={styles.placementDonut}>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={placementData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {placementData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className={styles.placementLegendContainer}>
+                  {placementData.map((item, idx) => (
+                    <div key={idx} className={styles.placementLegend}>
+                      <span className={styles.legendDot} style={{ backgroundColor: item.color }} />
+                      <span className={styles.legendLabel}>{item.name}</span>
+                      <span className={styles.legendValue}>{item.value}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Lead Funnel */}
+          <div className={styles.funnelCard}>
+            <div className={styles.funnelHeader}>
+              <h3 className={styles.funnelTitle}>Lead Conversion Funnel</h3>
+              <button className={styles.downloadBtn}>
+                <FaDownload /> Download Report
+              </button>
+            </div>
+            <div className={styles.funnelContainer}>
+              {leadFunnel.map((stage, idx) => (
+                <div key={idx} className={styles.funnelStage}>
+                  <div className={styles.funnelStageInfo}>
+                    <span className={styles.funnelStageName}>{stage.stage}</span>
+                    <span className={styles.funnelStageCount}>{stage.count.toLocaleString()}</span>
                   </div>
-                  <span className={`${styles.taskText} ${t.done ? styles.taskTextDone : ''}`}>{t.text}</span>
-                  <span className={`${styles.taskPri} ${
-                    t.priority === 'High' ? styles.priHigh : t.priority === 'Medium' ? styles.priMed : styles.priLow
-                  }`}>{t.priority}</span>
+                  <div className={styles.funnelBarWrapper}>
+                    <div className={styles.funnelBar} style={{ width: `${stage.percentage}%` }} />
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* row 3: activity + drives + performance */}
-          <div className={styles.row3}>
-            <div className={styles.card}>
-              <div className={styles.cardHdr}><span className={styles.cardTitle}>Activity log</span></div>
-              {ACTIVITY_STATIC.map((a, i) => (
-                <div key={i} className={styles.actItem}>
-                  <span className={styles.actDot} style={{ background: a.color }} />
-                  <span className={styles.actText}>{a.text}</span>
-                  <span className={styles.actTime}>{a.time}</span>
-                </div>
-              ))}
+          {/* Two Column Layout */}
+          <div className={styles.twoColumn}>
+            
+            {/* Recent Activities */}
+            <div className={styles.activityCard}>
+              <div className={styles.cardHeader}>
+                <h3 className={styles.cardTitle}>Recent Activities</h3>
+                <button className={styles.viewAllBtn}>View All</button>
+              </div>
+              <div className={styles.activityList}>
+                {RECENT_ACTIVITIES.map(activity => (
+                  <ActivityItem key={activity.id} {...activity} />
+                ))}
+              </div>
             </div>
 
-            <div className={styles.card}>
-              <div className={styles.cardHdr}><span className={styles.cardTitle}>Upcoming drives</span></div>
-              {DRIVES_STATIC.map((d, i) => (
-                <div key={i} className={styles.driveItem}>
-                  <div className={styles.driveLogo}>{d.abbr}</div>
-                  <div>
-                    <div className={styles.driveCo}>{d.name}</div>
-                    <div className={styles.driveRole}>{d.role}</div>
-                  </div>
-                  <div className={styles.driveDate}>
-                    <div>{d.date}</div>
-                    <div className={styles.driveMode}>{d.mode}</div>
-                  </div>
+            {/* Right Column */}
+            <div className={styles.rightColumn}>
+              {/* Quick Access */}
+              <div className={styles.quickAccessCard}>
+                <h3 className={styles.cardTitle}>Quick Access</h3>
+                <div className={styles.quickModules}>
+                  {QUICK_MODULES.map((module, idx) => (
+                    <button key={idx} className={styles.quickModule} onClick={() => navigate(module.path)}>
+                      <div className={styles.quickModuleIcon} style={{ backgroundColor: module.bg, color: module.color }}>
+                        <module.icon size={18} />
+                      </div>
+                      <span className={styles.quickModuleName}>{module.name}</span>
+                    </button>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <div className={styles.card}>
-              <div className={styles.cardHdr}><span className={styles.cardTitle}>Sales performance</span></div>
-              {PERF_STATIC.map((p, i) => (
-                <div key={i} className={styles.perfRow}>
-                  <div className={styles.perfName}>{p.name}</div>
-                  <div className={styles.perfBarBg}>
-                    <div className={styles.perfBar} style={{ width: `${p.pct}%` }} />
+              {/* Upcoming Events */}
+              <div className={styles.eventsCard}>
+                <h3 className={styles.cardTitle}>Upcoming Events</h3>
+                {UPCOMING_EVENTS.map(event => (
+                  <div key={event.id} className={styles.eventItem}>
+                    <div className={styles.eventDate}>
+                      <span className={styles.eventDay}>{getDayFromDate(event.date)}</span>
+                      <span className={styles.eventMonth}>{getMonthFromDate(event.date)}</span>
+                    </div>
+                    <div className={styles.eventInfo}>
+                      <span className={styles.eventTitle}>{event.title}</span>
+                      <span className={styles.eventTime}>{event.time}</span>
+                    </div>
+                    <div className={styles.eventBadge} style={{ backgroundColor: `${event.color}15`, color: event.color }}>
+                      {event.type}
+                    </div>
                   </div>
-                  <div className={styles.perfVal}>{p.pct}%</div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
