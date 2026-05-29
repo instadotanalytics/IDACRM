@@ -3,13 +3,13 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import superAdminRoutes from './routes/superAdminRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
 
-// Connect to database (auto creates super admin)
+// Connect to database
 await connectDB();
 
 // Middleware
@@ -30,7 +30,8 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/api/super-admin', superAdminRoutes);
+app.use('/api/auth', authRoutes);           // For normal users
+app.use('/api/super-admin', superAdminRoutes); // For super admin
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -66,8 +67,7 @@ app.listen(PORT, () => {
     console.log(`🚀 ========================================`);
     console.log(`📍 Server URL: http://localhost:${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-    console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL}`);
-    console.log(`📡 API Endpoint: http://localhost:${PORT}/api/super-admin`);
-    console.log(`✅ Login URL: http://localhost:${PORT}/api/super-admin/login`);
+    console.log(`📡 Auth API: http://localhost:${PORT}/api/auth/login`);
+    console.log(`👑 Super Admin API: http://localhost:${PORT}/api/super-admin/login`);
     console.log(`🚀 ========================================\n`);
 });

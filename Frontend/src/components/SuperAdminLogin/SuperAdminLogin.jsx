@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
@@ -15,7 +15,7 @@ import {
   FaSignInAlt,
 } from 'react-icons/fa';
 import styles from './SuperAdminLogin.module.css';
-import { authAPI } from '../../services/api';
+import { superAdminAPI } from '../../services/api';
 
 const FEATURES = [
   { icon: <FaLayerGroup />, text: 'Centralized dashboard control' },
@@ -32,6 +32,24 @@ const SuperAdminLogin = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
 
+  // Check if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
+    
+    if (token && userData) {
+      try {
+        const user = JSON.parse(userData);
+        if (user.role === 'super_admin') {
+          console.log('Already logged in, redirecting to dashboard');
+          navigate('/super-admin-dashboard');
+        }
+      } catch (e) {
+        console.error('Error checking existing session:', e);
+      }
+    }
+  }, [navigate]);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError('');
@@ -44,18 +62,37 @@ const SuperAdminLogin = () => {
       toast.error('Please fill in all fields');
       return;
     }
+    
     setLoading(true);
     setError('');
+    
     try {
-      const response = await authAPI.login(formData);
+      const response = await superAdminAPI.login(formData);
+      console.log('Login Response:', response.data);
+      
       if (response.data.success) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        if (rememberMe) localStorage.setItem('rememberMe', 'true');
-        toast.success(`Welcome back, ${response.data.user.name}!`);
-        navigate('/super-admin-dashboard');
+        const { token, user } = response.data;
+        
+        // Store in localStorage
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        if (rememberMe) {
+          localStorage.setItem('rememberMe', 'true');
+        }
+        
+        console.log('Token stored:', !!localStorage.getItem('token'));
+        console.log('User stored:', !!localStorage.getItem('user'));
+        
+        toast.success(`Welcome back, ${user.name}!`);
+        
+        // Use navigate instead of window.location for better React Router integration
+        setTimeout(() => {
+          navigate('/super-admin-dashboard');
+        }, 100);
       }
     } catch (err) {
+      console.error('Login error:', err);
       const message = err.response?.data?.message || 'Login failed';
       setError(message);
       toast.error(message);
@@ -67,8 +104,7 @@ const SuperAdminLogin = () => {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-
-        {/* ── LEFT PANEL ── */}
+        {/* LEFT PANEL */}
         <div className={styles.left}>
           <div className={styles.leftInner}>
             <div className={styles.brandIcon}>
@@ -89,12 +125,11 @@ const SuperAdminLogin = () => {
             </ul>
           </div>
 
-          {/* decorative circles */}
           <span className={`${styles.circle} ${styles.circleTop}`} />
           <span className={`${styles.circle} ${styles.circleBottom}`} />
         </div>
 
-        {/* ── RIGHT PANEL ── */}
+        {/* RIGHT PANEL */}
         <div className={styles.right}>
           <div className={styles.welcome}>
             <h2 className={styles.welcomeTitle}>Welcome back</h2>
@@ -104,7 +139,6 @@ const SuperAdminLogin = () => {
           {error && <div className={styles.errorBanner}>{error}</div>}
 
           <form onSubmit={handleSubmit} className={styles.form} noValidate>
-            {/* Email */}
             <div className={styles.field}>
               <label className={styles.label} htmlFor="email">
                 <FaEnvelope className={styles.labelIcon} />
@@ -117,12 +151,11 @@ const SuperAdminLogin = () => {
                 value={formData.email}
                 onChange={handleChange}
                 className={styles.input}
-                placeholder="admin@idaerp.com"
+                placeholder="superadmin@ida.com"
                 autoComplete="email"
               />
             </div>
 
-            {/* Password */}
             <div className={styles.field}>
               <label className={styles.label} htmlFor="password">
                 <FaLock className={styles.labelIcon} />
@@ -150,7 +183,6 @@ const SuperAdminLogin = () => {
               </div>
             </div>
 
-            {/* Remember me + Forgot */}
             <div className={styles.row}>
               <label className={styles.remember}>
                 <input
@@ -161,10 +193,8 @@ const SuperAdminLogin = () => {
                 />
                 Remember me
               </label>
-              
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -184,7 +214,6 @@ const SuperAdminLogin = () => {
             </button>
           </form>
 
-          {/* Secure badge */}
           <div className={styles.dividerRow}>
             <hr className={styles.hr} />
             <span className={styles.dividerText}>secured connection</span>

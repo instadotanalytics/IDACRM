@@ -7,8 +7,7 @@ import {
   FaCalendarCheck, FaFileContract, FaCog, FaSignOutAlt,
   FaUserCircle, FaBell, FaSearch, FaGraduationCap,
   FaClock, FaSchool, FaCheck, FaChevronLeft, FaChevronRight,
-  FaChevronDown,
-  FaPlus, FaUserPlus, FaRocket, FaClipboardList,
+  FaChevronDown, FaPlus, FaUserPlus, FaRocket, FaClipboardList,
   FaDatabase, FaServer, FaHdd, FaUserFriends,
   FaEnvelope, FaClipboard, FaChartLine, FaFunnelDollar,
   FaStar, FaHeadset, FaChalkboardTeacher, FaEye,
@@ -17,7 +16,9 @@ import {
   FaCheckCircle, FaExclamationTriangle, FaInfoCircle,
   FaSpinner, FaFileInvoice, FaHandshake, FaArrowUp,
   FaArrowDown, FaFilter, FaDownload, FaCalendarAlt,
-  FaCircle, FaRegCircle, FaImage, FaVideo, FaFile
+  FaCircle, FaRegCircle, FaImage, FaVideo, FaFile,
+  FaEdit, FaSearch as FaSearchIcon, FaToggleOn, FaToggleOff,
+  FaPhone, FaEnvelope as FaEmailIcon, FaUserTag
 } from 'react-icons/fa';
 import { 
   FiUsers, FiTrendingUp, FiDollarSign,
@@ -29,6 +30,7 @@ import {
   PieChart, Pie, Cell
 } from 'recharts';
 import styles from './SuperAdminDashboard.module.css';
+import { superAdminAPI } from '../../services/api';
 
 /* ============================================================ */
 /* NAVIGATION CONFIGURATION
@@ -124,7 +126,6 @@ const NOTIFICATIONS_DATA = [
   { id: 3, title: 'Placement Drive', message: 'TCS placement drive scheduled for tomorrow', time: '2 hours ago', read: true, type: 'drive', icon: FaBriefcase, color: '#f59e0b' },
   { id: 4, title: 'New Company Added', message: 'Microsoft has been added as hiring partner', time: '5 hours ago', read: true, type: 'company', icon: FaBuilding, color: '#8b5cf6' },
   { id: 5, title: 'Task Assigned', message: 'Review monthly report assigned to you', time: '1 day ago', read: true, type: 'task', icon: FaTasks, color: '#ec4899' },
-  { id: 6, title: 'System Update', message: 'New version v2.0 available', time: '2 days ago', read: true, type: 'system', icon: FaServer, color: '#6366f1' },
 ];
 
 /* ============================================================ */
@@ -165,6 +166,7 @@ const getMonthFromDate = (dateStr) => {
 const SuperAdminDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('This Month');
@@ -179,10 +181,189 @@ const SuperAdminDashboard = () => {
   const [messages, setMessages] = useState(MESSAGES_DATA);
   const [chatHistory, setChatHistory] = useState({});
 
+  // User Management States
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [userFormData, setUserFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'sales_executive',
+    department: 'sales',
+    phone: '',
+    isActive: true
+  });
+
+  // INITIAL LOAD - Check authentication
   useEffect(() => {
+    const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
-    if (userData) setUser(JSON.parse(userData));
+    
+    console.log('=== SUPER ADMIN DASHBOARD ===');
+    console.log('Token exists:', !!token);
+    console.log('UserData exists:', !!userData);
+    
+    // If no token, redirect to login
+    if (!token) {
+      console.log('No token found, redirecting to login');
+      navigate('/super-admin-login');
+      return;
+    }
+    
+    // If no user data, redirect to login
+    if (!userData) {
+      console.log('No user data found, redirecting to login');
+      navigate('/super-admin-login');
+      return;
+    }
+    
+    try {
+      const parsedUser = JSON.parse(userData);
+      console.log('User role:', parsedUser.role);
+      
+      // Check if user is super admin
+      if (parsedUser.role !== 'super_admin') {
+        console.log('Not super admin, redirecting to login');
+        navigate('/super-admin-login');
+        return;
+      }
+      
+      setUser(parsedUser);
+      setIsLoading(false);
+      
+      // Only fetch users after authentication is confirmed
+      fetchUsers();
+      
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+      navigate('/super-admin-login');
+    }
   }, []);
+
+  // Fetch all users
+  const fetchUsers = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.log('No token, skipping fetchUsers');
+      return;
+    }
+    
+    setUsersLoading(true);
+    try {
+      const response = await superAdminAPI.getUsers();
+      if (response.data.success) {
+        setUsers(response.data.data.users);
+      }
+    } catch (error) {
+      console.error('Fetch users error:', error.response?.status);
+      // Don't show toast for 401 - let interceptor handle it
+      if (error.response?.status !== 401) {
+        toast.error('Failed to fetch users');
+      }
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  // Open create user modal
+  const openCreateUserModal = () => {
+    setEditingUser(null);
+    setUserFormData({
+      name: '',
+      email: '',
+      password: '',
+      role: 'sales_executive',
+      department: 'sales',
+      phone: '',
+      isActive: true
+    });
+    setShowUserModal(true);
+  };
+
+  // Open edit user modal
+  const openEditUserModal = (user) => {
+    setEditingUser(user);
+    setUserFormData({
+      name: user.name,
+      email: user.email,
+      password: '',
+      role: user.role,
+      department: user.department || 'sales',
+      phone: user.phone || '',
+      isActive: user.isActive
+    });
+    setShowUserModal(true);
+  };
+
+  // Handle user form change
+  const handleUserFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setUserFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  // Create or update user
+  const handleSaveUser = async (e) => {
+    e.preventDefault();
+    setUsersLoading(true);
+    try {
+      let response;
+      if (editingUser) {
+        const updateData = {
+          name: userFormData.name,
+          email: userFormData.email,
+          role: userFormData.role,
+          department: userFormData.department,
+          phone: userFormData.phone,
+          isActive: userFormData.isActive
+        };
+        if (userFormData.password) updateData.password = userFormData.password;
+        response = await superAdminAPI.updateUser(editingUser._id, updateData);
+        toast.success('User updated successfully');
+      } else {
+        response = await superAdminAPI.createUser(userFormData);
+        toast.success('User created successfully');
+      }
+      if (response.data.success) {
+        setShowUserModal(false);
+        fetchUsers();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Operation failed');
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  // Delete user
+  const handleDeleteUser = async (userId, userName) => {
+    if (window.confirm(`Are you sure you want to delete ${userName}?`)) {
+      try {
+        const response = await superAdminAPI.deleteUser(userId);
+        if (response.data.success) {
+          toast.success('User deleted successfully');
+          fetchUsers();
+        }
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Delete failed');
+      }
+    }
+  };
+
+  // Filtered users
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                          user.email?.toLowerCase().includes(userSearch.toLowerCase());
+    const matchesRole = userRoleFilter === 'all' || user.role === userRoleFilter;
+    return matchesSearch && matchesRole && user.role !== 'super_admin';
+  });
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -196,12 +377,10 @@ const SuperAdminDashboard = () => {
     setShowNotifications(!showNotifications);
     if (showMessages) setShowMessages(false);
     if (!showNotifications) {
-      // Mark all as read when opened
       setNotifications(notifications.map(n => ({ ...n, read: true })));
     }
   };
 
-  // Message Functions
   const toggleMessages = () => {
     setShowMessages(!showMessages);
     if (showNotifications) setShowNotifications(false);
@@ -218,7 +397,6 @@ const SuperAdminDashboard = () => {
 
   const openChat = (message) => {
     setSelectedChat(message);
-    // Mark as read
     setMessages(messages.map(m => 
       m.id === message.id ? { ...m, unread: false } : m
     ));
@@ -232,12 +410,10 @@ const SuperAdminDashboard = () => {
         sender: 'admin',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
-      
       setChatHistory(prev => ({
         ...prev,
         [selectedChat.id]: [...(prev[selectedChat.id] || []), newChat]
       }));
-      
       toast.success(`Message sent to ${selectedChat.name}`);
       setNewMessage('');
     }
@@ -288,6 +464,38 @@ const SuperAdminDashboard = () => {
     </div>
   );
 
+  const getRoleBadgeClass = (role) => {
+    switch(role) {
+      case 'admin_manager': return styles.roleAdminManager;
+      case 'sales_executive': return styles.roleSales;
+      case 'hr_executive': return styles.roleHR;
+      case 'trainer': return styles.roleTrainer;
+      case 'counselor': return styles.roleCounselor;
+      default: return styles.roleDefault;
+    }
+  };
+
+  const getRoleDisplayName = (role) => {
+    switch(role) {
+      case 'admin_manager': return 'Admin Manager';
+      case 'sales_executive': return 'Sales Executive';
+      case 'hr_executive': return 'HR Executive';
+      case 'trainer': return 'Trainer';
+      case 'counselor': return 'Counselor';
+      default: return role;
+    }
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.loadingSpinner}></div>
+        <p>Loading dashboard...</p>
+      </div>
+    );
+  }
+
   return (
     <div className={`${styles.app} ${sidebarCollapsed ? styles.appCollapsed : ''}`}>
       
@@ -297,24 +505,16 @@ const SuperAdminDashboard = () => {
       )}
 
       {/* ============================================================ */}
-      {/* NOTIFICATION PANEL - SLIDE FROM RIGHT */}
+      {/* NOTIFICATION PANEL */}
       {/* ============================================================ */}
       <div className={`${styles.slidePanel} ${showNotifications ? styles.slidePanelOpen : ''}`}>
         <div className={styles.panelHeader}>
-          <h3>
-            <FaBell /> Notifications
-            {unreadCount > 0 && <span className={styles.panelBadge}>{unreadCount}</span>}
-          </h3>
-          <button className={styles.panelClose} onClick={toggleNotifications}>
-            <FaTimes />
-          </button>
+          <h3><FaBell /> Notifications {unreadCount > 0 && <span className={styles.panelBadge}>{unreadCount}</span>}</h3>
+          <button className={styles.panelClose} onClick={toggleNotifications}><FaTimes /></button>
         </div>
         <div className={styles.panelContent}>
           {notifications.length === 0 ? (
-            <div className={styles.emptyState}>
-              <FaBell size={40} />
-              <p>No notifications</p>
-            </div>
+            <div className={styles.emptyState}><FaBell size={40} /><p>No notifications</p></div>
           ) : (
             notifications.map(notif => (
               <div key={notif.id} className={`${styles.notifCard} ${!notif.read ? styles.unread : ''}`}>
@@ -327,14 +527,8 @@ const SuperAdminDashboard = () => {
                   <div className={styles.notifCardTime}>{notif.time}</div>
                 </div>
                 <div className={styles.notifCardActions}>
-                  {!notif.read && (
-                    <button onClick={() => markNotificationAsRead(notif.id)} title="Mark as read">
-                      <FaCheckCircle size={14} />
-                    </button>
-                  )}
-                  <button onClick={() => deleteNotification(notif.id)} title="Delete">
-                    <FaTrash size={14} />
-                  </button>
+                  {!notif.read && <button onClick={() => markNotificationAsRead(notif.id)}><FaCheckCircle size={14} /></button>}
+                  <button onClick={() => deleteNotification(notif.id)}><FaTrash size={14} /></button>
                 </div>
               </div>
             ))
@@ -343,61 +537,36 @@ const SuperAdminDashboard = () => {
       </div>
 
       {/* ============================================================ */}
-      {/* MESSAGE PANEL - SLIDE FROM RIGHT */}
+      {/* MESSAGE PANEL */}
       {/* ============================================================ */}
       <div className={`${styles.slidePanel} ${showMessages ? styles.slidePanelOpen : ''}`}>
         <div className={styles.panelHeader}>
-          <h3>
-            <FaEnvelope /> Messages
-            {unreadMessageCount > 0 && <span className={styles.panelBadge}>{unreadMessageCount}</span>}
-          </h3>
-          <button className={styles.panelClose} onClick={toggleMessages}>
-            <FaTimes />
-          </button>
+          <h3><FaEnvelope /> Messages {unreadMessageCount > 0 && <span className={styles.panelBadge}>{unreadMessageCount}</span>}</h3>
+          <button className={styles.panelClose} onClick={toggleMessages}><FaTimes /></button>
         </div>
-        
         {!selectedChat ? (
-          // User List View
           <div className={styles.panelContent}>
             {messages.map(msg => (
-              <div 
-                key={msg.id} 
-                className={`${styles.chatUserCard} ${msg.unread ? styles.unreadChat : ''}`}
-                onClick={() => openChat(msg)}
-              >
-                <div className={styles.chatUserAvatar}>
-                  {msg.avatar}
-                  {msg.online && <span className={styles.onlineDot}></span>}
-                </div>
+              <div key={msg.id} className={`${styles.chatUserCard} ${msg.unread ? styles.unreadChat : ''}`} onClick={() => openChat(msg)}>
+                <div className={styles.chatUserAvatar}>{msg.avatar}{msg.online && <span className={styles.onlineDot}></span>}</div>
                 <div className={styles.chatUserInfo}>
                   <div className={styles.chatUserName}>{msg.name}</div>
                   <div className={styles.chatUserRole}>{msg.role}</div>
                   <div className={styles.chatUserLastMsg}>{msg.message}</div>
                 </div>
-                <div className={styles.chatUserTime}>
-                  {msg.time}
-                  {msg.unread && <span className={styles.unreadDot}></span>}
-                </div>
+                <div className={styles.chatUserTime}>{msg.time}{msg.unread && <span className={styles.unreadDot}></span>}</div>
               </div>
             ))}
           </div>
         ) : (
-          // Chat View
           <div className={styles.chatView}>
             <div className={styles.chatViewHeader}>
-              <button className={styles.backBtn} onClick={() => setSelectedChat(null)}>
-                <FaChevronLeft />
-              </button>
+              <button className={styles.backBtn} onClick={() => setSelectedChat(null)}><FaChevronLeft /></button>
               <div className={styles.chatViewUser}>
                 <div className={styles.chatViewAvatar}>{selectedChat.avatar}</div>
-                <div>
-                  <div className={styles.chatViewName}>{selectedChat.name}</div>
-                  <div className={styles.chatViewRole}>{selectedChat.role}</div>
-                </div>
+                <div><div className={styles.chatViewName}>{selectedChat.name}</div><div className={styles.chatViewRole}>{selectedChat.role}</div></div>
               </div>
-              <div className={styles.chatViewStatus}>
-                {selectedChat.online && <span className={styles.onlineStatus}>Online</span>}
-              </div>
+              <div className={styles.chatViewStatus}>{selectedChat.online && <span className={styles.onlineStatus}>Online</span>}</div>
             </div>
             <div className={styles.chatMessages}>
               {chatHistory[selectedChat.id]?.map(msg => (
@@ -406,25 +575,13 @@ const SuperAdminDashboard = () => {
                   <div className={styles.messageTime}>{msg.time}</div>
                 </div>
               ))}
-              {/* Default welcome message if no history */}
               {(!chatHistory[selectedChat.id] || chatHistory[selectedChat.id].length === 0) && (
-                <div className={styles.messageReceived}>
-                  <div className={styles.messageBubble}>Hello! How can I help you today?</div>
-                  <div className={styles.messageTime}>Just now</div>
-                </div>
+                <div className={styles.messageReceived}><div className={styles.messageBubble}>Hello! How can I help you today?</div><div className={styles.messageTime}>Just now</div></div>
               )}
             </div>
             <div className={styles.chatInput}>
-              <input 
-                type="text" 
-                placeholder="Type your message..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              />
-              <button onClick={sendMessage}>
-                <FiSend />
-              </button>
+              <input type="text" placeholder="Type your message..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendMessage()} />
+              <button onClick={sendMessage}><FiSend /></button>
             </div>
           </div>
         )}
@@ -436,45 +593,23 @@ const SuperAdminDashboard = () => {
       <aside className={`${styles.sidebar} ${sidebarCollapsed ? styles.sidebarCollapsed : ''} ${mobileMenuOpen ? styles.sidebarMobile : ''}`}>
         <div className={styles.sidebarHeader}>
           <div className={styles.logo}>
-            <div className={styles.logoIcon}>
-              <FaShieldAlt />
-            </div>
+            <div className={styles.logoIcon}><FaShieldAlt /></div>
             {!sidebarCollapsed && <span className={styles.logoText}>IDA ERP CRM</span>}
           </div>
-          {!sidebarCollapsed && (
-            <button className={styles.collapseBtn} onClick={() => setSidebarCollapsed(true)}>
-              <FaChevronLeft />
-            </button>
-          )}
-          {sidebarCollapsed && (
-            <button className={styles.expandBtn} onClick={() => setSidebarCollapsed(false)}>
-              <FaChevronRight />
-            </button>
-          )}
+          {!sidebarCollapsed && <button className={styles.collapseBtn} onClick={() => setSidebarCollapsed(true)}><FaChevronLeft /></button>}
+          {sidebarCollapsed && <button className={styles.expandBtn} onClick={() => setSidebarCollapsed(false)}><FaChevronRight /></button>}
         </div>
-
         <nav className={styles.nav}>
           {NAV.map((item, index) => (
-            <NavLink
-              key={index}
-              to={item.path}
-              className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
-              onMouseEnter={() => { if (sidebarCollapsed) setHoveredItem(index); }}
-              onMouseLeave={() => setHoveredItem(null)}
-            >
+            <NavLink key={index} to={item.path} className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`} onMouseEnter={() => { if (sidebarCollapsed) setHoveredItem(index); }} onMouseLeave={() => setHoveredItem(null)}>
               <item.icon className={styles.navIcon} />
               {!sidebarCollapsed && <span className={styles.navLabel}>{item.label}</span>}
-              {sidebarCollapsed && hoveredItem === index && (
-                <div className={styles.navTooltip}>{item.label}</div>
-              )}
+              {sidebarCollapsed && hoveredItem === index && <div className={styles.navTooltip}>{item.label}</div>}
             </NavLink>
           ))}
         </nav>
-
         <div className={styles.sidebarFooter}>
-          <button className={styles.logoutBtn} onClick={handleLogout}>
-            <FaSignOutAlt /> {!sidebarCollapsed && 'Logout'}
-          </button>
+          <button className={styles.logoutBtn} onClick={handleLogout}><FaSignOutAlt /> {!sidebarCollapsed && 'Logout'}</button>
         </div>
       </aside>
 
@@ -486,9 +621,7 @@ const SuperAdminDashboard = () => {
         {/* Header */}
         <header className={styles.header}>
           <div className={styles.headerLeft}>
-            <button className={styles.menuToggle} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-              <FaBars />
-            </button>
+            <button className={styles.menuToggle} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}><FaBars /></button>
             <div className={styles.searchBar}>
               <FaSearch className={styles.searchIcon} />
               <input type="text" placeholder="Search anything..." className={styles.searchInput} />
@@ -496,20 +629,14 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
           <div className={styles.headerRight}>
-            <button className={styles.iconBtn} onClick={toggleMessages}>
-              <FaEnvelope />
-              {unreadMessageCount > 0 && <span className={styles.badge}>{unreadMessageCount}</span>}
+            <button className={`${styles.iconBtn} ${activeTab === 'users' ? styles.activeTabBtn : ''}`} onClick={() => setActiveTab(activeTab === 'users' ? 'dashboard' : 'users')} title="User Management">
+              <FaUsers />
             </button>
-            <button className={styles.iconBtn} onClick={toggleNotifications}>
-              <FaBell />
-              {unreadCount > 0 && <span className={styles.badge}>{unreadCount}</span>}
-            </button>
+            <button className={styles.iconBtn} onClick={toggleMessages}><FaEnvelope />{unreadMessageCount > 0 && <span className={styles.badge}>{unreadMessageCount}</span>}</button>
+            <button className={styles.iconBtn} onClick={toggleNotifications}><FaBell />{unreadCount > 0 && <span className={styles.badge}>{unreadCount}</span>}</button>
             <div className={styles.userProfile}>
               <div className={styles.avatar}>A</div>
-              <div className={styles.userInfo}>
-                <span className={styles.userName}>Admin User</span>
-                <span className={styles.userRole}>Super Admin</span>
-              </div>
+              <div className={styles.userInfo}><span className={styles.userName}>Admin User</span><span className={styles.userRole}>Super Admin</span></div>
             </div>
           </div>
         </header>
@@ -517,167 +644,157 @@ const SuperAdminDashboard = () => {
         {/* Content */}
         <div className={styles.content}>
           
-        
-          {/* Stats Grid */}
-          <div className={styles.statsGrid}>
-            {STATS.map((stat, idx) => (
-              <StatCard key={idx} {...stat} />
-            ))}
-          </div>
-
-          {/* Charts Section */}
-          <div className={styles.chartsSection}>
-            {/* Revenue Chart */}
-            <div className={styles.chartCard}>
-              <div className={styles.chartHeader}>
+          {activeTab === 'users' ? (
+            /* ============================================================ */
+            /* USER MANAGEMENT SECTION */
+            /* ============================================================ */
+            <div className={styles.userManagement}>
+              <div className={styles.userHeader}>
                 <div>
-                  <h3 className={styles.chartTitle}>Revenue Overview</h3>
-                  <p className={styles.chartSubtitle}>Monthly revenue & bookings</p>
+                  <h2 className={styles.sectionTitle}><FaUsers /> User Management</h2>
+                  <p className={styles.sectionSubtitle}>Manage all system users (Admin, Sales, HR, Trainer, Counselor)</p>
                 </div>
-                <select className={styles.chartSelect} value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)}>
-                  <option>This Month</option>
-                  <option>Last Month</option>
-                  <option>This Quarter</option>
-                  <option>This Year</option>
+                <button className={styles.createUserBtn} onClick={openCreateUserModal}><FaUserPlus /> Create New User</button>
+              </div>
+
+              {/* Filters */}
+              <div className={styles.userFilters}>
+                <div className={styles.searchBox}>
+                  <FaSearchIcon /><input type="text" placeholder="Search by name or email..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} />
+                </div>
+                <select className={styles.filterSelect} value={userRoleFilter} onChange={(e) => setUserRoleFilter(e.target.value)}>
+                  <option value="all">All Roles</option>
+                  <option value="admin_manager">Admin Manager</option>
+                  <option value="sales_executive">Sales Executive</option>
+                  <option value="hr_executive">HR Executive</option>
+                  <option value="trainer">Trainer</option>
+                  <option value="counselor">Counselor</option>
                 </select>
               </div>
-              <div className={styles.chartContainer}>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={revenueData}>
-                    <defs>
-                      <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
-                    <YAxis stroke="#94a3b8" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
-                    />
-                    <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fill="url(#revenueGradient)" strokeWidth={2} />
-                    <Area type="monotone" dataKey="bookings" stroke="#8b5cf6" fill="none" strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
 
-            {/* Placement Chart */}
-            <div className={styles.chartCard}>
-              <div className={styles.chartHeader}>
-                <h3 className={styles.chartTitle}>Placement Overview</h3>
+              {/* Users Table */}
+              <div className={styles.userTable}>
+                <table>
+                  <thead>
+                    <tr><th>Name</th><th>Email</th><th>Role</th><th>Department</th><th>Status</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    {usersLoading ? (
+                      <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>Loading users...</td></tr>
+                    ) : filteredUsers.length === 0 ? (
+                      <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>No users found</td></tr>
+                    ) : (
+                      filteredUsers.map(user => (
+                        <tr key={user._id}>
+                          <td><strong>{user.name}</strong></td>
+                          <td>{user.email}</td>
+                          <td><span className={`${styles.roleBadge} ${getRoleBadgeClass(user.role)}`}>{getRoleDisplayName(user.role)}</span></td>
+                          <td>{user.department || '-'}</td>
+                          <td><span className={`${styles.statusBadge} ${user.isActive ? styles.statusActive : styles.statusInactive}`}>{user.isActive ? 'Active' : 'Inactive'}</span></td>
+                          <td className={styles.userActions}>
+                            <button onClick={() => openEditUserModal(user)} title="Edit"><FaEdit /></button>
+                            <button onClick={() => handleDeleteUser(user._id, user.name)} title="Delete"><FaTrash /></button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
-              <div className={styles.placementStats}>
-                <div className={styles.placementDonut}>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={placementData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {placementData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className={styles.placementLegendContainer}>
-                  {placementData.map((item, idx) => (
-                    <div key={idx} className={styles.placementLegend}>
-                      <span className={styles.legendDot} style={{ backgroundColor: item.color }} />
-                      <span className={styles.legendLabel}>{item.name}</span>
-                      <span className={styles.legendValue}>{item.value}%</span>
+
+              {/* Create/Edit User Modal */}
+              {showUserModal && (
+                <div className={styles.modalOverlay} onClick={() => setShowUserModal(false)}>
+                  <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                    <div className={styles.modalHeader}>
+                      <h3>{editingUser ? 'Edit User' : 'Create New User'}</h3>
+                      <button className={styles.modalClose} onClick={() => setShowUserModal(false)}><FaTimes /></button>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Lead Funnel */}
-          <div className={styles.funnelCard}>
-            <div className={styles.funnelHeader}>
-              <h3 className={styles.funnelTitle}>Lead Conversion Funnel</h3>
-              <button className={styles.downloadBtn}>
-                <FaDownload /> Download Report
-              </button>
-            </div>
-            <div className={styles.funnelContainer}>
-              {leadFunnel.map((stage, idx) => (
-                <div key={idx} className={styles.funnelStage}>
-                  <div className={styles.funnelStageInfo}>
-                    <span className={styles.funnelStageName}>{stage.stage}</span>
-                    <span className={styles.funnelStageCount}>{stage.count.toLocaleString()}</span>
-                  </div>
-                  <div className={styles.funnelBarWrapper}>
-                    <div className={styles.funnelBar} style={{ width: `${stage.percentage}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Two Column Layout */}
-          <div className={styles.twoColumn}>
-            
-            {/* Recent Activities */}
-            <div className={styles.activityCard}>
-              <div className={styles.cardHeader}>
-                <h3 className={styles.cardTitle}>Recent Activities</h3>
-                <button className={styles.viewAllBtn}>View All</button>
-              </div>
-              <div className={styles.activityList}>
-                {RECENT_ACTIVITIES.map(activity => (
-                  <ActivityItem key={activity.id} {...activity} />
-                ))}
-              </div>
-            </div>
-
-            {/* Right Column */}
-            <div className={styles.rightColumn}>
-              {/* Quick Access */}
-              <div className={styles.quickAccessCard}>
-                <h3 className={styles.cardTitle}>Quick Access</h3>
-                <div className={styles.quickModules}>
-                  {QUICK_MODULES.map((module, idx) => (
-                    <button key={idx} className={styles.quickModule} onClick={() => navigate(module.path)}>
-                      <div className={styles.quickModuleIcon} style={{ backgroundColor: module.bg, color: module.color }}>
-                        <module.icon size={18} />
+                    <form onSubmit={handleSaveUser}>
+                      <div className={styles.modalBody}>
+                        <div className={styles.formGroup}><label>Full Name *</label><input type="text" name="name" value={userFormData.name} onChange={handleUserFormChange} required /></div>
+                        <div className={styles.formGroup}><label>Email *</label><input type="email" name="email" value={userFormData.email} onChange={handleUserFormChange} required /></div>
+                        <div className={styles.formGroup}><label>{editingUser ? 'New Password (leave blank to keep same)' : 'Password *'}</label><input type="password" name="password" value={userFormData.password} onChange={handleUserFormChange} required={!editingUser} /></div>
+                        <div className={styles.formRow}>
+                          <div className={styles.formGroup}><label>Role *</label><select name="role" value={userFormData.role} onChange={handleUserFormChange}><option value="admin_manager">Admin Manager</option><option value="sales_executive">Sales Executive</option><option value="hr_executive">HR Executive</option><option value="trainer">Trainer</option><option value="counselor">Counselor</option></select></div>
+                          <div className={styles.formGroup}><label>Department</label><select name="department" value={userFormData.department} onChange={handleUserFormChange}><option value="management">Management</option><option value="sales">Sales</option><option value="hr">HR</option><option value="training">Training</option><option value="counseling">Counseling</option></select></div>
+                        </div>
+                        <div className={styles.formGroup}><label>Phone</label><input type="tel" name="phone" value={userFormData.phone} onChange={handleUserFormChange} /></div>
+                        <div className={styles.formGroupCheckbox}><label><input type="checkbox" name="isActive" checked={userFormData.isActive} onChange={handleUserFormChange} /> Account Active</label></div>
                       </div>
-                      <span className={styles.quickModuleName}>{module.name}</span>
-                    </button>
-                  ))}
+                      <div className={styles.modalFooter}>
+                        <button type="button" onClick={() => setShowUserModal(false)}>Cancel</button>
+                        <button type="submit" disabled={usersLoading}>{usersLoading ? 'Saving...' : (editingUser ? 'Update' : 'Create')}</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ============================================================ */
+            /* DASHBOARD CONTENT */
+            /* ============================================================ */
+            <>
+              {/* Stats Grid */}
+              <div className={styles.statsGrid}>
+                {STATS.map((stat, idx) => (<StatCard key={idx} {...stat} />))}
+              </div>
+
+              {/* Charts Section */}
+              <div className={styles.chartsSection}>
+                <div className={styles.chartCard}>
+                  <div className={styles.chartHeader}>
+                    <div><h3 className={styles.chartTitle}>Revenue Overview</h3><p className={styles.chartSubtitle}>Monthly revenue & bookings</p></div>
+                    <select className={styles.chartSelect} value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)}><option>This Month</option><option>Last Month</option><option>This Quarter</option><option>This Year</option></select>
+                  </div>
+                  <div className={styles.chartContainer}>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <AreaChart data={revenueData}>
+                        <defs><linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} /><stop offset="95%" stopColor="#3b82f6" stopOpacity={0} /></linearGradient></defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
+                        <YAxis stroke="#94a3b8" fontSize={12} />
+                        <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                        <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fill="url(#revenueGradient)" strokeWidth={2} />
+                        <Area type="monotone" dataKey="bookings" stroke="#8b5cf6" fill="none" strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className={styles.chartCard}>
+                  <div className={styles.chartHeader}><h3 className={styles.chartTitle}>Placement Overview</h3></div>
+                  <div className={styles.placementStats}>
+                    <div className={styles.placementDonut}>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart><Pie data={placementData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">{placementData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}</Pie></PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className={styles.placementLegendContainer}>{placementData.map((item, idx) => (<div key={idx} className={styles.placementLegend}><span className={styles.legendDot} style={{ backgroundColor: item.color }} /><span className={styles.legendLabel}>{item.name}</span><span className={styles.legendValue}>{item.value}%</span></div>))}</div>
+                  </div>
                 </div>
               </div>
 
-              {/* Upcoming Events */}
-              <div className={styles.eventsCard}>
-                <h3 className={styles.cardTitle}>Upcoming Events</h3>
-                {UPCOMING_EVENTS.map(event => (
-                  <div key={event.id} className={styles.eventItem}>
-                    <div className={styles.eventDate}>
-                      <span className={styles.eventDay}>{getDayFromDate(event.date)}</span>
-                      <span className={styles.eventMonth}>{getMonthFromDate(event.date)}</span>
-                    </div>
-                    <div className={styles.eventInfo}>
-                      <span className={styles.eventTitle}>{event.title}</span>
-                      <span className={styles.eventTime}>{event.time}</span>
-                    </div>
-                    <div className={styles.eventBadge} style={{ backgroundColor: `${event.color}15`, color: event.color }}>
-                      {event.type}
-                    </div>
-                  </div>
-                ))}
+              {/* Lead Funnel */}
+              <div className={styles.funnelCard}>
+                <div className={styles.funnelHeader}><h3 className={styles.funnelTitle}>Lead Conversion Funnel</h3><button className={styles.downloadBtn}><FaDownload /> Download Report</button></div>
+                <div className={styles.funnelContainer}>{leadFunnel.map((stage, idx) => (<div key={idx} className={styles.funnelStage}><div className={styles.funnelStageInfo}><span className={styles.funnelStageName}>{stage.stage}</span><span className={styles.funnelStageCount}>{stage.count.toLocaleString()}</span></div><div className={styles.funnelBarWrapper}><div className={styles.funnelBar} style={{ width: `${stage.percentage}%` }} /></div></div>))}</div>
               </div>
-            </div>
-          </div>
+
+              {/* Two Column Layout */}
+              <div className={styles.twoColumn}>
+                <div className={styles.activityCard}>
+                  <div className={styles.cardHeader}><h3 className={styles.cardTitle}>Recent Activities</h3><button className={styles.viewAllBtn}>View All</button></div>
+                  <div className={styles.activityList}>{RECENT_ACTIVITIES.map(activity => (<ActivityItem key={activity.id} {...activity} />))}</div>
+                </div>
+                <div className={styles.rightColumn}>
+                  <div className={styles.quickAccessCard}><h3 className={styles.cardTitle}>Quick Access</h3><div className={styles.quickModules}>{QUICK_MODULES.map((module, idx) => (<button key={idx} className={styles.quickModule} onClick={() => navigate(module.path)}><div className={styles.quickModuleIcon} style={{ backgroundColor: module.bg, color: module.color }}><module.icon size={18} /></div><span className={styles.quickModuleName}>{module.name}</span></button>))}</div></div>
+                  <div className={styles.eventsCard}><h3 className={styles.cardTitle}>Upcoming Events</h3>{UPCOMING_EVENTS.map(event => (<div key={event.id} className={styles.eventItem}><div className={styles.eventDate}><span className={styles.eventDay}>{getDayFromDate(event.date)}</span><span className={styles.eventMonth}>{getMonthFromDate(event.date)}</span></div><div className={styles.eventInfo}><span className={styles.eventTitle}>{event.title}</span><span className={styles.eventTime}>{event.time}</span></div><div className={styles.eventBadge} style={{ backgroundColor: `${event.color}15`, color: event.color }}>{event.type}</div></div>))}</div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </main>
     </div>
