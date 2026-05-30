@@ -1,0 +1,935 @@
+/* TrainerManagement.module.css */
+
+/* ============================================================ */
+/* CONTAINER
+/* ============================================================ */
+.container {
+    padding: 0;
+    background: #0f172a;
+    min-height: 100vh;
+}
+
+/* ============================================================ */
+/* STATS CARDS
+/* ============================================================ */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.statCard {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid #334155;
+    transition: all 0.3s;
+}
+
+.statCard:hover {
+    transform: translateY(-2px);
+    border-color: #3b82f6;
+}
+
+.statIcon {
+    width: 44px;
+    height: 44px;
+    background: #3b82f6;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+}
+
+.statInfo {
+    flex: 1;
+}
+
+.statValue {
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+}
+
+.statLabel {
+    font-size: 11px;
+    color: #94a3b8;
+    display: block;
+}
+
+/* ============================================================ */
+/* SUB TABS
+/* ============================================================ */
+.subTabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 12px;
+}
+
+.subTab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.subTab:hover {
+    background: #334155;
+    color: white;
+}
+
+.subTab.active {
+    background: #3b82f6;
+    color: white;
+}
+
+/* ============================================================ */
+/* TABLE STYLES
+/* ============================================================ */
+.tableContainer {
+    background: #1e293b;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    overflow: hidden;
+}
+
+.tableHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #334155;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.searchBox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 8px 16px;
+    min-width: 250px;
+}
+
+.searchBox input {
+    background: none;
+    border: none;
+    color: white;
+    outline: none;
+    width: 100%;
+}
+
+.searchBox svg {
+    color: #64748b;
+}
+
+.addBtn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #3b82f6;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.addBtn:hover {
+    background: #2563eb;
+}
+
+.tableWrapper {
+    overflow-x: auto;
+}
+
+.dataTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.dataTable th,
+.dataTable td {
+    padding: 12px 12px;
+    text-align: left;
+    border-bottom: 1px solid #334155;
+    color: white;
+    font-size: 13px;
+}
+
+.dataTable th {
+    color: #94a3b8;
+    font-weight: 500;
+    background: #1e293b;
+}
+
+.dataTable tr:hover {
+    background: #334155;
+}
+
+.trainerPhoto {
+    width: 32px;
+    height: 32px;
+    background: #3b82f6;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.statusToggle {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+}
+
+.statusToggle.active {
+    background: #10b98120;
+    color: #10b981;
+}
+
+.statusToggle.inactive {
+    background: #ef444420;
+    color: #ef4444;
+}
+
+.actionBtns {
+    display: flex;
+    gap: 8px;
+}
+
+.viewBtn, .editBtn, .deleteBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px;
+}
+
+.viewBtn { color: #10b981; }
+.editBtn { color: #3b82f6; }
+.deleteBtn { color: #ef4444; }
+
+/* ============================================================ */
+/* BATCH ASSIGNMENT STYLES
+/* ============================================================ */
+.batchContainer {
+    background: #1e293b;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    padding: 20px;
+}
+
+.sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.sectionHeader h3 {
+    color: white;
+    margin: 0;
+}
+
+.batchGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+.batchCard {
+    background: #0f172a;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #334155;
+}
+
+.batchHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.batchHeader h4 {
+    color: white;
+    margin: 0;
+}
+
+.batchStatus {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.batchStatus.active {
+    background: #10b98120;
+    color: #10b981;
+}
+
+.batchStatus.inactive {
+    background: #ef444420;
+    color: #ef4444;
+}
+
+.batchInfo p {
+    color: #94a3b8;
+    font-size: 12px;
+    margin: 6px 0;
+}
+
+.progressBar {
+    height: 6px;
+    background: #334155;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 12px 0;
+}
+
+.progressFill {
+    height: 100%;
+    background: #3b82f6;
+    border-radius: 10px;
+}
+
+.batchActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+/* ============================================================ */
+/* ATTENDANCE STYLES
+/* ============================================================ */
+.attendanceContainer {
+    background: #1e293b;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    padding: 20px;
+}
+
+.batchSelect {
+    padding: 8px 16px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: white;
+}
+
+.attendanceChart {
+    margin-bottom: 24px;
+}
+
+.attendanceChart h4 {
+    color: white;
+    margin-bottom: 16px;
+}
+
+.barChart {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    height: 200px;
+    gap: 20px;
+}
+
+.chartBar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.bar {
+    width: 100%;
+    max-width: 60px;
+    background: #3b82f6;
+    border-radius: 8px;
+    transition: height 0.3s;
+    min-height: 4px;
+}
+
+.barLabel {
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.barValue {
+    color: white;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.attendanceTable {
+    margin-top: 24px;
+}
+
+.attendanceTable h4 {
+    color: white;
+    margin-bottom: 16px;
+}
+
+.simpleTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.simpleTable th,
+.simpleTable td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #334155;
+    color: white;
+}
+
+.simpleTable th {
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.present {
+    color: #10b981;
+}
+
+.late {
+    color: #f59e0b;
+}
+
+.absent {
+    color: #ef4444;
+}
+
+/* ============================================================ */
+/* ASSIGNMENT STYLES
+/* ============================================================ */
+.assignmentContainer {
+    background: #1e293b;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    padding: 20px;
+}
+
+.assignmentGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+.assignmentCard {
+    background: #0f172a;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #334155;
+}
+
+.assignmentCard h4 {
+    color: white;
+    margin-bottom: 12px;
+}
+
+.assignmentCard p {
+    color: #94a3b8;
+    font-size: 12px;
+    margin: 6px 0;
+}
+
+.submissionInfo {
+    display: flex;
+    justify-content: space-between;
+    margin: 12px 0;
+    font-size: 12px;
+}
+
+.pending {
+    color: #f59e0b;
+}
+
+.completed {
+    color: #10b981;
+}
+
+/* ============================================================ */
+/* TEST STYLES
+/* ============================================================ */
+.testContainer {
+    background: #1e293b;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    padding: 20px;
+}
+
+.testGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.testCard {
+    background: #0f172a;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #334155;
+}
+
+.testCard h4 {
+    color: white;
+    margin-bottom: 12px;
+}
+
+.testCard p {
+    color: #94a3b8;
+    font-size: 12px;
+    margin: 6px 0;
+}
+
+.testStatus {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 12px;
+}
+
+.testStatus.upcoming {
+    background: #3b82f620;
+    color: #3b82f6;
+}
+
+.testStatus.completed {
+    background: #10b98120;
+    color: #10b981;
+}
+
+/* ============================================================ */
+/* STUDY MATERIALS STYLES
+/* ============================================================ */
+.materialsContainer {
+    background: #1e293b;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    padding: 20px;
+}
+
+.materialsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.materialCard {
+    background: #0f172a;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #334155;
+    text-align: center;
+}
+
+.materialIcon {
+    font-size: 32px;
+    color: #3b82f6;
+    margin-bottom: 12px;
+}
+
+.materialCard h4 {
+    color: white;
+    margin-bottom: 12px;
+}
+
+.materialCard p {
+    color: #94a3b8;
+    font-size: 12px;
+    margin: 6px 0;
+}
+
+.materialActions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.downloadBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #3b82f6;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+/* ============================================================ */
+/* PERFORMANCE ANALYTICS STYLES
+/* ============================================================ */
+.performanceContainer {
+    background: #1e293b;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    padding: 20px;
+}
+
+.performanceGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.performanceCard {
+    background: #0f172a;
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #334155;
+}
+
+.performanceCard h4 {
+    color: white;
+    margin-bottom: 16px;
+}
+
+.performanceList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.perfItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.perfItem span:first-child {
+    width: 100px;
+    color: white;
+    font-size: 13px;
+}
+
+.perfBar {
+    flex: 1;
+    height: 8px;
+    background: #334155;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.perfBar div {
+    height: 100%;
+    background: #10b981;
+    border-radius: 10px;
+}
+
+.perfItem span:last-child {
+    color: #10b981;
+    font-size: 13px;
+    width: 40px;
+}
+
+.feedbackList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.feedbackItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.feedbackItem svg {
+    color: #f59e0b;
+}
+
+.topPerformers {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.topPerformer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: #1e293b;
+    border-radius: 8px;
+    color: #f59e0b;
+    font-size: 13px;
+}
+
+/* ============================================================ */
+/* MODAL STYLES
+/* ============================================================ */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: #1e293b;
+    border-radius: 16px;
+    width: 500px;
+    max-width: 90%;
+    border: 1px solid #334155;
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #334155;
+}
+
+.modalHeader h3 {
+    color: white;
+    margin: 0;
+}
+
+.modalHeader button {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.modalBody {
+    padding: 20px;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.input {
+    padding: 10px 14px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: white;
+    outline: none;
+}
+
+.input:focus {
+    border-color: #3b82f6;
+}
+
+.trainerDetails p {
+    color: #94a3b8;
+    margin: 10px 0;
+}
+
+.trainerDetails strong {
+    color: white;
+}
+
+.modalFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px;
+    border-top: 1px solid #334155;
+}
+
+.cancelBtn {
+    padding: 8px 20px;
+    background: transparent;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+}
+
+.saveBtn {
+    padding: 8px 20px;
+    background: #3b82f6;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+}
+
+/* ============================================================ */
+/* RESPONSIVE
+/* ============================================================ */
+@media (max-width: 1200px) {
+    .statsGrid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .statsGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .subTabs {
+        flex-wrap: wrap;
+    }
+    
+    .subTab {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .tableHeader {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .batchGrid,
+    .assignmentGrid,
+    .testGrid,
+    .materialsGrid,
+    .performanceGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .statsGrid {
+        grid-template-columns: 1fr;
+    }
+    
+    .dataTable th,
+    .dataTable td {
+        padding: 8px;
+        font-size: 11px;
+    }
+    
+    .actionBtns {
+        flex-direction: column;
+        gap: 4px;
+    }
+}
+
+/* ============================================================ */
+/* PLACEHOLDER STYLES
+/* ============================================================ */
+.placeholderBox {
+   
+  
+    padding: 80px 20px;
+    text-align: center;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.placeholderBox h3 {
+    color: #3b82f6;
+    font-size: 24px;
+    margin-bottom: 16px;
+}
+
+.placeholderBox p {
+    color: #94a3b8;
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.placeholderHint {
+    color: #f59e0b !important;
+    font-size: 14px !important;
+    margin-top: 16px !important;
+    padding: 8px 16px;
+    background: #334155;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+/* ============================================================ */
+/* MAIN CONTENT
+/* ============================================================ */
+.mainContent {
+    margin-top: 24px;
+}
+
+/* Placeholder Styles */
+.placeholderBox {
+  
+
+    padding: 80px 20px;
+    text-align: center;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.placeholderBox h3 {
+    color: #3b82f6;
+    font-size: 24px;
+    margin-bottom: 16px;
+}
+
+.placeholderBox p {
+    color: #94a3b8;
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.placeholderHint {
+    color: #f59e0b !important;
+    font-size: 14px !important;
+    margin-top: 16px !important;
+    padding: 8px 16px;
+    background: #334155;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+.mainContent {
+    margin-top: 24px;
+}

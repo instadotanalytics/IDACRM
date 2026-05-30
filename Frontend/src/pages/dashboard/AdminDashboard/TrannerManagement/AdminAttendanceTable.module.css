@@ -1,0 +1,472 @@
+/* AdminAttendanceTable.module.css */
+
+.container {
+    padding: 0;
+    background: #0f172a;
+    min-height: 100vh;
+}
+
+/* Stats Cards */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.statCard {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid #334155;
+}
+
+.statIcon {
+    width: 44px;
+    height: 44px;
+    background: #3b82f6;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+}
+
+.absentCard .statIcon { background: #ef4444; }
+.leaveCard .statIcon { background: #f59e0b; }
+.lateCard .statIcon { background: #eab308; }
+
+.statInfo {
+    flex: 1;
+}
+
+.statValue {
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+}
+
+.statLabel {
+    font-size: 11px;
+    color: #94a3b8;
+    display: block;
+}
+
+/* Filters */
+.filtersSection {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filterGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.filterGroup label {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.filterSelect, .dateInput {
+    padding: 8px 12px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: white;
+    min-width: 150px;
+}
+
+.filterActions {
+    display: flex;
+    gap: 12px;
+}
+
+.filterBtn, .createBtn, .exportBtn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.filterBtn {
+    background: #3b82f6;
+    color: white;
+}
+
+.createBtn {
+    background: #10b981;
+    color: white;
+}
+
+.exportBtn {
+    background: #8b5cf6;
+    color: white;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 12px;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+.tab:hover {
+    background: #334155;
+    color: white;
+}
+
+.tab.active {
+    background: #3b82f6;
+    color: white;
+}
+
+/* Table */
+.tableContainer {
+    background: #1e293b;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    overflow: hidden;
+}
+
+.tableHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #334155;
+}
+
+.tableHeader h3 {
+    color: white;
+    margin: 0;
+}
+
+.recordCount {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.tableWrapper {
+    overflow-x: auto;
+}
+
+.dataTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.dataTable th,
+.dataTable td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #334155;
+    color: white;
+}
+
+.dataTable th {
+    color: #94a3b8;
+    font-weight: 500;
+    background: #1e293b;
+}
+
+.loadingCell, .emptyCell {
+    text-align: center;
+    padding: 40px !important;
+    color: #94a3b8;
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Status Badges */
+.statusBadge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.statusBadge.present { background: #10b98120; color: #10b981; }
+.statusBadge.absent { background: #ef444420; color: #ef4444; }
+.statusBadge.leave { background: #f59e0b20; color: #f59e0b; }
+.statusBadge.late { background: #eab30820; color: #eab308; }
+
+/* Action Buttons */
+.actionBtns {
+    display: flex;
+    gap: 8px;
+}
+
+.editBtn, .deleteBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.editBtn { color: #3b82f6; }
+.deleteBtn { color: #ef4444; }
+
+/* Summary Cards */
+.summaryCard {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #334155;
+    margin-bottom: 20px;
+}
+
+.summaryCard h3 {
+    color: white;
+    margin-bottom: 16px;
+}
+
+.batchSummaryGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.batchSummaryItem {
+    background: #0f172a;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.batchSummaryHeader {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: white;
+}
+
+.batchStats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.presentStat { color: #10b981; }
+.absentStat { color: #ef4444; }
+.leaveStat { color: #f59e0b; }
+.lateStat { color: #eab308; }
+
+.progressBar {
+    height: 6px;
+    background: #334155;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    background: #3b82f6;
+    border-radius: 10px;
+}
+
+/* Top Students */
+.topStudentsList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.topStudentItem {
+    background: #0f172a;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.topStudentInfo {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: white;
+}
+
+.topStudentPercentage {
+    color: #10b981;
+    font-weight: bold;
+}
+
+/* Modal */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: #1e293b;
+    border-radius: 16px;
+    width: 500px;
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid #334155;
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #334155;
+}
+
+.modalHeader h3 {
+    color: white;
+    margin: 0;
+}
+
+.modalHeader button {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.modalBody {
+    padding: 20px;
+}
+
+.formGroup {
+    margin-bottom: 16px;
+}
+
+.formGroup label {
+    display: block;
+    margin-bottom: 6px;
+    color: #cbd5e1;
+    font-size: 13px;
+}
+
+.input, .textarea, .formGroup select {
+    width: 100%;
+    padding: 10px 12px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: white;
+    outline: none;
+}
+
+.input:focus, .textarea:focus, .formGroup select:focus {
+    border-color: #3b82f6;
+}
+
+.formRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.modalFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px;
+    border-top: 1px solid #334155;
+}
+
+.cancelBtn {
+    padding: 8px 20px;
+    background: transparent;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+}
+
+.saveBtn {
+    padding: 8px 20px;
+    background: #3b82f6;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+}
+
+.exportOptions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.exportOptionBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    background: #3b82f6;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .statsGrid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .statsGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .filtersSection {
+        flex-direction: column;
+    }
+    .filterSelect, .dateInput {
+        width: 100%;
+    }
+    .tabs {
+        flex-wrap: wrap;
+    }
+}
