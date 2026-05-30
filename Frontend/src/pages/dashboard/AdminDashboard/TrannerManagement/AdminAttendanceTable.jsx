@@ -594,8 +594,8 @@ const AdminAttendanceTable = () => {
 
     return (
         <div className={styles.container}>
-            <StatsCards />
-            <FiltersSection />
+            <StatsCards/>
+            <FiltersSection/>
             
             <div className={styles.tabs}>
                 <button 
