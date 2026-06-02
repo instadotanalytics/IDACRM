@@ -1,0 +1,1019 @@
+/* ============================================
+   Admission Module CSS — Clean Modern Design
+   ============================================ */
+
+:root {
+  --primary: #4f46e5;
+  --primary-dark: #3730a3;
+  --primary-light: #eef2ff;
+  --success: #10b981;
+  --success-light: #d1fae5;
+  --danger: #ef4444;
+  --danger-light: #fee2e2;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --text: #111827;
+  --text-soft: #6b7280;
+  --text-lighter: #9ca3af;
+  --border: #e5e7eb;
+  --bg: #f9fafb;
+  --white: #ffffff;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* ---- Container ---- */
+.container {
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 28px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: var(--text);
+}
+
+/* ---- Header ---- */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.headerIcon {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--white);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  flex-shrink: 0;
+}
+
+.headerTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 2px 0;
+  letter-spacing: -0.3px;
+}
+
+.headerSub {
+  font-size: 13px;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+.headerStats {
+  display: flex;
+  gap: 10px;
+}
+
+.statChip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-soft);
+  box-shadow: var(--shadow);
+}
+
+.statChip svg {
+  color: var(--primary);
+  font-size: 14px;
+}
+
+/* ---- Tabs ---- */
+.tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px;
+  margin-bottom: 24px;
+  width: fit-content;
+  box-shadow: var(--shadow);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.tabActive {
+  background: var(--primary) !important;
+  color: var(--white) !important;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
+
+.tabBadge {
+  background: rgba(255, 255, 255, 0.25);
+  color: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.tab:not(.tabActive) .tabBadge {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* ---- Form Wrapper ---- */
+.formWrapper {
+  animation: fadeUp 0.25s ease;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 1100px) {
+  .formGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 700px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Card ---- */
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.cardHeader h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.1px;
+}
+
+.cardIcon {
+  color: var(--primary);
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.cardBody {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---- Fields ---- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.req {
+  color: var(--danger);
+}
+
+.field input,
+.field select,
+.field textarea {
+  padding: 10px 13px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--white);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--text-lighter);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.field select {
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+/* ---- Upload Box ---- */
+.uploadBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.18s;
+  text-align: center;
+  color: var(--text-soft);
+}
+
+.uploadBox:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.uploadIcon {
+  font-size: 22px;
+  color: var(--text-lighter);
+}
+.uploadBox:hover .uploadIcon {
+  color: var(--primary);
+}
+.uploadBox span {
+  font-size: 13px;
+  font-weight: 500;
+}
+.uploadBox small {
+  font-size: 11px;
+  color: var(--text-lighter);
+}
+
+/* ---- Preview ---- */
+.previewBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.previewImg {
+  width: 100px;
+  height: 100px;
+  border-radius: var(--radius);
+  object-fit: cover;
+  border: 2px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+.removePhoto {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  font-size: 12px;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  background: var(--danger-light);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.removePhoto:hover {
+  background: var(--danger);
+  color: var(--white);
+}
+
+/* ---- Submit Row ---- */
+.submitRow {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.submitBtn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 28px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+  font-family: inherit;
+}
+
+.submitBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.4);
+}
+
+.submitBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spin {
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- List Wrapper ---- */
+.listWrapper {
+  animation: fadeUp 0.25s ease;
+}
+
+/* ---- Empty State ---- */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+  gap: 10px;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  color: var(--border);
+}
+
+.emptyState h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.emptyState p {
+  font-size: 14px;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+/* ---- Table ---- */
+.tableWrapper {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 750px;
+}
+
+.table thead {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.table th {
+  padding: 13px 16px;
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: #fafafa;
+}
+
+/* ---- Student Cell ---- */
+.studentCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+.avatarFallback {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.studentName {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+.studentEmail {
+  font-size: 12px;
+  color: var(--text-soft);
+  margin-top: 1px;
+}
+.phoneCell {
+  color: var(--text-soft);
+  font-size: 13px;
+}
+.na {
+  color: var(--text-lighter);
+}
+
+/* ---- Enrollment ID ---- */
+.enrollId {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-light);
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ---- Badges ---- */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.badgeActive {
+  background: var(--success-light);
+  color: #065f46;
+}
+.badgeInactive {
+  background: var(--warning-light);
+  color: #92400e;
+}
+.badgeCompleted {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+}
+
+/* ---- Action Buttons ---- */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btnView,
+.btnEdit,
+.btnDelete {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+  background: var(--white);
+}
+
+.btnView {
+  color: var(--primary);
+}
+.btnEdit {
+  color: var(--warning);
+}
+.btnDelete {
+  color: var(--danger);
+}
+
+.btnView:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+.btnEdit:hover {
+  background: var(--warning-light);
+  border-color: var(--warning);
+}
+.btnDelete:hover {
+  background: var(--danger-light);
+  border-color: var(--danger);
+}
+
+/* ============================================
+   MODAL STYLES (View, Edit, Delete)
+   ============================================ */
+
+/* Modal Overlay */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal Container */
+.modal {
+  background: var(--white);
+  border-radius: var(--radius);
+  width: 550px;
+  max-width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Modal Header */
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modalHeader h3 svg {
+  color: var(--primary);
+}
+
+.modalClose {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-soft);
+  transition: all 0.15s;
+}
+
+.modalClose:hover {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+/* Modal Body */
+.modalBody {
+  padding: 22px;
+}
+
+/* View Mode Styles */
+.viewRow {
+  display: flex;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.viewLabel {
+  width: 130px;
+  font-weight: 600;
+  color: var(--text-soft);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.viewValue {
+  flex: 1;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.viewPhoto {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.viewPhoto img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--primary);
+  box-shadow: var(--shadow-md);
+}
+
+/* Modal Footer */
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.btnCancel {
+  padding: 9px 20px;
+  border: 1px solid var(--border);
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  color: var(--text-soft);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btnCancel:hover {
+  background: var(--bg);
+  border-color: var(--text-lighter);
+}
+
+.btnSave {
+  padding: 9px 20px;
+  border: none;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  border-radius: var(--radius-sm);
+  color: var(--white);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btnSave:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+}
+
+.btnDeleteModal {
+  padding: 9px 20px;
+  border: none;
+  background: var(--danger);
+  border-radius: var(--radius-sm);
+  color: var(--white);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btnDeleteModal:hover {
+  background: #dc2626;
+}
+
+/* Status Select in Edit Modal */
+.statusSelect {
+  padding: 8px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: var(--white);
+  cursor: pointer;
+  width: 100%;
+}
+
+.statusSelect:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+/* Loading inside Modal */
+.modalLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+/* Responsive Modals */
+@media (max-width: 600px) {
+  .modal {
+    width: 95%;
+  }
+  
+  .viewRow {
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .viewLabel {
+    width: 100%;
+  }
+  
+  .modalFooter {
+    flex-wrap: wrap;
+  }
+}
+
+/* ============================================
+   SEARCH AND FILTER STYLES
+   ============================================ */
+
+.filterBar {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.searchBox {
+    flex: 2;
+    min-width: 250px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+}
+
+.searchIcon {
+    color: var(--text-lighter);
+    font-size: 14px;
+}
+
+.searchBox input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.searchBox input::placeholder {
+    color: var(--text-lighter);
+}
+
+.clearSearch {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-lighter);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+}
+
+.clearSearch:hover {
+    color: var(--danger);
+}
+
+.filterGroup {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    gap: 12px;
+}
+
+.filterSelect {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--white);
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.filterSelect:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.filterStats {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.resultCount {
+    font-size: 13px;
+    color: var(--text-soft);
+    font-weight: 500;
+}
+
+.clearFilters {
+    padding: 6px 14px;
+    background: var(--danger-light);
+    border: 1px solid var(--danger);
+    border-radius: 20px;
+    color: var(--danger);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.clearFilters:hover {
+    background: var(--danger);
+    color: var(--white);
+}
+
+.resetFiltersBtn {
+    margin-top: 16px;
+    padding: 8px 20px;
+    background: var(--primary-light);
+    border: 1px solid var(--primary);
+    border-radius: 20px;
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.resetFiltersBtn:hover {
+    background: var(--primary);
+    color: var(--white);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .filterBar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .searchBox {
+        width: 100%;
+    }
+    
+    .filterGroup {
+        width: 100%;
+    }
+    
+    .filterStats {
+        justify-content: space-between;
+    }
+}

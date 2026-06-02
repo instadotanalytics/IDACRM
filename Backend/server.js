@@ -5,6 +5,8 @@ import connectDB from './config/db.js';
 import superAdminRoutes from './routes/superAdminRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
+import admissionRoutes from './routes/admissionRoutes.js';
+import batchRoutes from './routes/batchRoutes.js';
 
 dotenv.config();
 
@@ -34,6 +36,19 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);           // For normal users
 app.use('/api/super-admin', superAdminRoutes); // For super admin
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/admissions', admissionRoutes);
+app.use('/api/batches', batchRoutes);
+
+// Error handler — sabse neeche rakho
+app.use((err, req, res, next) => {
+    console.error('🔴 GLOBAL ERROR:', err);
+    console.error('🔴 GLOBAL ERROR MESSAGE:', err.message);
+    console.error('🔴 GLOBAL ERROR STACK:', err.stack);
+    res.status(500).json({
+        success: false,
+        message: err.message || 'Internal server error'
+    });
+});
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -98,10 +98,14 @@ export const trainerOnly = (req, res, next) => {
     }
 };
 
+// ✅ Keep ONLY ONE declaration of counselorOnly
 export const counselorOnly = (req, res, next) => {
     if (req.user?.role === 'counselor' || req.user?.role === 'admin_manager' || req.user?.role === 'super_admin') {
         next();
     } else {
-        res.status(403).json({ success: false, message: 'Counselor access required' });
+        res.status(403).json({
+            success: false,
+            message: 'Counselor access required'
+        });
     }
 };

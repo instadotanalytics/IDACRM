@@ -297,6 +297,32 @@
     font-weight: 500;
 }
 
+/* Batch Management Button Container */
+.batchManagementBtnContainer {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.batchManagementBtn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #ec4899;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.batchManagementBtn:hover {
+    background: #db2777;
+    transform: translateY(-2px);
+}
+
 /* ============================================================ */
 /* NOTIFICATION PANEL
 /* ============================================================ */

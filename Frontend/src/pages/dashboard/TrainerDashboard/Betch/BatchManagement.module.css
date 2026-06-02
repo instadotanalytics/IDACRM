@@ -1,0 +1,648 @@
+/* BatchManagement.module.css */
+
+/* ============================================================ */
+/* CONTAINER
+/* ============================================================ */
+.container {
+    padding: 20px;
+    background: #f0f2f5;
+    min-height: 100vh;
+}
+
+/* ============================================================ */
+/* HEADER
+/* ============================================================ */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.header h2 {
+    color: #1e293b;
+    font-size: 24px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header p {
+    color: #64748b;
+    font-size: 14px;
+}
+
+/* Header Buttons */
+.headerButtons {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.backBtn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #64748b;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.backBtn:hover {
+    background: #475569;
+    transform: translateY(-2px);
+}
+
+.createBtn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #ec4899;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.createBtn:hover {
+    background: #db2777;
+    transform: translateY(-2px);
+}
+
+/* ============================================================ */
+/* SEARCH BAR
+/* ============================================================ */
+.searchBar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+}
+
+.searchBar svg {
+    color: #94a3b8;
+}
+
+.searchBar input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 14px;
+}
+
+/* ============================================================ */
+/* BATCHES GRID
+/* ============================================================ */
+.batchesGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 20px;
+}
+
+.batchCard {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s;
+}
+
+.batchCard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.batchHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.batchHeader h3 {
+    color: #1e293b;
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+
+.batchCode {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.batchInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.batchInfo p {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569;
+    font-size: 13px;
+}
+
+.batchInfo svg {
+    color: #ec4899;
+    font-size: 14px;
+}
+
+.batchActions {
+    display: flex;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.editBtn, .deleteBtn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.3s;
+}
+
+.editBtn {
+    background: #3b82f620;
+    color: #3b82f6;
+    border: none;
+}
+
+.editBtn:hover {
+    background: #3b82f6;
+    color: white;
+}
+
+.deleteBtn {
+    background: #ef444420;
+    color: #ef4444;
+    border: none;
+}
+
+.deleteBtn:hover {
+    background: #ef4444;
+    color: white;
+}
+
+/* ============================================================ */
+/* STATUS BADGES
+/* ============================================================ */
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.badge.active {
+    background: #10b98120;
+    color: #10b981;
+}
+
+.badge.upcoming {
+    background: #f59e0b20;
+    color: #f59e0b;
+}
+
+.badge.completed {
+    background: #3b82f620;
+    color: #3b82f6;
+}
+
+/* ============================================================ */
+/* MODAL
+/* ============================================================ */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: white;
+    border-radius: 16px;
+    width: 650px;
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 10;
+}
+
+.modalHeader h3 {
+    color: #1e293b;
+    margin: 0;
+    font-size: 20px;
+}
+
+.modalHeader button {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #94a3b8;
+    transition: color 0.3s;
+}
+
+.modalHeader button:hover {
+    color: #ef4444;
+}
+
+.modalBody {
+    padding: 20px;
+}
+
+/* Form Styles */
+.formRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.formGroup {
+    margin-bottom: 16px;
+}
+
+.formGroup label {
+    display: block;
+    margin-bottom: 6px;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.formGroup input, 
+.formGroup select, 
+.formGroup textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+    font-family: inherit;
+}
+
+.formGroup input:focus, 
+.formGroup select:focus, 
+.formGroup textarea:focus {
+    outline: none;
+    border-color: #ec4899;
+    box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.1);
+}
+
+/* Days Grid */
+.daysGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.dayCheckbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #f8fafc;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.3s;
+}
+
+.dayCheckbox:hover {
+    background: #e2e8f0;
+}
+
+.dayCheckbox input {
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Modal Footer */
+.modalFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px;
+    border-top: 1px solid #e2e8f0;
+    position: sticky;
+    bottom: 0;
+    background: white;
+}
+
+.cancelBtn {
+    padding: 10px 24px;
+    background: #e2e8f0;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.cancelBtn:hover {
+    background: #cbd5e1;
+}
+
+.saveBtn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    background: #ec4899;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.saveBtn:hover:not(:disabled) {
+    background: #db2777;
+    transform: translateY(-1px);
+}
+
+.saveBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ============================================================ */
+/* TRAINER SEARCH STYLES
+/* ============================================================ */
+.trainerSearchContainer {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.trainerIcon {
+    position: absolute;
+    left: 12px;
+    color: #94a3b8;
+    font-size: 16px;
+    pointer-events: none;
+}
+
+.trainerSearchInput {
+    width: 100%;
+    padding: 10px 12px 10px 36px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.3s;
+}
+
+.trainerSearchInput:focus {
+    border-color: #ec4899;
+    box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.1);
+}
+
+/* Trainer Dropdown */
+.trainerDropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 100;
+    margin-top: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.trainerItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.trainerItem:hover {
+    background: #f8fafc;
+}
+
+.trainerItemIcon {
+    color: #64748b;
+    font-size: 32px;
+}
+
+.trainerItemInfo {
+    flex: 1;
+}
+
+.trainerItemName {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 14px;
+}
+
+.trainerItemEmail {
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+.noTrainerFound {
+    padding: 12px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.selectedTrainer {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #dcfce7;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #166534;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.selectedTrainer::before {
+    content: "✓";
+    font-weight: bold;
+}
+
+/* ============================================================ */
+/* LOADING & EMPTY STATES
+/* ============================================================ */
+.loadingContainer, .emptyContainer {
+    text-align: center;
+    padding: 60px;
+    background: white;
+    border-radius: 16px;
+    color: #64748b;
+}
+
+.loadingContainer .spinner {
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+}
+
+.emptyContainer button {
+    margin-top: 16px;
+    padding: 8px 20px;
+    background: #ec4899;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.emptyContainer button:hover {
+    background: #db2777;
+}
+
+/* ============================================================ */
+/* ANIMATIONS
+/* ============================================================ */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.batchCard, .modal {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* ============================================================ */
+/* RESPONSIVE
+/* ============================================================ */
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+    }
+    
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .headerButtons {
+        width: 100%;
+    }
+    
+    .backBtn, .createBtn {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .formRow {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+    
+    .batchesGrid {
+        grid-template-columns: 1fr;
+    }
+    
+    .batchCard {
+        padding: 16px;
+    }
+    
+    .modal {
+        width: 95%;
+    }
+    
+    .daysGrid {
+        gap: 8px;
+    }
+    
+    .dayCheckbox {
+        padding: 4px 10px;
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 480px) {
+    .batchHeader {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .batchActions {
+        flex-direction: column;
+    }
+    
+    .editBtn, .deleteBtn {
+        width: 100%;
+    }
+    
+    .modalFooter {
+        flex-direction: column;
+    }
+    
+    .cancelBtn, .saveBtn {
+        width: 100%;
+        justify-content: center;
+    }
+}

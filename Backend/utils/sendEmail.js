@@ -93,3 +93,51 @@ export const sendPasswordChangedEmail = async (to, name) => {
   `;
   return await sendEmail(to, 'Password Changed Successfully', html);
 };
+
+// ============================================
+// NEW: Welcome Email for Student Admission
+// ============================================
+export const sendWelcomeEmail = async (email, name, password, enrollmentId) => {
+    const loginUrl = `${process.env.FRONTEND_URL}/login`;
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+                .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 10px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .header { text-align: center; border-bottom: 2px solid #ec4899; padding-bottom: 20px; margin-bottom: 20px; }
+                .logo { font-size: 24px; font-weight: bold; color: #ec4899; }
+                .title { font-size: 20px; color: #333; margin: 20px 0; }
+                .credentials { background: #f8fafc; padding: 15px; border-radius: 8px; margin: 15px 0; }
+                .button { display: inline-block; background: #ec4899; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+                .footer { text-align: center; font-size: 12px; color: #666; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <div class="logo">🏢 IDA ERP CRM</div>
+                </div>
+                <div class="title">Welcome to IDA ERP CRM!</div>
+                <p>Hello <strong>${name}</strong>,</p>
+                <p>Your admission has been successfully completed. Your student account has been created.</p>
+                <div class="credentials">
+                    <h3>Your Login Credentials:</h3>
+                    <p><strong>Enrollment ID:</strong> ${enrollmentId}</p>
+                    <p><strong>Email:</strong> ${email}</p>
+                    <p><strong>Password:</strong> ${password}</p>
+                </div>
+                <p>Please change your password after first login for security purposes.</p>
+                <div style="text-align: center;">
+                    <a href="${loginUrl}" class="button">Login to Dashboard</a>
+                </div>
+                <div class="footer">
+                    <p>© 2024 IDA ERP CRM. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+    return await sendEmail(email, 'Welcome to IDA ERP CRM - Your Account Created', html);
+};

@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['super_admin', 'admin_manager', 'sales_executive', 'hr_executive', 'trainer', 'counselor'],
+        enum: ['super_admin', 'admin_manager', 'sales_executive', 'hr_executive', 'trainer', 'counselor', 'student'],
         required: true,
         default: 'sales_executive'
     },
@@ -37,7 +37,13 @@ const userSchema = new mongoose.Schema({
     loginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date, default: null },
     resetPasswordToken: String,
-    resetPasswordExpires: Date
+    resetPasswordExpires: Date,
+    
+    // ✅ ADD THIS - For trainer batch assignments
+    assignedBatches: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Batch'
+    }]
 }, { timestamps: true });
 
 // Compare password method

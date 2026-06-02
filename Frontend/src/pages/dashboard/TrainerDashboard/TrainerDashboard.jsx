@@ -7,11 +7,17 @@ import {
   FaUserGraduate, FaChartLine, FaChevronLeft, FaChevronRight,
   FaBars, FaSignOutAlt, FaBell, FaTimes, FaEye,
   FaDownload, FaPlus, FaEdit, FaTrash, FaStar,
-  FaAward, FaTrophy, FaClipboardList
+  FaAward, FaTrophy, FaClipboardList, FaSpinner,
+  FaLayerGroup  // Add this for batch management icon
 } from 'react-icons/fa';
 import styles from './TrainerDashboard.module.css';
+import api from '../../../services/api';
+
+// Attendance Component
 import AttendanceTable from './AttendanceTable/TrainerAttendanceMarker';
 
+// Batch Management Component (import karo)
+import BatchManagement from '../../../pages/dashboard/TrainerDashboard/Betch/BatchManagement';
 
 const TrainerDashboard = () => {
     const navigate = useNavigate();
@@ -20,29 +26,56 @@ const TrainerDashboard = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('overview');
     const [showNotifications, setShowNotifications] = useState(false);
-
-    // Sample Data for Overview
-    const [batches, setBatches] = useState([
-        { id: 1, name: 'Full Stack Development', code: 'FSD-2024', students: 28, time: '10:00 AM - 1:00 PM', days: 'Mon, Wed, Fri', progress: 75, status: 'active' },
-        { id: 2, name: 'Data Science', code: 'DS-2024', students: 22, time: '2:00 PM - 5:00 PM', days: 'Tue, Thu, Sat', progress: 60, status: 'active' },
-        { id: 3, name: 'React Advanced', code: 'REACT-2024', students: 16, time: '11:00 AM - 2:00 PM', days: 'Mon, Thu', progress: 100, status: 'completed' },
-        { id: 4, name: 'Python Programming', code: 'PY-2024', students: 20, time: '9:00 AM - 12:00 PM', days: 'Tue, Fri', progress: 45, status: 'active' },
-    ]);
-
-    // Sample Notifications Data
-    const [notifications, setNotifications] = useState([
-        { id: 1, title: 'New Assignment', message: 'React Components Assignment due on June 10', time: '2 hours ago', read: false },
-        { id: 2, title: 'Attendance Alert', message: '3 students absent today in FSD batch', time: '5 hours ago', read: false },
-        { id: 3, title: 'Test Scheduled', message: 'Data Science test on June 15', time: '1 day ago', read: true },
-        { id: 4, title: 'New Student Added', message: 'Rahul Sharma joined React batch', time: '2 days ago', read: true },
-    ]);
+    const [showBatchManagement, setShowBatchManagement] = useState(false);
+    const [loading, setLoading] = useState(true);
+    
+    // Real data from database
+    const [batches, setBatches] = useState([]);
+    const [notifications, setNotifications] = useState([]);
+    const [stats, setStats] = useState({
+        totalBatches: 0,
+        totalStudents: 0,
+        activeAssignments: 0,
+        upcomingTests: 0
+    });
 
     useEffect(() => {
         const userData = localStorage.getItem('user');
         if (userData) {
             setUser(JSON.parse(userData));
         }
+        fetchTrainerData();
     }, []);
+
+    // Fetch real data from backend
+    const fetchTrainerData = async () => {
+        setLoading(true);
+        try {
+            const batchesResponse = await api.get('/batches/trainer/assigned');
+            if (batchesResponse.data.success) {
+                const batchesData = batchesResponse.data.data;
+                setBatches(batchesData);
+                
+                const totalStudents = batchesData.reduce((sum, batch) => sum + (batch.studentsCount || 0), 0);
+                setStats({
+                    totalBatches: batchesData.length,
+                    totalStudents: totalStudents,
+                    activeAssignments: batchesData.reduce((sum, batch) => sum + (batch.activeAssignments || 0), 0),
+                    upcomingTests: batchesData.reduce((sum, batch) => sum + (batch.upcomingTests || 0), 0)
+                });
+            }
+            
+            const notifResponse = await api.get('/notifications/trainer');
+            if (notifResponse.data.success) {
+                setNotifications(notifResponse.data.data);
+            }
+        } catch (error) {
+            console.error('Error fetching trainer data:', error);
+            toast.error('Failed to load dashboard data');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -55,15 +88,25 @@ const TrainerDashboard = () => {
         return name ? name.charAt(0).toUpperCase() : 'T';
     };
 
-    const markAsRead = (id) => {
-        setNotifications(notifications.map(notif => 
-            notif.id === id ? { ...notif, read: true } : notif
-        ));
+    const markAsRead = async (id) => {
+        try {
+            await api.put(`/notifications/${id}/read`);
+            setNotifications(notifications.map(notif => 
+                notif.id === id ? { ...notif, read: true } : notif
+            ));
+        } catch (error) {
+            console.error('Error:', error);
+        }
     };
 
-    const deleteNotification = (id) => {
-        setNotifications(notifications.filter(notif => notif.id !== id));
-        toast.success('Notification deleted');
+    const deleteNotification = async (id) => {
+        try {
+            await api.delete(`/notifications/${id}`);
+            setNotifications(notifications.filter(notif => notif.id !== id));
+            toast.success('Notification deleted');
+        } catch (error) {
+            console.error('Error:', error);
+        }
     };
 
     const unreadCount = notifications.filter(n => !n.read).length;
@@ -78,36 +121,46 @@ const TrainerDashboard = () => {
         { id: 'materials', label: 'Course Materials', icon: FaBookOpen },
     ];
 
-    // Overview Component - Complete Data
+    // Overview Component
     const OverviewComponent = () => (
         <div className={styles.overviewContainer}>
+            {/* Batch Management Button */}
+            <div className={styles.batchManagementBtnContainer}>
+                <button 
+                    className={styles.batchManagementBtn}
+                    onClick={() => setShowBatchManagement(true)}
+                >
+                    <FaLayerGroup /> Manage Batches
+                </button>
+            </div>
+
             {/* Stats Cards */}
             <div className={styles.statsGrid}>
                 <div className={styles.statCard}>
                     <div className={styles.statIcon}><FaChalkboardTeacher /></div>
                     <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{batches.length}</span>
+                        <span className={styles.statValue}>{stats.totalBatches}</span>
                         <span className={styles.statLabel}>Total Batches</span>
                     </div>
                 </div>
                 <div className={styles.statCard}>
                     <div className={styles.statIcon}><FaUsers /></div>
                     <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{batches.reduce((sum, b) => sum + b.students, 0)}</span>
+                        <span className={styles.statValue}>{stats.totalStudents}</span>
                         <span className={styles.statLabel}>Total Students</span>
                     </div>
                 </div>
                 <div className={styles.statCard}>
                     <div className={styles.statIcon}><FaTasks /></div>
                     <div className={styles.statInfo}>
-                        <span className={styles.statValue}>8</span>
+                        <span className={styles.statValue}>{stats.activeAssignments}</span>
                         <span className={styles.statLabel}>Active Assignments</span>
                     </div>
                 </div>
                 <div className={styles.statCard}>
                     <div className={styles.statIcon}><FaFileAlt /></div>
                     <div className={styles.statInfo}>
-                        <span className={styles.statValue}>4</span>
+                        <span className={styles.statValue}>{stats.upcomingTests}</span>
                         <span className={styles.statLabel}>Upcoming Tests</span>
                     </div>
                 </div>
@@ -120,35 +173,45 @@ const TrainerDashboard = () => {
                     <button className={styles.viewAllBtn}>View All</button>
                 </div>
                 <div className={styles.batchesGrid}>
-                    {batches.map(batch => (
-                        <div key={batch.id} className={styles.batchCard}>
-                            <div className={styles.batchHeader}>
-                                <h4>{batch.name}</h4>
-                                <span className={`${styles.batchStatus} ${batch.status === 'active' ? styles.active : styles.completed}`}>
-                                    {batch.status === 'active' ? 'Active' : 'Completed'}
-                                </span>
-                            </div>
-                            <div className={styles.batchDetails}>
-                                <p><span>📚 Code:</span> {batch.code}</p>
-                                <p><span>👨‍🎓 Students:</span> {batch.students}</p>
-                                <p><span>⏰ Time:</span> {batch.time}</p>
-                                <p><span>📅 Days:</span> {batch.days}</p>
-                            </div>
-                            <div className={styles.progressSection}>
-                                <div className={styles.progressLabel}>
-                                    <span>Course Progress</span>
-                                    <span>{batch.progress}%</span>
-                                </div>
-                                <div className={styles.progressBar}>
-                                    <div className={styles.progressFill} style={{ width: `${batch.progress}%` }}></div>
-                                </div>
-                            </div>
-                            <div className={styles.batchActions}>
-                                <button className={styles.actionBtn}><FaEye /> View</button>
-                                <button className={styles.actionBtn}><FaEdit /> Edit</button>
-                            </div>
+                    {loading ? (
+                        <div className={styles.loadingContainer}>
+                            <FaSpinner className={styles.spinner} /> Loading batches...
                         </div>
-                    ))}
+                    ) : batches.length === 0 ? (
+                        <div className={styles.emptyContainer}>
+                            No batches assigned yet.
+                        </div>
+                    ) : (
+                        batches.map(batch => (
+                            <div key={batch._id} className={styles.batchCard}>
+                                <div className={styles.batchHeader}>
+                                    <h4>{batch.name}</h4>
+                                    <span className={`${styles.batchStatus} ${batch.status === 'active' ? styles.active : styles.completed}`}>
+                                        {batch.status === 'active' ? 'Active' : 'Completed'}
+                                    </span>
+                                </div>
+                                <div className={styles.batchDetails}>
+                                    <p><span>📚 Code:</span> {batch.code}</p>
+                                    <p><span>👨‍🎓 Students:</span> {batch.studentsCount || 0}</p>
+                                    <p><span>⏰ Time:</span> {batch.timings || 'Not set'}</p>
+                                    <p><span>📅 Days:</span> {batch.days || 'Not set'}</p>
+                                </div>
+                                <div className={styles.progressSection}>
+                                    <div className={styles.progressLabel}>
+                                        <span>Course Progress</span>
+                                        <span>{batch.progress || 0}%</span>
+                                    </div>
+                                    <div className={styles.progressBar}>
+                                        <div className={styles.progressFill} style={{ width: `${batch.progress || 0}%` }}></div>
+                                    </div>
+                                </div>
+                                <div className={styles.batchActions}>
+                                    <button className={styles.actionBtn}><FaEye /> View</button>
+                                    <button className={styles.actionBtn}><FaEdit /> Edit</button>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 
@@ -162,22 +225,15 @@ const TrainerDashboard = () => {
                     <div className={styles.activityItem}>
                         <div className={styles.activityIcon}><FaUserGraduate /></div>
                         <div className={styles.activityContent}>
-                            <p>New student <strong>Rahul Sharma</strong> joined Full Stack batch</p>
+                            <p>New student joined your batch</p>
                             <span>2 hours ago</span>
                         </div>
                     </div>
                     <div className={styles.activityItem}>
                         <div className={styles.activityIcon}><FaTasks /></div>
                         <div className={styles.activityContent}>
-                            <p>Assignment <strong>React Components</strong> submitted by 20 students</p>
+                            <p>New assignment submitted</p>
                             <span>5 hours ago</span>
-                        </div>
-                    </div>
-                    <div className={styles.activityItem}>
-                        <div className={styles.activityIcon}><FaCheckCircle /></div>
-                        <div className={styles.activityContent}>
-                            <p>Test <strong>JavaScript Basics</strong> completed by Data Science batch</p>
-                            <span>1 day ago</span>
                         </div>
                     </div>
                 </div>
@@ -185,25 +241,47 @@ const TrainerDashboard = () => {
         </div>
     );
 
+    // Placeholder components
+    const PlaceholderContent = ({ title, description }) => (
+        <div className={styles.placeholderBox}>
+            <h3>{title}</h3>
+            <p>{description}</p>
+            <p className={styles.placeholderHint}>👉 Baad me aap apna component yahan import kar lena</p>
+        </div>
+    );
+
     // Render content based on active tab
     const renderContent = () => {
+        if (showBatchManagement) {
+            return <BatchManagement onBack={() => setShowBatchManagement(false)} />;
+        }
+        
         switch(activeTab) {
             case 'overview':
                 return <OverviewComponent />;
             case 'attendance':
-                return <div className={styles.placeholderBox}><AttendanceTable/></div>;
+                return <AttendanceTable />;
             case 'assignments':
-                return <div className={styles.placeholderBox}>📝 Assignments Component - Yahan Assignments ka content aayega</div>;
+                return <PlaceholderContent title="Assignments Module" description="Manage and track student assignments" />;
             case 'tests':
-                return <div className={styles.placeholderBox}>📋 Tests Component - Yahan Tests ka content aayega</div>;
+                return <PlaceholderContent title="Tests Module" description="Create and manage tests, view results" />;
             case 'performance':
-                return <div className={styles.placeholderBox}>📈 Student Performance Component - Yahan Performance Graph aayega</div>;
+                return <PlaceholderContent title="Student Performance Module" description="Track student performance and analytics" />;
             case 'materials':
-                return <div className={styles.placeholderBox}>📚 Course Materials Component - Yahan Course Materials ka content aayega</div>;
+                return <PlaceholderContent title="Course Materials Module" description="Upload and manage course materials" />;
             default:
                 return <OverviewComponent />;
         }
     };
+
+    if (loading && batches.length === 0) {
+        return (
+            <div className={styles.loadingContainer}>
+                <FaSpinner className={styles.spinner} />
+                <p>Loading dashboard...</p>
+            </div>
+        );
+    }
 
     return (
         <div className={`${styles.app} ${sidebarCollapsed ? styles.appCollapsed : ''}`}>
@@ -248,9 +326,7 @@ const TrainerDashboard = () => {
                 </>
             )}
 
-            {/* ============================================================ */}
-            {/* SIDEBAR */}
-            {/* ============================================================ */}
+            {/* Sidebar */}
             <aside className={`${styles.sidebar} ${sidebarCollapsed ? styles.sidebarCollapsed : ''} ${mobileMenuOpen ? styles.sidebarMobile : ''}`}>
                 <div className={styles.sidebarHeader}>
                     <div className={styles.logo}>
@@ -289,9 +365,7 @@ const TrainerDashboard = () => {
                 </div>
             </aside>
 
-            {/* ============================================================ */}
-            {/* MAIN CONTENT */}
-            {/* ============================================================ */}
+            {/* Main Content */}
             <main className={styles.main}>
                 
                 {/* Header */}
@@ -301,7 +375,9 @@ const TrainerDashboard = () => {
                             <FaBars />
                         </button>
                         <div className={styles.pageTitle}>
-                            <h2>{menuItems.find(item => item.id === activeTab)?.label || 'Dashboard'}</h2>
+                            <h2>
+                                {showBatchManagement ? 'Batch Management' : (menuItems.find(item => item.id === activeTab)?.label || 'Dashboard')}
+                            </h2>
                         </div>
                     </div>
                     <div className={styles.headerRight}>

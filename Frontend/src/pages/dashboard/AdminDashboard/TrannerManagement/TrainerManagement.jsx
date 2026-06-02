@@ -5,6 +5,7 @@ import {
 } from 'react-icons/fa';
 import styles from './TrainerManagement.module.css';
 import AdminAttendanceTable from './AdminAttendanceTable';
+import BatchManagement from '../../TrainerDashboard/Betch/BatchManagement';
 
 const TrainerManagement = () => {
     const [activeSubTab, setActiveSubTab] = useState('trainers');
@@ -38,7 +39,7 @@ const TrainerManagement = () => {
             case 'trainers':
                 return <PlaceholderContent title="Trainers List" />;
             case 'batches':
-                return <PlaceholderContent title="Batch Assignment" />;
+                return <BatchManagement/>;
             case 'attendance':
                 return <AdminAttendanceTable title="Attendance" />;
             case 'assignments':
