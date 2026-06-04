@@ -1,0 +1,102 @@
+.container {
+    padding: 0;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.header h3 {
+    font-size: 18px;
+    color: #f1f5f9;
+    margin: 0;
+}
+
+.searchBox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 8px 16px;
+}
+
+.searchBox input {
+    border: none;
+    background: transparent;
+    outline: none;
+    width: 250px;
+    color: #f1f5f9;
+}
+
+.searchBox input::placeholder {
+    color: #64748b;
+}
+
+.tableWrapper {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th, .table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #334155;
+    color: #cbd5e1;
+}
+
+.table th {
+    background: #0f172a;
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.enrollIcon {
+    margin-right: 6px;
+    color: #8b5cf6;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badgeActive { background: #064e3b; color: #34d399; }
+.badgeInactive { background: #7f1d1d; color: #f87171; }
+.badgeCompleted { background: #312e81; color: #a78bfa; }
+
+.emptyCell {
+    text-align: center;
+    padding: 40px;
+    color: #64748b;
+}
+
+.loadingContainer {
+    text-align: center;
+    padding: 40px;
+    color: #94a3b8;
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

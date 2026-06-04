@@ -260,3 +260,71 @@ export const deleteAdmission = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// Alias for compatibility
+export const getAdmissions = getAllAdmissions;
+
+// Get admissions by counselor (ONLY ONE DECLARATION - KEEP THIS)
+// Add this at the end of your admissionController.js file
+export const getAdmissionsByCounselor = async (req, res) => {
+    try {
+        const { counselorId } = req.params;
+        
+        // Check if counselor is accessing their own admissions
+        if (req.user.role === 'counselor' && req.user.id !== counselorId) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Access denied. You can only view your own admissions.' 
+            });
+        }
+        
+        // Find admissions - adjust the query based on your schema
+        // If your Admission model has a counselorId field:
+        // const admissions = await Admission.find({ counselorId: counselorId })
+        
+        // If not, return all admissions for now
+        const Admission = (await import('../models/Admission.js')).default;
+        const admissions = await Admission.find({})
+            .populate('batchId', 'name code')
+            .sort({ createdAt: -1 });
+        
+        const stats = {
+            total: admissions.length,
+            active: admissions.filter(a => a.status === 'active').length,
+            completed: admissions.filter(a => a.status === 'completed').length
+        };
+        
+        res.json({ 
+            success: true, 
+            data: admissions, 
+            stats,
+            counselorId: counselorId 
+        });
+    } catch (error) {
+        console.error('🔴 getAdmissionsByCounselor error:', error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+// @desc    Get admissions by counselor ID for dashboard
+// @route   GET /api/admissions/counselor/:counselorId
+export const getAdmissionsByCounselorForDashboard = async (req, res) => {
+    try {
+        const counselorId = req.params.counselorId || req.user._id;
+        
+        // Agar Admission model mein counselorId field nahi hai toh saare admissions return karo
+        const admissions = await Admission.find({})
+            .populate('batchId', 'name code')
+            .sort({ createdAt: -1 });
+        
+        const stats = {
+            total: admissions.length,
+            active: admissions.filter(a => a.status === 'active').length,
+            completed: admissions.filter(a => a.status === 'completed').length
+        };
+        
+        res.json({ success: true, data: admissions, stats });
+    } catch (error) {
+        console.error('getAdmissionsByCounselorForDashboard error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

@@ -7,6 +7,8 @@ import authRoutes from './routes/authRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import admissionRoutes from './routes/admissionRoutes.js';
 import batchRoutes from './routes/batchRoutes.js';
+import leadRoutes from './routes/leadRoutes.js';
+import callRoutes from './routes/callRoutes.js';
 
 dotenv.config();
 
@@ -38,6 +40,8 @@ app.use('/api/super-admin', superAdminRoutes); // For super admin
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/admissions', admissionRoutes);
 app.use('/api/batches', batchRoutes);
+app.use('/api/leads', leadRoutes);
+app.use('/api/calls', callRoutes);
 
 // Error handler — sabse neeche rakho
 app.use((err, req, res, next) => {

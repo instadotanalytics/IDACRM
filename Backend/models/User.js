@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema({
     },
     department: {
         type: String,
-        enum: ['management', 'sales', 'hr', 'training', 'counseling'],
+        enum: ['management', 'sales', 'hr', 'training', 'counseling', 'student'],  // ✅ 'student' added here
         default: 'sales'
     },
     phone: { type: String, default: '' },
@@ -39,7 +39,7 @@ const userSchema = new mongoose.Schema({
     resetPasswordToken: String,
     resetPasswordExpires: Date,
     
-    // ✅ ADD THIS - For trainer batch assignments
+    // For trainer batch assignments
     assignedBatches: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Batch'

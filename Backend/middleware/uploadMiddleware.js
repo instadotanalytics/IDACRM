@@ -46,4 +46,11 @@ export const deleteFromCloudinary = async (publicId) => {
     }
 };
 
+// ✅ ADD THIS - Named export for single file upload
+export const uploadPhoto = upload.single('photo');
+
+// ✅ ADD THIS - Export the cloudinary instance if needed elsewhere
+export { cloudinary };
+
+// ✅ Default export
 export default upload;

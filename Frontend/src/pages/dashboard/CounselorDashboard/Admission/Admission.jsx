@@ -142,7 +142,8 @@ const Admission = () => {
             Object.entries(formData).forEach(([key, val]) => formDataToSend.append(key, val || ''));
             if (selectedImage) formDataToSend.append('photo', selectedImage);
 
-            const response = await api.post('/admissions/create', formDataToSend, {
+            // ✅ FIXED: Changed from '/admissions/create' to '/admissions'
+            const response = await api.post('/admissions', formDataToSend, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
