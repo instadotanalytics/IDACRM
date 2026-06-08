@@ -1,4 +1,3 @@
-// AdminDashboard.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -9,7 +8,6 @@ import {
   FaSignOutAlt,
   FaChevronLeft,
   FaChevronRight,
-  FaChevronDown,
   FaTachometerAlt,
   FaUsers,
   FaChalkboardTeacher,
@@ -19,34 +17,21 @@ import {
   FaTasks,
   FaFileAlt,
   FaTimes,
-  FaBookOpen,
-  FaDownload,
-  FaClipboardList,
-  FaQuestionCircle,
 } from "react-icons/fa";
 import { IoMdSettings } from "react-icons/io";
 import styles from "./AdminDashboard.module.css";
-import TrainerManagement from "./TrannerManagement/TrainerManagement";
+import BatchManagement from "../TrainerDashboard/Betch/BatchManagement";
+import TrainerAttendanceMarker from "../TrainerDashboard/AttendanceTable/TrainerAttendanceMarker";
+import Assignments from "../TrainerDashboard/Performance/Assignments";
+import Tests from "../TrainerDashboard/Performance/Tests";
+import CourseMaterials from "../TrainerDashboard/CourseMaterials";
+import StudentPerformance from "../TrainerDashboard/Performance/StudentPerformance";
 
-const TRAINER_SUB_TABS = [
-  { id: "trainers", label: "Trainers List", icon: FaChalkboardTeacher },
-  { id: "batches", label: "Batch Assignment", icon: FaBookOpen },
-  { id: "attendance", label: "Attendance", icon: FaCalendarCheck },
-  { id: "assignments", label: "Assignments", icon: FaClipboardList },
-  { id: "tests", label: "Tests", icon: FaQuestionCircle },
-  { id: "materials", label: "Study Materials", icon: FaDownload },
-  { id: "performance", label: "Analytics", icon: FaChartLine },
-];
-
+// NO DROPDOWN - Simple menu items
 const MENU_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: FaTachometerAlt },
   { id: "employees", label: "Employee Management", icon: FaUsers },
-  {
-    id: "trainers",
-    label: "Trainer Management",
-    icon: FaChalkboardTeacher,
-    hasDropdown: true,
-  },
+  { id: "trainers", label: "Trainer Management", icon: FaChalkboardTeacher },
   { id: "sales", label: "Sales Team", icon: FaChartLine },
   { id: "hr", label: "HR Management", icon: FaBuilding },
   { id: "attendance", label: "Attendance Monitoring", icon: FaCalendarCheck },
@@ -55,18 +40,25 @@ const MENU_ITEMS = [
   { id: "settings", label: "Settings", icon: IoMdSettings },
 ];
 
+// Trainer Management TABS (shown inside content, NOT in sidebar dropdown)
+const TRAINER_TABS = [
+  { id: "batches", label: "Batch Assignment", icon: "📚" },
+  { id: "attendance", label: "Attendance", icon: "📅" },
+  { id: "assignments", label: "Assignments", icon: "📝" },
+  { id: "tests", label: "Tests", icon: "✍️" },
+  { id: "materials", label: "Study Materials", icon: "📖" },
+  { id: "performance", label: "Analytics", icon: "📊" },
+];
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTrainerTab, setActiveTrainerTab] = useState("batches");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showChat, setShowChat] = useState(false);
-  const [activeTrainerSubTab, setActiveTrainerSubTab] = useState("trainers");
-  const [openDropdown, setOpenDropdown] = useState(null);
-  const [tooltip, setTooltip] = useState(null);
-  const [hoverTimeout, setHoverTimeout] = useState(null);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -82,72 +74,42 @@ const AdminDashboard = () => {
 
   const getInitial = (name) => (name ? name.charAt(0).toUpperCase() : "A");
 
-  const handleTrainerSubTabClick = (tabId) => {
-    setActiveTab("trainers");
-    setActiveTrainerSubTab(tabId);
-    setOpenDropdown(null);
-    setTooltip(null);
-  };
-
   const handleNavClick = (item) => {
     setActiveTab(item.id);
-    if (item.hasDropdown) {
-      setOpenDropdown(openDropdown === item.id ? null : item.id);
-    } else {
-      setOpenDropdown(null);
+    if (item.id !== "trainers") {
+      setActiveTrainerTab("batches");
     }
-    setTooltip(null);
-  };
-
-  const handleNavMouseEnter = (item, e) => {
-    if (!sidebarCollapsed) return;
-
-    if (hoverTimeout) clearTimeout(hoverTimeout);
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    if (item.hasDropdown) {
-      setTooltip({
-        type: "trainer",
-        label: item.label,
-        top: rect.top,
-        left: rect.right,
-      });
-    } else {
-      setTooltip({
-        type: "simple",
-        label: item.label,
-        top: rect.top + rect.height / 2,
-        left: rect.right,
-      });
-    }
-  };
-
-  const handleNavMouseLeave = () => {
-    const timeout = setTimeout(() => {
-      setTooltip(null);
-    }, 300);
-    setHoverTimeout(timeout);
-  };
-
-  const handleTooltipMouseEnter = () => {
-    if (hoverTimeout) {
-      clearTimeout(hoverTimeout);
-      setHoverTimeout(null);
-    }
-  };
-
-  const handleTooltipMouseLeave = () => {
-    setTooltip(null);
   };
 
   const getPageTitle = () => {
     if (activeTab === "trainers") {
-      const sub = TRAINER_SUB_TABS.find((t) => t.id === activeTrainerSubTab);
-      return `Trainer Management — ${sub?.label || ""}`;
+      const currentTab = TRAINER_TABS.find(t => t.id === activeTrainerTab);
+      return `Trainer Management — ${currentTab?.label || "Batch Assignment"}`;
     }
     return MENU_ITEMS.find((i) => i.id === activeTab)?.label || "Dashboard";
   };
 
+  // Render Trainer Management Content
+  const renderTrainerContent = () => {
+    switch (activeTrainerTab) {
+      case "batches":
+        return <BatchManagement />;
+      case "attendance":
+        return <TrainerAttendanceMarker />;
+      case "assignments":
+        return <Assignments />;
+      case "tests":
+        return <Tests />;
+      case "materials":
+        return <CourseMaterials />;
+      case "performance":
+        return <StudentPerformance />;
+      default:
+        return <BatchManagement />;
+    }
+  };
+
+  // Stats data
   const stats = {
     employees: { total: 85, active: 72, inactive: 13 },
     trainers: { total: 12, activeBatches: 8, totalStudents: 245 },
@@ -318,8 +280,11 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const Placeholder = () => (
-    <div className={styles.placeholderBox}>Content coming soon...</div>
+  const Placeholder = ({ title }) => (
+    <div className={styles.placeholderBox}>
+      <h3>{title}</h3>
+      <p>Content coming soon...</p>
+    </div>
   );
 
   const renderContent = () => {
@@ -334,13 +299,47 @@ const AdminDashboard = () => {
         );
       case "trainers":
         return (
-          <TrainerManagement
-            activeSubTab={activeTrainerSubTab}
-            setActiveSubTab={setActiveTrainerSubTab}
-          />
+          <div className={styles.trainerManagementContainer}>
+            {/* TABS inside content - NOT in sidebar */}
+            <div className={styles.trainerTabs}>
+              {TRAINER_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  className={`${styles.trainerTab} ${activeTrainerTab === tab.id ? styles.activeTrainerTab : ""}`}
+                  onClick={() => setActiveTrainerTab(tab.id)}
+                >
+                  <span className={styles.tabIcon}>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+            <div className={styles.trainerContent}>
+              {renderTrainerContent()}
+            </div>
+          </div>
         );
+      case "employees":
+        return <Placeholder title="Employee Management" />;
+      case "sales":
+        return <Placeholder title="Sales Team" />;
+      case "hr":
+        return <Placeholder title="HR Management" />;
+      case "attendance":
+        return <Placeholder title="Attendance Monitoring" />;
+      case "tasks":
+        return <Placeholder title="Task Management" />;
+      case "reports":
+        return <Placeholder title="Reports" />;
+      case "settings":
+        return <Placeholder title="Settings" />;
       default:
-        return <Placeholder />;
+        return (
+          <>
+            <StatsCards />
+            <ChartsSection />
+            <RecentActivities />
+          </>
+        );
     }
   };
 
@@ -348,7 +347,7 @@ const AdminDashboard = () => {
     <div
       className={`${styles.app} ${sidebarCollapsed ? styles.appCollapsed : ""}`}
     >
-      {/* Notification Panel */}
+      {/* Notification Panel - KEEP THIS */}
       {showNotifications && (
         <div className={styles.notificationPanel}>
           <div className={styles.panelHeader}>
@@ -369,6 +368,8 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+      
+      {/* Chat Panel - KEEP THIS */}
       {showChat && (
         <div className={styles.chatPanel}>
           <div className={styles.panelHeader}>
@@ -386,6 +387,7 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+      
       {(showNotifications || showChat) && (
         <div
           className={styles.overlay}
@@ -396,7 +398,7 @@ const AdminDashboard = () => {
         ></div>
       )}
 
-      {/* SIDEBAR */}
+      {/* SIDEBAR - NO DROPDOWN */}
       <aside
         className={`${styles.sidebar} ${sidebarCollapsed ? styles.sidebarCollapsed : ""} ${mobileMenuOpen ? styles.sidebarMobile : ""}`}
       >
@@ -426,49 +428,19 @@ const AdminDashboard = () => {
 
         <nav className={styles.nav}>
           {MENU_ITEMS.map((item) => {
-            const isTrainer = item.hasDropdown;
             const isActive = activeTab === item.id;
-            const isDropdownOpen = openDropdown === item.id;
 
             return (
-              <div
-                key={item.id}
-                className={styles.navItemWrapper}
-                onMouseEnter={(e) => handleNavMouseEnter(item, e)}
-                onMouseLeave={handleNavMouseLeave}
-              >
+              <div key={item.id} className={styles.navItemWrapper}>
                 <button
                   className={`${styles.navItem} ${isActive ? styles.active : ""}`}
                   onClick={() => handleNavClick(item)}
                 >
                   <item.icon className={styles.navIcon} />
                   {!sidebarCollapsed && (
-                    <>
-                      <span className={styles.navLabel}>{item.label}</span>
-                      {isTrainer && (
-                        <FaChevronDown
-                          className={`${styles.dropdownArrow} ${isDropdownOpen ? styles.rotated : ""}`}
-                        />
-                      )}
-                    </>
+                    <span className={styles.navLabel}>{item.label}</span>
                   )}
                 </button>
-
-                {/* Dropdown for expanded sidebar */}
-                {!sidebarCollapsed && isTrainer && isDropdownOpen && (
-                  <div className={styles.expandedDropdown}>
-                    {TRAINER_SUB_TABS.map((sub) => (
-                      <button
-                        key={sub.id}
-                        className={`${styles.subNavItem} ${isActive && activeTrainerSubTab === sub.id ? styles.subNavActive : ""}`}
-                        onClick={() => handleTrainerSubTabClick(sub.id)}
-                      >
-                        <sub.icon className={styles.subNavIcon} />
-                        <span>{sub.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -490,41 +462,7 @@ const AdminDashboard = () => {
         </div>
       </aside>
 
-      {/* Tooltip for collapsed sidebar */}
-      {sidebarCollapsed && tooltip && (
-        <div
-          className={
-            tooltip.type === "trainer"
-              ? styles.fixedFlyout
-              : styles.fixedTooltip
-          }
-          style={{
-            top: tooltip.top - (tooltip.type === "trainer" ? 0 : 15),
-            left: tooltip.left + 12,
-          }}
-          onMouseEnter={handleTooltipMouseEnter}
-          onMouseLeave={handleTooltipMouseLeave}
-        >
-          {tooltip.type === "simple" && <span>{tooltip.label}</span>}
-          {tooltip.type === "trainer" && (
-            <>
-              <div className={styles.flyoutTitle}>Trainer Management</div>
-              {TRAINER_SUB_TABS.map((sub) => (
-                <button
-                  key={sub.id}
-                  className={`${styles.flyoutItem} ${activeTab === "trainers" && activeTrainerSubTab === sub.id ? styles.flyoutItemActive : ""}`}
-                  onClick={() => handleTrainerSubTabClick(sub.id)}
-                >
-                  <sub.icon className={styles.subNavIcon} />
-                  <span>{sub.label}</span>
-                </button>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* MAIN */}
+      {/* MAIN CONTENT */}
       <main className={styles.main}>
         <header className={styles.header}>
           <div className={styles.headerLeft}>
@@ -539,6 +477,7 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div className={styles.headerRight}>
+            {/* RIGHT SIDE BUTTONS - KEEP THESE */}
             <button
               className={styles.iconBtn}
               onClick={() => setShowChat(!showChat)}

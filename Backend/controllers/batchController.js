@@ -89,24 +89,16 @@ export const getAllBatches = async (req, res) => {
 
 // @desc    Get trainer's assigned batches
 // @route   GET /api/batches/trainer/assigned
+// Add this function to your batchController.js if not exists
 export const getTrainerBatches = async (req, res) => {
     try {
-        const batches = await Batch.find({ trainerId: req.user.id })
+        const batches = await Batch.find({ trainerId: req.user._id })
+            .populate('trainerId', 'name email')
             .sort('startDate');
         
-        // Add additional stats
-        const batchesWithStats = await Promise.all(batches.map(async (batch) => {
-            const studentsCount = await Student.countDocuments({ batchId: batch._id, status: 'active' });
-            return {
-                ...batch.toObject(),
-                studentsCount,
-                activeAssignments: 0, // Will be implemented later
-                upcomingTests: 0      // Will be implemented later
-            };
-        }));
-        
-        res.json({ success: true, data: batchesWithStats });
+        res.json({ success: true, data: batches });
     } catch (error) {
+        console.error('Error getting trainer batches:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };

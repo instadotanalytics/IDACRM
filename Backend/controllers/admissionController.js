@@ -13,11 +13,14 @@ const generatePassword = () => {
     return password + '@123';
 };
 
+// @desc    Create admission (with counselor tracking)
+// @route   POST /api/admissions
 export const createAdmission = async (req, res) => {
     try {
         console.log('==========================================');
         console.log('🔵 ADMISSION CREATE STARTED');
-        console.log('🟡 MongoDB State:', mongoose.connection.readyState);
+        console.log('👤 Counselor ID:', req.user.id);
+        console.log('👤 Counselor Name:', req.user.name);
         console.log('📦 req.body:', req.body);
         console.log('📁 req.file:', req.file);
         console.log('==========================================');
@@ -37,11 +40,6 @@ export const createAdmission = async (req, res) => {
         const qualifications = req.body.qualifications || '';
         const admissionDate  = req.body.admissionDate  || new Date();
 
-        console.log('📋 name:', name);
-        console.log('📋 email:', email);
-        console.log('📋 phone:', phone);
-        console.log('📋 course:', course);
-
         // Validation
         if (!name) {
             if (req.file?.filename) await deleteFromCloudinary(req.file.filename);
@@ -60,32 +58,23 @@ export const createAdmission = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Course is required' });
         }
 
-        console.log('✅ Validation passed');
-
         // Duplicate check
-        console.log('🔍 Checking duplicate...');
         const existingAdmission = await Admission.findOne({ email: email.toLowerCase() });
         if (existingAdmission) {
-            console.log('❌ Duplicate found');
             if (req.file?.filename) await deleteFromCloudinary(req.file.filename);
             return res.status(400).json({ success: false, message: 'Admission already exists for this email' });
         }
-        console.log('✅ No duplicate');
 
         // Photo
         const photoUrl      = req.file?.path     || '';
-        const photoPublicId = req.file?.filename  || '';
-        console.log('📸 photoUrl:', photoUrl);
-        console.log('📸 photoPublicId:', photoPublicId);
+        const photoPublicId = req.file?.filename || '';
 
         // User check
-        console.log('🔍 Checking existing user...');
         let existingUser = await User.findOne({ email: email.toLowerCase() });
         let userPassword = '';
         let userCreated  = false;
 
         if (!existingUser) {
-            console.log('👤 Creating new user...');
             userPassword = generatePassword();
             const hashedPassword = await bcrypt.hash(userPassword, 10);
             existingUser = await User.create({
@@ -98,13 +87,9 @@ export const createAdmission = async (req, res) => {
                 isActive:   true
             });
             userCreated = true;
-            console.log('✅ User created:', existingUser._id);
-        } else {
-            console.log('✅ Existing user found:', existingUser._id);
         }
 
-        // Create admission
-        console.log('📝 Creating admission...');
+        // ✅ Create admission with counselor tracking
         const admissionData = {
             name,
             email:          email.toLowerCase(),
@@ -119,12 +104,15 @@ export const createAdmission = async (req, res) => {
             photo:          photoUrl,
             photoPublicId,
             status:         'active',
-            isUserCreated:  userCreated
+            isUserCreated:  userCreated,
+            counselorId:    req.user.id,        // ✅ Auto track counselor ID
+            counselorName:  req.user.name,      // ✅ Auto track counselor name
+            leadId:         req.body.leadId || null
         };
-        console.log('📝 admissionData:', admissionData);
 
         const admission = await Admission.create(admissionData);
-        console.log('✅ Admission created:', admission._id);
+
+        console.log('✅ Admission created with counselorId:', admission.counselorId);
         console.log('✅ enrollmentId:', admission.enrollmentId);
 
         return res.status(201).json({
@@ -138,7 +126,9 @@ export const createAdmission = async (req, res) => {
                     name:         admission.name,
                     email:        admission.email,
                     enrollmentId: admission.enrollmentId,
-                    photo:        admission.photo
+                    photo:        admission.photo,
+                    counselorId:  admission.counselorId,
+                    counselorName: admission.counselorName
                 },
                 credentials: userCreated
                     ? { email: email.toLowerCase(), password: userPassword }
@@ -147,37 +137,31 @@ export const createAdmission = async (req, res) => {
         });
 
     } catch (error) {
-        console.log('==========================================');
-        console.error('🔴 ADMISSION ERROR CAUGHT');
-        console.error('🔴 typeof error:', typeof error);
-        console.error('🔴 error:', error);
-        console.error('🔴 error.message:', error?.message);
-        console.error('🔴 error.name:', error?.name);
-        console.error('🔴 error.code:', error?.code);
-        console.error('🔴 error.errors:', JSON.stringify(error?.errors, null, 2));
-        console.error('🔴 error.stack:', error?.stack);
-        console.log('==========================================');
-
+        console.error('🔴 ADMISSION ERROR:', error.message);
         if (req.file?.filename) await deleteFromCloudinary(req.file.filename);
-
-        if (error?.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({ success: false, message: 'File size must be under 5MB' });
-        }
-
         return res.status(500).json({
             success: false,
-            message: error?.message || 'Unknown server error',
-            errorName: error?.name  || 'Unknown',
-            errorCode: error?.code  || 'Unknown'
+            message: error?.message || 'Unknown server error'
         });
     }
 };
 
+// @desc    Get all admissions (Admin sees all, Counselor sees only their own)
+// @route   GET /api/admissions
 export const getAllAdmissions = async (req, res) => {
     try {
-        const admissions = await Admission.find()
+        let query = {};
+        
+        // ✅ Role-based filtering
+        if (req.user.role === 'counselor') {
+            query.counselorId = req.user.id;
+        }
+        
+        const admissions = await Admission.find(query)
             .populate('batchId', 'name code')
+            .populate('counselorId', 'name email')
             .sort({ createdAt: -1 });
+        
         res.json({ success: true, data: admissions });
     } catch (error) {
         console.error('🔴 getAllAdmissions error:', error.message);
@@ -185,13 +169,23 @@ export const getAllAdmissions = async (req, res) => {
     }
 };
 
+// @desc    Get admission by ID
+// @route   GET /api/admissions/:id
 export const getAdmissionById = async (req, res) => {
     try {
         const admission = await Admission.findById(req.params.id)
-            .populate('batchId', 'name code');
+            .populate('batchId', 'name code')
+            .populate('counselorId', 'name email');
+        
         if (!admission) {
             return res.status(404).json({ success: false, message: 'Admission not found' });
         }
+        
+        // ✅ Counselor can only see their own admissions
+        if (req.user.role === 'counselor' && admission.counselorId?._id.toString() !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+        
         res.json({ success: true, data: admission });
     } catch (error) {
         console.error('🔴 getAdmissionById error:', error.message);
@@ -199,18 +193,19 @@ export const getAdmissionById = async (req, res) => {
     }
 };
 
+// @desc    Update admission
+// @route   PUT /api/admissions/:id
 export const updateAdmission = async (req, res) => {
     try {
-        console.log('🔵 UPDATE ADMISSION:', req.params.id);
-
-        if (!req.body) {
-            return res.status(400).json({ success: false, message: 'Request body is missing' });
-        }
-
         const admission = await Admission.findById(req.params.id);
         if (!admission) {
             if (req.file?.filename) await deleteFromCloudinary(req.file.filename);
             return res.status(404).json({ success: false, message: 'Admission not found' });
+        }
+        
+        // ✅ Counselor can only update their own admissions
+        if (req.user.role === 'counselor' && admission.counselorId.toString() !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
         }
 
         const updateData = { ...req.body };
@@ -225,9 +220,8 @@ export const updateAdmission = async (req, res) => {
             req.params.id,
             updateData,
             { new: true, runValidators: true }
-        ).populate('batchId', 'name code');
+        ).populate('batchId', 'name code').populate('counselorId', 'name email');
 
-        console.log('✅ Updated:', updated._id);
         res.json({ success: true, data: updated });
     } catch (error) {
         console.error('🔴 updateAdmission error:', error.message);
@@ -236,24 +230,27 @@ export const updateAdmission = async (req, res) => {
     }
 };
 
+// @desc    Delete admission
+// @route   DELETE /api/admissions/:id
 export const deleteAdmission = async (req, res) => {
     try {
-        console.log('🔵 DELETE ADMISSION:', req.params.id);
-
         const admission = await Admission.findById(req.params.id);
         if (!admission) {
             return res.status(404).json({ success: false, message: 'Admission not found' });
+        }
+        
+        // ✅ Counselor can only delete their own admissions
+        if (req.user.role === 'counselor' && admission.counselorId.toString() !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
         }
 
         if (admission.photoPublicId) await deleteFromCloudinary(admission.photoPublicId);
 
         if (admission.isUserCreated) {
             await User.findOneAndDelete({ email: admission.email });
-            console.log('✅ User deleted');
         }
 
         await admission.deleteOne();
-        console.log('✅ Admission deleted');
         res.json({ success: true, message: 'Admission deleted successfully' });
     } catch (error) {
         console.error('🔴 deleteAdmission error:', error.message);
@@ -261,58 +258,13 @@ export const deleteAdmission = async (req, res) => {
     }
 };
 
-// Alias for compatibility
-export const getAdmissions = getAllAdmissions;
-
-// Get admissions by counselor (ONLY ONE DECLARATION - KEEP THIS)
-// Add this at the end of your admissionController.js file
-export const getAdmissionsByCounselor = async (req, res) => {
-    try {
-        const { counselorId } = req.params;
-        
-        // Check if counselor is accessing their own admissions
-        if (req.user.role === 'counselor' && req.user.id !== counselorId) {
-            return res.status(403).json({ 
-                success: false, 
-                message: 'Access denied. You can only view your own admissions.' 
-            });
-        }
-        
-        // Find admissions - adjust the query based on your schema
-        // If your Admission model has a counselorId field:
-        // const admissions = await Admission.find({ counselorId: counselorId })
-        
-        // If not, return all admissions for now
-        const Admission = (await import('../models/Admission.js')).default;
-        const admissions = await Admission.find({})
-            .populate('batchId', 'name code')
-            .sort({ createdAt: -1 });
-        
-        const stats = {
-            total: admissions.length,
-            active: admissions.filter(a => a.status === 'active').length,
-            completed: admissions.filter(a => a.status === 'completed').length
-        };
-        
-        res.json({ 
-            success: true, 
-            data: admissions, 
-            stats,
-            counselorId: counselorId 
-        });
-    } catch (error) {
-        console.error('🔴 getAdmissionsByCounselor error:', error.message);
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-// @desc    Get admissions by counselor ID for dashboard
+// @desc    Get admissions by counselor for dashboard (tracking)
 // @route   GET /api/admissions/counselor/:counselorId
 export const getAdmissionsByCounselorForDashboard = async (req, res) => {
     try {
         const counselorId = req.params.counselorId || req.user._id;
         
-        // Agar Admission model mein counselorId field nahi hai toh saare admissions return karo
-        const admissions = await Admission.find({})
+        const admissions = await Admission.find({ counselorId })
             .populate('batchId', 'name code')
             .sort({ createdAt: -1 });
         
@@ -328,3 +280,62 @@ export const getAdmissionsByCounselorForDashboard = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// @desc    Get counselor wise admission statistics (Admin report)
+// @route   GET /api/admissions/counselor-stats
+export const getCounselorWiseAdmissionStats = async (req, res) => {
+    try {
+        // ✅ Admin only
+        if (req.user.role !== 'admin_manager' && req.user.role !== 'super_admin') {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Access denied. Admin access required.' 
+            });
+        }
+        
+        const stats = await Admission.aggregate([
+            {
+                $group: {
+                    _id: '$counselorId',
+                    totalAdmissions: { $sum: 1 },
+                    activeAdmissions: { 
+                        $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] } 
+                    },
+                    completedAdmissions: { 
+                        $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } 
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'counselor'
+                }
+            },
+            {
+                $unwind: '$counselor'
+            },
+            {
+                $project: {
+                    counselorId: '$_id',
+                    counselorName: '$counselor.name',
+                    counselorEmail: '$counselor.email',
+                    totalAdmissions: 1,
+                    activeAdmissions: 1,
+                    completedAdmissions: 1
+                }
+            },
+            { $sort: { totalAdmissions: -1 } }
+        ]);
+        
+        res.json({ success: true, data: stats });
+    } catch (error) {
+        console.error('getCounselorWiseAdmissionStats error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Alias for compatibility
+export const getAdmissions = getAllAdmissions;

@@ -8,26 +8,55 @@ const studentSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        lowercase: true
     },
-    phone: String,
+    phone: {
+        type: String,
+        default: ''
+    },
     enrollmentId: {
         type: String,
-        unique: true
+        unique: true,
+        sparse: true
     },
     batchId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Batch',
-        required: true
+        ref: 'Batch'
     },
-    course: String,
-    joinDate: Date,
+    course: {
+        type: String,
+        default: ''
+    },
+    joinDate: {
+        type: Date,
+        default: Date.now
+    },
     status: {
         type: String,
         enum: ['active', 'inactive', 'completed'],
         default: 'active'
     },
-    photo: String
+    photo: {
+        type: String,
+        default: ''
+    },
+    address: {
+        type: String,
+        default: ''
+    },
+    parentName: {
+        type: String,
+        default: ''
+    },
+    parentPhone: {
+        type: String,
+        default: ''
+    },
+    qualifications: {
+        type: String,
+        default: ''
+    }
 }, { timestamps: true });
 
 const Student = mongoose.model('Student', studentSchema);

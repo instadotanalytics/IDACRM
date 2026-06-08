@@ -1,350 +1,272 @@
 import express from 'express';
 import Attendance from '../models/Attendance.js';
-import Student from '../models/Student.js';
+import Admission from '../models/Admission.js';  // ✅ CHANGED: Student → Admission
 import Batch from '../models/Batch.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, trainerOnly } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// ============================================
-// CREATE / UPDATE ATTENDANCE
-// ============================================
+router.use(protect);
+router.use(trainerOnly);
 
-// @route   POST /api/attendance/mark
-// @desc    Mark or update attendance (Admin Manager & Trainer both can use)
-router.post('/mark', protect, async (req, res) => {
+// ==================== SAVE BULK ATTENDANCE ====================
+router.post('/bulk', async (req, res) => {
     try {
-        const { studentId, batchId, date, status, clockIn, clockOut, remarks } = req.body;
+        const { records } = req.body;
         
-        // Check if attendance already exists
-        let attendance = await Attendance.findOne({ 
-            studentId, 
-            date: new Date(date) 
-        });
-        
-        // Calculate working hours
-        let workingHours = '';
-        if (clockIn && clockOut) {
-            const inTime = new Date(`1970-01-01T${clockIn}:00`);
-            const outTime = new Date(`1970-01-01T${clockOut}:00`);
-            const diff = (outTime - inTime) / (1000 * 60 * 60);
-            workingHours = `${diff.toFixed(1)} hrs`;
-        }
-        
-        if (attendance) {
-            // Update existing
-            attendance.status = status;
-            attendance.clockIn = clockIn || attendance.clockIn;
-            attendance.clockOut = clockOut || attendance.clockOut;
-            attendance.workingHours = workingHours || attendance.workingHours;
-            attendance.remarks = remarks || attendance.remarks;
-            attendance.markedBy = req.user.id;
-            await attendance.save();
-            return res.json({ success: true, message: 'Attendance updated', data: attendance });
-        } else {
-            // Create new
-            attendance = await Attendance.create({
-                studentId,
-                batchId,
-                date: new Date(date),
-                status,
-                clockIn: clockIn || '',
-                clockOut: clockOut || '',
-                workingHours,
-                remarks: remarks || '',
-                markedBy: req.user.id
+        if (!records || records.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'No attendance records provided' 
             });
-            return res.status(201).json({ success: true, message: 'Attendance marked', data: attendance });
         }
-    } catch (error) {
-        console.error('Mark attendance error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
 
-// ============================================
-// BULK ATTENDANCE
-// ============================================
-
-// @route   POST /api/attendance/bulk-mark
-// @desc    Bulk mark attendance for multiple students
-router.post('/bulk-mark', protect, async (req, res) => {
-    try {
-        const { records, batchId, date, defaultStatus = 'Present' } = req.body;
-        
-        const results = { created: 0, updated: 0 };
+        const savedRecords = [];
         
         for (const record of records) {
-            let attendance = await Attendance.findOne({ 
-                studentId: record.studentId, 
-                date: new Date(date) 
+            const attendanceDate = new Date(record.date);
+            attendanceDate.setHours(0, 0, 0, 0);
+            
+            // Normalize status to proper case
+            const normalizedStatus = record.status.charAt(0).toUpperCase() + record.status.slice(1).toLowerCase();
+            
+            let attendance = await Attendance.findOne({
+                studentId: record.studentId,
+                date: attendanceDate
             });
             
             if (attendance) {
-                attendance.status = record.status || defaultStatus;
-                attendance.markedBy = req.user.id;
+                attendance.status = normalizedStatus;
+                attendance.remarks = record.remarks || '';
+                attendance.markedBy = req.user._id;
                 await attendance.save();
-                results.updated++;
+                savedRecords.push(attendance);
             } else {
-                await Attendance.create({
+                attendance = await Attendance.create({
                     studentId: record.studentId,
-                    batchId: batchId,
-                    date: new Date(date),
-                    status: record.status || defaultStatus,
-                    markedBy: req.user.id
+                    batchId: record.batchId,
+                    date: attendanceDate,
+                    status: normalizedStatus,
+                    remarks: record.remarks || '',
+                    markedBy: req.user._id
                 });
-                results.created++;
+                savedRecords.push(attendance);
             }
         }
         
-        res.json({ 
-            success: true, 
-            message: `${results.created} created, ${results.updated} updated`,
-            data: results 
+        res.json({
+            success: true,
+            data: savedRecords,
+            message: `Attendance saved for ${savedRecords.length} students`
         });
+        
     } catch (error) {
-        console.error('Bulk mark error:', error);
+        console.error('Error saving bulk attendance:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// ============================================
-// GET ATTENDANCE - ADMIN VIEW
-// ============================================
-
-// @route   GET /api/attendance/admin/overview
-// @desc    Get all attendance with filters (Admin Manager)
-router.get('/admin/overview', protect, async (req, res) => {
+// ==================== GET ATTENDANCE ====================
+router.get('/', async (req, res) => {
     try {
-        const { batchId, startDate, endDate, status, studentName } = req.query;
+        const { batchId, date, studentId } = req.query;
         
-        let match = {};
-        if (batchId && batchId !== 'all') match.batchId = batchId;
-        if (status && status !== 'all') match.status = status;
+        let query = {};
+        if (batchId) query.batchId = batchId;
+        if (studentId) query.studentId = studentId;
         
-        if (startDate && endDate) {
-            match.date = {
-                $gte: new Date(startDate),
-                $lte: new Date(endDate)
-            };
+        if (date) {
+            const searchDate = new Date(date);
+            searchDate.setHours(0, 0, 0, 0);
+            query.date = searchDate;
         }
         
-        let attendanceQuery = Attendance.find(match)
-            .populate('studentId', 'name email phone')
+        const attendance = await Attendance.find(query)
+            .populate('studentId', 'name email enrollmentId photo')
             .populate('batchId', 'name code')
-            .sort('-date');
+            .populate('markedBy', 'name')
+            .sort({ date: -1 });
         
-        let attendance = await attendanceQuery;
+        res.json({ success: true, data: attendance });
         
-        // Filter by student name if provided
-        if (studentName) {
-            attendance = attendance.filter(a => 
-                a.studentId?.name?.toLowerCase().includes(studentName.toLowerCase())
-            );
-        }
-        
-        // Batch-wise summary
-        const batchSummary = await Attendance.aggregate([
-            { $match: match },
-            { $group: {
-                _id: '$batchId',
-                total: { $sum: 1 },
-                present: { $sum: { $cond: [{ $eq: ['$status', 'Present'] }, 1, 0] } },
-                absent: { $sum: { $cond: [{ $eq: ['$status', 'Absent'] }, 1, 0] } },
-                leave: { $sum: { $cond: [{ $eq: ['$status', 'Leave'] }, 1, 0] } },
-                late: { $sum: { $cond: [{ $eq: ['$status', 'Late'] }, 1, 0] } }
-            }},
-            { $lookup: { from: 'batches', localField: '_id', foreignField: '_id', as: 'batchInfo' } }
-        ]);
-        
-        // Student-wise summary for top performers
-        const studentSummary = await Attendance.aggregate([
-            { $match: match },
-            { $group: {
-                _id: '$studentId',
-                total: { $sum: 1 },
-                present: { $sum: { $cond: [{ $eq: ['$status', 'Present'] }, 1, 0] } },
-                absent: { $sum: { $cond: [{ $eq: ['$status', 'Absent'] }, 1, 0] } }
-            }},
-            { $addFields: { percentage: { $multiply: [{ $divide: ['$present', '$total'] }, 100] } } },
-            { $sort: { percentage: -1 } },
-            { $limit: 10 },
-            { $lookup: { from: 'students', localField: '_id', foreignField: '_id', as: 'studentInfo' } }
-        ]);
-        
-        res.json({ 
-            success: true, 
-            data: { attendance, batchSummary, studentSummary }
-        });
     } catch (error) {
-        console.error('Get attendance error:', error);
+        console.error('Error getting attendance:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// ============================================
-// GET ATTENDANCE - TRAINER VIEW
-// ============================================
-
-// @route   GET /api/attendance/batch/:batchId
-// @desc    Get attendance for trainer's specific batch on a date
-router.get('/batch/:batchId', protect, async (req, res) => {
+// ==================== MONTHLY REPORT - FIXED ====================
+router.get('/batch/monthly', async (req, res) => {
     try {
-        const { batchId } = req.params;
-        const { date } = req.query;
+        const { batchId } = req.query;
         
-        const queryDate = date ? new Date(date) : new Date();
-        queryDate.setHours(0, 0, 0, 0);
-        const nextDate = new Date(queryDate);
-        nextDate.setDate(nextDate.getDate() + 1);
+        if (!batchId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Batch ID is required' 
+            });
+        }
         
-        // Get all active students in this batch
-        const students = await Student.find({ batchId, status: 'active' }).select('name email phone');
+        const batch = await Batch.findById(batchId);
+        if (!batch) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Batch not found' 
+            });
+        }
         
-        // Get existing attendance for this date
-        const attendanceRecords = await Attendance.find({
-            batchId,
-            date: { $gte: queryDate, $lt: nextDate }
+        // ✅ CHANGED: Student.find → Admission.find
+        // Kyunki attendance save karte waqt Admission._id use hota hai, Student._id nahi
+        const students = await Admission.find({ batchId: batchId });
+        
+        if (students.length === 0) {
+            return res.json({ 
+                success: true, 
+                data: [],
+                message: 'No students found in this batch'
+            });
+        }
+        
+        const allAttendance = await Attendance.find({ batchId: batchId });
+        
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+        
+        const currentMonthAttendance = allAttendance.filter(record => {
+            const recordDate = new Date(record.date);
+            return recordDate.getFullYear() === currentYear && recordDate.getMonth() === currentMonth;
         });
         
-        // Combine data
-        const attendanceData = students.map(student => {
-            const existing = attendanceRecords.find(a => a.studentId.toString() === student._id.toString());
+        console.log('Total attendance records this month:', currentMonthAttendance.length);
+        
+        const uniqueDates = new Set();
+        currentMonthAttendance.forEach(record => {
+            const date = new Date(record.date);
+            uniqueDates.add(date.toDateString());
+        });
+        const totalWorkingDays = uniqueDates.size || 1;
+        
+        const studentStats = students.map(student => {
+            const studentAttendance = currentMonthAttendance.filter(record => {
+                // ✅ FIXED: Ab dono Admission._id se compare ho rahe hain — match hoga
+                return record.studentId.toString() === student._id.toString();
+            });
+            
+            const present = studentAttendance.filter(r => 
+                r.status === 'Present' || r.status === 'present' || r.status === 'PRESENT'
+            ).length;
+            const absent = studentAttendance.filter(r => 
+                r.status === 'Absent' || r.status === 'absent' || r.status === 'ABSENT'
+            ).length;
+            const leave = studentAttendance.filter(r => 
+                r.status === 'Leave' || r.status === 'leave' || r.status === 'LEAVE'
+            ).length;
+            const late = studentAttendance.filter(r => 
+                r.status === 'Late' || r.status === 'late' || r.status === 'LATE'
+            ).length;
+            
+            const total = present + absent + leave + late;
+            const percentage = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
+            
+            console.log(`${student.name}: Present=${present}, Absent=${absent}, Leave=${leave}, Late=${late}`);
+            
             return {
-                studentId: student._id,
-                studentName: student.name,
-                studentEmail: student.email,
-                attendanceId: existing?._id || null,
-                status: existing?.status || 'Present',
-                clockIn: existing?.clockIn || '',
-                clockOut: existing?.clockOut || '',
-                workingHours: existing?.workingHours || '',
-                remarks: existing?.remarks || '',
-                isMarked: !!existing
+                id: student._id,
+                name: student.name,
+                email: student.email,
+                enrollmentId: student.enrollmentId || '',
+                present,
+                absent,
+                leave,
+                late,
+                total,
+                percentage: parseFloat(percentage)
             };
         });
         
-        // Batch info
-        const batch = await Batch.findById(batchId).select('name code timings');
+        const totalPresent = studentStats.reduce((sum, s) => sum + s.present, 0);
+        const totalAbsent = studentStats.reduce((sum, s) => sum + s.absent, 0);
+        const totalLeave = studentStats.reduce((sum, s) => sum + s.leave, 0);
+        const totalLate = studentStats.reduce((sum, s) => sum + s.late, 0);
         
-        res.json({ 
-            success: true, 
-            data: { 
-                batch, 
-                date: queryDate,
-                students: attendanceData,
-                totalStudents: students.length,
-                markedCount: attendanceRecords.length
-            } 
-        });
-    } catch (error) {
-        console.error('Get batch attendance error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// ============================================
-// STATS FOR ADMIN DASHBOARD
-// ============================================
-
-// @route   GET /api/attendance/admin/stats
-// @desc    Get attendance statistics for admin dashboard
-router.get('/admin/stats', protect, async (req, res) => {
-    try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        
-        // Today's attendance stats
-        const todayAttendance = await Attendance.find({
-            date: { $gte: today, $lt: tomorrow }
-        });
-        
-        // Total students
-        const totalStudents = await Student.countDocuments({ status: 'active' });
-        
-        // Overall attendance percentage (last 30 days)
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
-        const last30DaysAttendance = await Attendance.find({
-            date: { $gte: thirtyDaysAgo }
-        });
-        
-        const totalPresentLast30Days = last30DaysAttendance.filter(a => a.status === 'Present').length;
-        const attendancePercentage = last30DaysAttendance.length > 0 
-            ? ((totalPresentLast30Days / last30DaysAttendance.length) * 100).toFixed(1)
+        const totalPossibleAttendance = totalWorkingDays * students.length;
+        const overallPercentage = totalPossibleAttendance > 0 
+            ? ((totalPresent / totalPossibleAttendance) * 100).toFixed(1) 
             : 0;
         
-        const stats = {
-            totalPresent: todayAttendance.filter(a => a.status === 'Present').length,
-            totalAbsent: todayAttendance.filter(a => a.status === 'Absent').length,
-            leaveRequests: todayAttendance.filter(a => a.status === 'Leave').length,
-            lateEntries: todayAttendance.filter(a => a.status === 'Late').length,
-            attendancePercentage: attendancePercentage,
-            totalStudents: totalStudents
-        };
+        const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
         
-        res.json({ success: true, data: stats });
+        const result = [{
+            month: monthName,
+            totalDays: totalWorkingDays,
+            present: totalPresent,
+            absent: totalAbsent,
+            leave: totalLeave,
+            late: totalLate,
+            percentage: parseFloat(overallPercentage),
+            students: studentStats
+        }];
+        
+        console.log('Final Monthly Report:', JSON.stringify(result, null, 2));
+        
+        res.json({ success: true, data: result });
+        
     } catch (error) {
-        console.error('Get stats error:', error);
-        res.status(500).json({ success: false, message: error.message });
+        console.error('Error in monthly report:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
     }
 });
 
-// ============================================
-// DELETE ATTENDANCE (Admin only)
-// ============================================
-
-// @route   DELETE /api/attendance/:id
-// @desc    Delete attendance record (Admin Manager only)
-router.delete('/:id', protect, async (req, res) => {
+// ==================== UPDATE ATTENDANCE ====================
+router.put('/:id', async (req, res) => {
     try {
-        const attendance = await Attendance.findById(req.params.id);
-        if (!attendance) {
-            return res.status(404).json({ success: false, message: 'Attendance not found' });
-        }
-        
-        await attendance.deleteOne();
-        res.json({ success: true, message: 'Attendance deleted successfully' });
-    } catch (error) {
-        console.error('Delete attendance error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// ============================================
-// UPDATE ATTENDANCE (Admin only)
-// ============================================
-
-// @route   PUT /api/attendance/:id
-// @desc    Update attendance record
-router.put('/:id', protect, async (req, res) => {
-    try {
-        const { status, clockIn, clockOut, remarks } = req.body;
-        
-        let workingHours = '';
-        if (clockIn && clockOut) {
-            const inTime = new Date(`1970-01-01T${clockIn}:00`);
-            const outTime = new Date(`1970-01-01T${clockOut}:00`);
-            const diff = (outTime - inTime) / (1000 * 60 * 60);
-            workingHours = `${diff.toFixed(1)} hrs`;
-        }
+        const normalizedStatus = req.body.status.charAt(0).toUpperCase() + req.body.status.slice(1).toLowerCase();
         
         const attendance = await Attendance.findByIdAndUpdate(
             req.params.id,
-            { status, clockIn, clockOut, workingHours, remarks, markedBy: req.user.id },
+            {
+                status: normalizedStatus,
+                remarks: req.body.remarks,
+                markedBy: req.user._id
+            },
             { new: true }
         );
         
         if (!attendance) {
-            return res.status(404).json({ success: false, message: 'Attendance not found' });
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Attendance not found' 
+            });
         }
         
-        res.json({ success: true, message: 'Attendance updated', data: attendance });
+        res.json({ success: true, data: attendance });
+        
     } catch (error) {
-        console.error('Update attendance error:', error);
+        console.error('Error updating attendance:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ==================== DELETE ATTENDANCE ====================
+router.delete('/:id', async (req, res) => {
+    try {
+        const attendance = await Attendance.findByIdAndDelete(req.params.id);
+        
+        if (!attendance) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Attendance not found' 
+            });
+        }
+        
+        res.json({ success: true, message: 'Attendance deleted successfully' });
+        
+    } catch (error) {
+        console.error('Error deleting attendance:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

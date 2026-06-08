@@ -52,10 +52,24 @@ const callLogSchema = new mongoose.Schema({
         type: Date,
         default: null
     },
+    
+    // ✅ TRACKING FIELDS - Counselor Information
     counselorId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: true,
+        index: true
+    },
+    counselorName: {
+        type: String,
+        default: ''
+    },
+    
+    // ✅ For lead reference (optional, if linked to lead)
+    leadId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Lead',
+        default: null
     }
 }, { timestamps: true });
 

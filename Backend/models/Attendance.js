@@ -3,7 +3,9 @@ import mongoose from 'mongoose';
 const attendanceSchema = new mongoose.Schema({
     studentId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Student',
+        ref: 'Admission',  // ✅ CHANGED: 'Student' → 'Admission'
+        // Kyunki TrainerAttendanceMarker mein students /admissions se fetch hote hain
+        // aur unhi ke _id attendance mein save hote hain
         required: true
     },
     batchId: {
@@ -21,18 +23,31 @@ const attendanceSchema = new mongoose.Schema({
         enum: ['Present', 'Absent', 'Leave', 'Late'],
         default: 'Present'
     },
-    clockIn: String,
-    clockOut: String,
-    workingHours: String,
-    remarks: String,
+    clockIn: {
+        type: String,
+        default: ''
+    },
+    clockOut: {
+        type: String,
+        default: ''
+    },
+    workingHours: {
+        type: String,
+        default: ''
+    },
+    remarks: {
+        type: String,
+        default: ''
+    },
     markedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }
 }, { timestamps: true });
 
-// Compound index to prevent duplicate attendance for same student on same day
-attendanceSchema.index({ studentId: 1, date: 1 }, { unique: true });
+// Index for faster queries
+attendanceSchema.index({ studentId: 1, date: 1 });
+attendanceSchema.index({ batchId: 1, date: 1 });
 
 const Attendance = mongoose.model('Attendance', attendanceSchema);
 export default Attendance;

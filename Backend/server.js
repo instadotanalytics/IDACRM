@@ -9,6 +9,12 @@ import admissionRoutes from './routes/admissionRoutes.js';
 import batchRoutes from './routes/batchRoutes.js';
 import leadRoutes from './routes/leadRoutes.js';
 import callRoutes from './routes/callRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import testRoutes from './routes/testRoutes.js';
+import assignmentRoutes from './routes/assignmentRoutes.js';
+import courseMaterialRoutes from './routes/courseMaterialRoutes.js';
+import studentPerformanceRoutes from './routes/studentPerformanceRoutes.js';
+
 
 dotenv.config();
 
@@ -42,6 +48,11 @@ app.use('/api/admissions', admissionRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/calls', callRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/assignments', assignmentRoutes);
+app.use('/api/student-performance', studentPerformanceRoutes);
+app.use('/api/tests', testRoutes);
+app.use('/api/course-materials', courseMaterialRoutes);
 
 // Error handler — sabse neeche rakho
 app.use((err, req, res, next) => {

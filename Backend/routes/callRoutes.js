@@ -6,16 +6,21 @@ import {
     getAllCalls,
     updateCallLog,
     deleteCallLog,
-    getCallsByCounselorForDashboard  // ✅ Import this
+    getCallsByCounselor,
+    getCallsByCounselorForDashboard,
+    getCounselorWiseCallStats  // ✅ New admin report
 } from '../controllers/callLogController.js';
-import { protect, counselorOnly } from '../middleware/authMiddleware.js';
+import { protect, adminManagerOnly } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 router.use(protect);
 
+// ✅ Admin report route
+router.get('/counselor-stats', adminManagerOnly, getCounselorWiseCallStats);
+
 // ✅ Dashboard route for counselor
-router.get('/counselor/:counselorId', counselorOnly, getCallsByCounselorForDashboard);
+router.get('/counselor/:counselorId', getCallsByCounselorForDashboard);
 
 router.post('/', addCallLog);
 router.get('/today', getTodayCalls);

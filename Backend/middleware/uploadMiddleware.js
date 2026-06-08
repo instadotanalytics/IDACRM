@@ -52,5 +52,82 @@ export const uploadPhoto = upload.single('photo');
 // ✅ ADD THIS - Export the cloudinary instance if needed elsewhere
 export { cloudinary };
 
+// Add this configuration for assignments
+const assignmentStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'IDACRM/assignments',
+        allowed_formats: ['pdf', 'doc', 'docx', 'zip', 'txt', 'jpg', 'jpeg', 'png'],
+        resource_type: 'auto'
+    }
+});
+
+const assignmentUpload = multer({
+    storage: assignmentStorage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip', 'text/plain', 'image/jpeg', 'image/jpg', 'image/png'];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only PDF, DOC, DOCX, ZIP, TXT, and image files are allowed'), false);
+        }
+    }
+});
+
+export const uploadAssignment = assignmentUpload;
+
+
+
+// PDF upload for tests
+const testPDFStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'IDACRM/tests',
+        allowed_formats: ['pdf'],
+        resource_type: 'auto'
+    }
+});
+
+export const uploadTestPDF = multer({
+    storage: testPDFStorage,
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/pdf') {
+            cb(null, true);
+        } else {
+            cb(new Error('Only PDF files are allowed'), false);
+        }
+    }
+});
+
+// Add this to your existing uploadMiddleware.js
+
+// Course material upload
+const materialStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'IDACRM/materials',
+        allowed_formats: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'jpg', 'jpeg', 'png', 'mp4', 'mov'],
+        resource_type: 'auto'
+    }
+});
+
+export const uploadMaterial = multer({
+    storage: materialStorage,
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/plain', 'image/jpeg', 'image/jpg', 'image/png', 'video/mp4', 'video/quicktime'];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('File type not allowed'), false);
+        }
+    }
+});
+
+
+
+
 // ✅ Default export
 export default upload;

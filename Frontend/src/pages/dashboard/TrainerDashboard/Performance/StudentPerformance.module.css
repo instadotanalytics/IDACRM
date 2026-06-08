@@ -1,0 +1,576 @@
+.container {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.header {
+    margin-bottom: 32px;
+}
+
+.header h2 {
+    font-size: 28px;
+    color: #e0e0e0;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header p {
+    color: #a0a0a0;
+}
+
+.backBtn {
+    background: #2a2a35;
+    border: 1px solid #3a3a45;
+    color: #e0e0e0;
+    padding: 10px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-bottom: 24px;
+}
+
+.backBtn:hover {
+    background: #3a3a45;
+    border-color: #6366f1;
+}
+
+.batchHeader {
+    background: linear-gradient(135deg, #1a1a24, #1e1e2a);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.batchHeader h2 {
+    font-size: 24px;
+    color: #e0e0e0;
+    margin-bottom: 8px;
+}
+
+.batchHeader p {
+    color: #a0a0a0;
+}
+
+.batchesGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.batchCard {
+    background: #2a2a35;
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    border: 1px solid #3a3a45;
+    transition: all 0.3s;
+}
+
+.batchCard:hover {
+    transform: translateY(-4px);
+    border-color: #6366f1;
+}
+
+.batchCardIcon {
+    font-size: 48px;
+}
+
+.batchCardInfo {
+    flex: 1;
+}
+
+.batchCardInfo h3 {
+    font-size: 18px;
+    color: #e0e0e0;
+    margin-bottom: 4px;
+}
+
+.batchCardInfo p {
+    font-size: 12px;
+    color: #a0a0a0;
+}
+
+.batchCardStats {
+    display: flex;
+    gap: 16px;
+    margin-top: 8px;
+    font-size: 12px;
+}
+
+.batchCardArrow {
+    font-size: 20px;
+    color: #6366f1;
+}
+
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.statCard {
+    background: #2a2a35;
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid #3a3a45;
+}
+
+.statIcon {
+    font-size: 32px;
+    color: #6366f1;
+}
+
+.statInfo {
+    flex: 1;
+}
+
+.statValue {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: #e0e0e0;
+}
+
+.statLabel {
+    font-size: 13px;
+    color: #a0a0a0;
+}
+
+.chartCard {
+    background: #2a2a35;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+    border: 1px solid #3a3a45;
+}
+
+.chartCard h3 {
+    font-size: 18px;
+    color: #e0e0e0;
+    margin-bottom: 20px;
+}
+
+.chartContainer {
+    height: 300px;
+}
+
+.filterBar {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.searchBox {
+    flex: 1;
+    background: #2a2a35;
+    border: 1px solid #3a3a45;
+    border-radius: 12px;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.searchBox input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #e0e0e0;
+    outline: none;
+}
+
+.filterSelect {
+    background: #2a2a35;
+    border: 1px solid #3a3a45;
+    color: #e0e0e0;
+    padding: 12px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.tableWrapper {
+    background: #2a2a35;
+    border-radius: 16px;
+    overflow-x: auto;
+    border: 1px solid #3a3a45;
+}
+
+.performanceTable {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1000px;
+}
+
+.performanceTable th,
+.performanceTable td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid #3a3a45;
+}
+
+.performanceTable th {
+    background: #1e1e2a;
+    color: #a0a0a0;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.studentCell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.studentAvatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatarFallback {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+}
+
+.studentName {
+    font-weight: 500;
+    color: #e0e0e0;
+}
+
+.studentEmail {
+    font-size: 12px;
+    color: #a0a0a0;
+}
+
+.attendanceCell {
+    text-align: center;
+}
+
+.progressCircle {
+    width: 50px;
+    height: 50px;
+    background: #1e1e2a;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #6366f1;
+}
+
+.progressCircle span {
+    font-size: 14px;
+    font-weight: bold;
+    color: #6366f1;
+}
+
+.overallCell strong {
+    font-size: 16px;
+    color: #e0e0e0;
+}
+
+.gradeBadge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.statusGood {
+    background: #10b98120;
+    color: #10b981;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.statusAverage {
+    background: #f59e0b20;
+    color: #f59e0b;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.statusPoor {
+    background: #f9731620;
+    color: #f97316;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.statusBad {
+    background: #ef444420;
+    color: #ef4444;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.viewBtn {
+    background: #6366f1;
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.viewBtn:hover {
+    background: #4f46e5;
+}
+
+/* Modal Styles */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: #2a2a35;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 900px;
+    max-height: 85vh;
+    overflow: auto;
+}
+
+.largeModal {
+    max-width: 900px;
+}
+
+.modalHeader {
+    padding: 20px 24px;
+    border-bottom: 1px solid #3a3a45;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modalHeaderInfo {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.studentAvatarLarge {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.studentAvatarLarge img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatarFallbackLarge {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+}
+
+.modalHeader button {
+    background: none;
+    border: none;
+    color: #a0a0a0;
+    cursor: pointer;
+    font-size: 20px;
+}
+
+.modalBody {
+    padding: 24px;
+}
+
+.gradeCard {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.gradeInfo {
+    text-align: center;
+}
+
+.gradeLabel {
+    display: block;
+    font-size: 14px;
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 8px;
+}
+
+.gradeValue {
+    font-size: 48px;
+    font-weight: bold;
+    color: white;
+}
+
+.scoreInfo {
+    text-align: center;
+    color: white;
+}
+
+.statsGridModal {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.statCardModal {
+    background: #1e1e2a;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.statContent {
+    flex: 1;
+}
+
+.detailStats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.detailCard {
+    background: #1e1e2a;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.detailCard h4 {
+    font-size: 14px;
+    color: #e0e0e0;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #3a3a45;
+}
+
+.detailRow {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #a0a0a0;
+}
+
+.detailRow strong {
+    color: #e0e0e0;
+}
+
+.remarksCard {
+    background: #1e1e2a;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.remarksCard h4 {
+    font-size: 14px;
+    color: #e0e0e0;
+    margin-bottom: 8px;
+}
+
+.remarksCard p {
+    color: #a0a0a0;
+    font-size: 13px;
+}
+
+.modalFooter {
+    padding: 16px 24px;
+    border-top: 1px solid #3a3a45;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.downloadBtn {
+    background: #2a2a35;
+    border: 1px solid #3a3a45;
+    color: #a0a0a0;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.closeBtn {
+    background: #6366f1;
+    border: none;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.loadingContainer, .emptyContainer {
+    text-align: center;
+    padding: 60px;
+    color: #a0a0a0;
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.emptyIcon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}

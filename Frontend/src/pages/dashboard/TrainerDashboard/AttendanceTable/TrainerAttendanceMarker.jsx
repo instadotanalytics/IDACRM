@@ -1,537 +1,659 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { 
-  FaSearch, FaFilter, FaDownload, FaPrint, FaEdit, FaTrash, 
-  FaUserGraduate, FaChartLine, FaTimes, FaSpinner 
+import {
+    FaSearch, FaCalendarAlt, FaSpinner, FaCheck, FaTimes,
+    FaArrowLeft, FaEye, FaSave, FaChartLine, FaUsers,
+    FaClock, FaDownload, FaUserCheck, FaCalendarWeek,
+    FaGraduationCap, FaPercentage, FaCheckCircle, FaTimesCircle
 } from 'react-icons/fa';
 import api from '../../../../services/api';
 import styles from './TrainerAttendanceMarker.module.css';
 
-const AttendanceTable = () => {
+const TrainerAttendanceMarker = () => {
     const [loading, setLoading] = useState(false);
-    const [attendanceData, setAttendanceData] = useState([]);
-    const [students, setStudents] = useState([]);
+    const [saving, setSaving] = useState(false);
     const [batches, setBatches] = useState([]);
-    const [selectedStudents, setSelectedStudents] = useState([]);
-    const [showModal, setShowModal] = useState(false);
-    const [editingRecord, setEditingRecord] = useState(null);
-    const [filters, setFilters] = useState({
-        search: '',
-        batch: 'all',
-        status: 'all',
-        date: new Date().toISOString().split('T')[0],
-    });
+    const [selectedBatch, setSelectedBatch] = useState(null);
+    const [students, setStudents] = useState([]);
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [attendanceData, setAttendanceData] = useState([]);
+    const [monthlyReports, setMonthlyReports] = useState([]);
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [selectedReport, setSelectedReport] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
-    // Fetch students from API
-    const fetchStudents = async () => {
+    const fetchBatches = async () => {
+        setLoading(true);
         try {
-            const response = await api.get('/students');
+            const response = await api.get('/batches/trainer/assigned');
             if (response.data.success) {
-                setStudents(response.data.data);
-                // Extract unique batches
-                const uniqueBatches = [...new Set(response.data.data.map(s => s.batch))];
-                setBatches(uniqueBatches);
+                setBatches(response.data.data);
+            } else {
+                const allBatchesRes = await api.get('/batches');
+                if (allBatchesRes.data.success) {
+                    const user = JSON.parse(localStorage.getItem('user'));
+                    const trainerBatches = allBatchesRes.data.data.filter(
+                        batch => batch.trainerId?._id === user?._id || batch.trainerId === user?._id
+                    );
+                    setBatches(trainerBatches);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching batches:', error);
+            toast.error('Failed to fetch batches');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchStudentsByBatch = async () => {
+        if (!selectedBatch) return;
+        setLoading(true);
+        try {
+            const response = await api.get('/admissions');
+            if (response.data.success) {
+                const allStudents = response.data.data;
+                const batchStudents = allStudents.filter(student => {
+                    const studentBatchId = student.batchId?._id || student.batchId;
+                    return studentBatchId === selectedBatch._id;
+                });
+                setStudents(batchStudents);
+                const initialAttendance = batchStudents.map(student => ({
+                    studentId: student._id,
+                    studentName: student.name,
+                    email: student.email,
+                    photo: student.photo,
+                    enrollmentId: student.enrollmentId,
+                    status: 'Present',
+                    remarks: '',
+                    attendanceId: null
+                }));
+                setAttendanceData(initialAttendance);
             }
         } catch (error) {
             console.error('Error fetching students:', error);
             toast.error('Failed to fetch students');
+        } finally {
+            setLoading(false);
         }
     };
 
-    // Fetch attendance from API
-    const fetchAttendance = async () => {
-        setLoading(true);
+    const fetchAttendanceForDate = async () => {
+        if (!selectedBatch || !selectedDate || students.length === 0) return;
         try {
-            const params = {};
-            if (filters.batch !== 'all') params.batchId = filters.batch;
-            if (filters.date) params.date = filters.date;
-            if (filters.status !== 'all') params.status = filters.status;
-            
-            const response = await api.get('/attendance', { params });
-            if (response.data.success) {
-                setAttendanceData(response.data.data);
+            const response = await api.get('/attendance', {
+                params: { batchId: selectedBatch._id, date: selectedDate }
+            });
+            if (response.data.success && response.data.data.length > 0) {
+                const existingAttendance = response.data.data;
+                const updatedAttendance = attendanceData.map(student => {
+                    const existing = existingAttendance.find(a => {
+                        const studentIdFromAtt = a.studentId?._id || a.studentId;
+                        return studentIdFromAtt === student.studentId;
+                    });
+                    if (existing) {
+                        return { ...student, status: existing.status, remarks: existing.remarks || '', attendanceId: existing._id };
+                    }
+                    return student;
+                });
+                setAttendanceData(updatedAttendance);
             }
         } catch (error) {
             console.error('Error fetching attendance:', error);
-            toast.error('Failed to fetch attendance');
-        } finally {
-            setLoading(false);
         }
     };
 
-    // Fetch or generate attendance for today
-    const fetchOrGenerateAttendance = async () => {
-        setLoading(true);
+    const fetchMonthlyReports = async () => {
+        if (!selectedBatch) return;
         try {
-            // First try to get existing attendance
-            const params = { date: filters.date };
-            if (filters.batch !== 'all') params.batchId = filters.batch;
-            
-            let response = await api.get('/attendance', { params });
-            
-            if (response.data.success && response.data.data.length === 0) {
-                // No attendance marked for today, generate from students
-                let studentsList = students;
-                if (filters.batch !== 'all') {
-                    studentsList = students.filter(s => s.batch === filters.batch);
-                }
-                
-                // Create attendance records for each student
-                const attendanceRecords = studentsList.map(student => ({
-                    studentId: student._id,
-                    batchId: student.batchId,
-                    date: filters.date,
-                    status: 'Present',
-                    clockIn: null,
-                    clockOut: null,
-                    remarks: ''
-                }));
-                
-                // Bulk create attendance
-                const createResponse = await api.post('/attendance/bulk', { records: attendanceRecords });
-                if (createResponse.data.success) {
-                    await fetchAttendance();
-                }
-            } else {
-                setAttendanceData(response.data.data);
+            const response = await api.get('/attendance/batch/monthly', {
+                params: { batchId: selectedBatch._id }
+            });
+            if (response.data.success) {
+                setMonthlyReports(response.data.data);
             }
         } catch (error) {
-            console.error('Error:', error);
-            toast.error('Failed to load attendance');
-        } finally {
-            setLoading(false);
+            console.error('Error fetching monthly reports:', error);
         }
     };
 
+    useEffect(() => { fetchBatches(); }, []);
     useEffect(() => {
-        fetchStudents();
-    }, []);
-
+        if (selectedBatch) { fetchStudentsByBatch(); fetchMonthlyReports(); }
+    }, [selectedBatch]);
     useEffect(() => {
-        if (students.length > 0) {
-            fetchOrGenerateAttendance();
-        }
-    }, [filters.batch, filters.date, students]);
+        if (selectedBatch && selectedDate && students.length > 0) { fetchAttendanceForDate(); }
+    }, [selectedDate]);
 
-    // Calculate stats from real data
-    const stats = {
-        totalStudents: attendanceData.length,
-        present: attendanceData.filter(a => a.status === 'Present').length,
-        absent: attendanceData.filter(a => a.status === 'Absent').length,
-        leave: attendanceData.filter(a => a.status === 'Leave').length,
-        late: attendanceData.filter(a => a.status === 'Late').length,
-        percentage: attendanceData.length > 0 
-            ? ((attendanceData.filter(a => a.status === 'Present').length / attendanceData.length) * 100).toFixed(1) 
-            : 0
+    const handleStatusChange = (studentId, status) => {
+        setAttendanceData(prev => prev.map(s => s.studentId === studentId ? { ...s, status } : s));
+    };
+    const handleRemarksChange = (studentId, remarks) => {
+        setAttendanceData(prev => prev.map(s => s.studentId === studentId ? { ...s, remarks } : s));
+    };
+    const markAll = (status) => {
+        setAttendanceData(prev => prev.map(s => ({ ...s, status })));
     };
 
-    // Mark single attendance
-    const markAttendance = async (studentId, status) => {
+    const saveAttendance = async () => {
+        if (!selectedBatch) { toast.error('No batch selected'); return; }
+        if (attendanceData.length === 0) { toast.error('No students in this batch'); return; }
+        setSaving(true);
         try {
-            const existingRecord = attendanceData.find(a => a.studentId?._id === studentId);
-            
-            if (existingRecord) {
-                // Update existing
-                await api.put(`/attendance/${existingRecord._id}`, { status });
-            } else {
-                // Create new
-                await api.post('/attendance', {
-                    studentId,
-                    batchId: students.find(s => s._id === studentId)?.batchId,
-                    date: filters.date,
-                    status
-                });
-            }
-            
-            toast.success(`Attendance marked as ${status}`);
-            fetchAttendance();
-        } catch (error) {
-            console.error('Error marking attendance:', error);
-            toast.error('Failed to mark attendance');
-        }
-    };
-
-    // Bulk attendance
-    const handleBulkAttendance = async (status) => {
-        if (selectedStudents.length === 0) {
-            toast.error('No students selected');
-            return;
-        }
-        
-        setLoading(true);
-        try {
-            const records = selectedStudents.map(studentId => ({
-                studentId,
-                batchId: students.find(s => s._id === studentId)?.batchId,
-                date: filters.date,
-                status
+            const records = attendanceData.map(student => ({
+                studentId: student.studentId,
+                batchId: selectedBatch._id,
+                date: selectedDate,
+                status: student.status,
+                remarks: student.remarks,
+                attendanceId: student.attendanceId
             }));
-            
-            await api.post('/attendance/bulk', { records });
-            toast.success(`${selectedStudents.length} students marked as ${status}`);
-            setSelectedStudents([]);
-            fetchAttendance();
-        } catch (error) {
-            console.error('Error bulk marking:', error);
-            toast.error('Failed to mark attendance');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Update attendance
-    const handleUpdateAttendance = async () => {
-        if (!editingRecord) return;
-        
-        setLoading(true);
-        try {
-            await api.put(`/attendance/${editingRecord._id}`, {
-                status: editingRecord.status,
-                clockIn: editingRecord.clockIn,
-                clockOut: editingRecord.clockOut,
-                remarks: editingRecord.remarks
-            });
-            
-            toast.success('Attendance updated successfully');
-            setShowModal(false);
-            setEditingRecord(null);
-            fetchAttendance();
-        } catch (error) {
-            console.error('Error updating attendance:', error);
-            toast.error('Failed to update attendance');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Delete attendance
-    const handleDeleteAttendance = async (id, studentName) => {
-        if (window.confirm(`Delete attendance for ${studentName}?`)) {
-            setLoading(true);
-            try {
-                await api.delete(`/attendance/${id}`);
-                toast.success('Attendance deleted successfully');
-                fetchAttendance();
-            } catch (error) {
-                console.error('Error deleting attendance:', error);
-                toast.error('Failed to delete attendance');
-            } finally {
-                setLoading(false);
+            const response = await api.post('/attendance/bulk', { records });
+            if (response.data.success) {
+                toast.success(`Attendance saved for ${selectedDate}`);
+                fetchMonthlyReports();
+                await fetchAttendanceForDate();
             }
-        }
-    };
-
-    const handleSelectAll = (e) => {
-        if (e.target.checked) {
-            setSelectedStudents(attendanceData.map(a => a.studentId?._id).filter(Boolean));
-        } else {
-            setSelectedStudents([]);
-        }
-    };
-
-    const handleSelectStudent = (studentId) => {
-        if (selectedStudents.includes(studentId)) {
-            setSelectedStudents(selectedStudents.filter(id => id !== studentId));
-        } else {
-            setSelectedStudents([...selectedStudents, studentId]);
-        }
-    };
-
-    const getStatusBadge = (status) => {
-        switch(status) {
-            case 'Present': return <span className={`${styles.statusBadge} ${styles.present}`}>✓ Present</span>;
-            case 'Absent': return <span className={`${styles.statusBadge} ${styles.absent}`}>✗ Absent</span>;
-            case 'Leave': return <span className={`${styles.statusBadge} ${styles.leave}`}>○ Leave</span>;
-            case 'Late': return <span className={`${styles.statusBadge} ${styles.late}`}>⏰ Late</span>;
-            default: return <span className={styles.statusBadge}>{status}</span>;
-        }
-    };
-
-    const exportToExcel = async () => {
-        try {
-            const response = await api.get('/attendance/export', { 
-                params: filters,
-                responseType: 'blob' 
-            });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `attendance_${filters.date}.xlsx`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            toast.success('Exporting to Excel...');
         } catch (error) {
-            toast.error('Export failed');
+            toast.error(error.response?.data?.message || 'Failed to save attendance');
+        } finally {
+            setSaving(false);
         }
     };
 
-    const exportToPDF = async () => {
-        try {
-            const response = await api.get('/attendance/export-pdf', { 
-                params: filters,
-                responseType: 'blob' 
-            });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `attendance_${filters.date}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            toast.success('Exporting to PDF...');
-        } catch (error) {
-            toast.error('Export failed');
-        }
+    // ✅ PDF DOWNLOAD FUNCTION - jsPDF library se
+    const downloadReport = (report) => {
+        const reportToDownload = report || selectedReport;
+        if (!reportToDownload) return;
+
+        // HTML table banao aur print karo — no external library needed
+        const printWindow = window.open('', '_blank');
+        const batchName = selectedBatch?.name || 'Batch';
+        const batchCode = selectedBatch?.code || '';
+        const batchCourse = selectedBatch?.course || '';
+
+        const tableRows = reportToDownload.students?.map((student, idx) => `
+            <tr style="background:${idx % 2 === 0 ? '#f8fafc' : '#ffffff'}">
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;color:#64748b;font-size:13px">${idx + 1}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;">
+                    <div style="font-weight:600;color:#1e293b;font-size:14px">${student.name}</div>
+                    <div style="color:#94a3b8;font-size:12px">${student.enrollmentId || ''}</div>
+                </td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;color:#16a34a;font-weight:600;font-size:14px">${student.present}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;color:#dc2626;font-weight:600;font-size:14px">${student.absent}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;color:#d97706;font-weight:600;font-size:14px">${student.leave || 0}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;color:#6366f1;font-weight:600;font-size:14px">${student.late || 0}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:600;font-size:14px">${student.total}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;">
+                    <span style="background:${student.percentage >= 75 ? '#dcfce7' : '#fee2e2'};color:${student.percentage >= 75 ? '#16a34a' : '#dc2626'};padding:4px 10px;border-radius:20px;font-size:13px;font-weight:700">${student.percentage}%</span>
+                </td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;">
+                    <span style="background:${student.percentage >= 75 ? '#dcfce7' : '#fee2e2'};color:${student.percentage >= 75 ? '#16a34a' : '#dc2626'};padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">${student.percentage >= 75 ? '✓ Good' : '⚠ At Risk'}</span>
+                </td>
+            </tr>
+        `).join('') || '';
+
+        const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Attendance Report - ${reportToDownload.month}</title>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { font-family: 'Outfit', sans-serif; background: #fff; color: #1e293b; }
+                @media print {
+                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .no-print { display: none; }
+                }
+            </style>
+        </head>
+        <body style="padding:40px;max-width:1000px;margin:0 auto">
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:16px;padding:32px;margin-bottom:28px;color:white">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                    <div>
+                        <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#94a3b8;margin-bottom:6px">Monthly Attendance Report</div>
+                        <div style="font-size:28px;font-weight:800;margin-bottom:4px">${reportToDownload.month}</div>
+                        <div style="font-size:15px;color:#94a3b8">${batchName} &nbsp;·&nbsp; ${batchCode} &nbsp;·&nbsp; ${batchCourse}</div>
+                    </div>
+                    <div style="text-align:right">
+                        <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">Overall Attendance</div>
+                        <div style="font-size:40px;font-weight:800;color:${reportToDownload.percentage >= 75 ? '#4ade80' : '#f87171'}">${reportToDownload.percentage}%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px">
+                ${[
+                    { label: 'Total Students', value: reportToDownload.students?.length || 0, color: '#6366f1', bg: '#eef2ff' },
+                    { label: 'Working Days', value: reportToDownload.totalDays, color: '#0ea5e9', bg: '#f0f9ff' },
+                    { label: 'Present', value: reportToDownload.present, color: '#16a34a', bg: '#f0fdf4' },
+                    { label: 'Absent', value: reportToDownload.absent, color: '#dc2626', bg: '#fef2f2' },
+                    { label: 'Leave', value: reportToDownload.leave, color: '#d97706', bg: '#fffbeb' },
+                ].map(card => `
+                    <div style="background:${card.bg};border-radius:12px;padding:16px;text-align:center">
+                        <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${card.label}</div>
+                        <div style="font-size:26px;font-weight:800;color:${card.color}">${card.value}</div>
+                    </div>
+                `).join('')}
+            </div>
+
+            <!-- Table -->
+            <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden">
+                <div style="padding:18px 20px;border-bottom:1px solid #e2e8f0;background:#f8fafc">
+                    <span style="font-size:15px;font-weight:700;color:#1e293b">Student-wise Attendance Details</span>
+                </div>
+                <table style="width:100%;border-collapse:collapse">
+                    <thead>
+                        <tr style="background:#f1f5f9">
+                            <th style="padding:12px 14px;text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#64748b;font-weight:600">#</th>
+                            <th style="padding:12px 14px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#64748b;font-weight:600">Student</th>
+                            <th style="padding:12px 14px;text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#16a34a;font-weight:600">Present</th>
+                            <th style="padding:12px 14px;text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#dc2626;font-weight:600">Absent</th>
+                            <th style="padding:12px 14px;text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#d97706;font-weight:600">Leave</th>
+                            <th style="padding:12px 14px;text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#6366f1;font-weight:600">Late</th>
+                            <th style="padding:12px 14px;text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#64748b;font-weight:600">Total</th>
+                            <th style="padding:12px 14px;text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#64748b;font-weight:600">%</th>
+                            <th style="padding:12px 14px;text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#64748b;font-weight:600">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            </div>
+
+            <!-- Footer -->
+            <div style="margin-top:24px;text-align:center;color:#94a3b8;font-size:12px">
+                Generated on ${new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })} &nbsp;·&nbsp; ${batchName} Attendance System
+            </div>
+
+            <div class="no-print" style="text-align:center;margin-top:30px">
+                <button onclick="window.print()" style="background:#0f172a;color:white;border:none;padding:12px 32px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">
+                    🖨️ Print / Save as PDF
+                </button>
+            </div>
+        </body>
+        </html>`;
+
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 500);
     };
 
-    // Filtered data based on search and status
-    const filteredData = attendanceData.filter(record => {
-        const studentName = record.studentId?.name || '';
-        const matchesSearch = studentName.toLowerCase().includes(filters.search.toLowerCase());
-        const matchesStatus = filters.status === 'all' || record.status === filters.status;
-        return matchesSearch && matchesStatus;
-    });
+    const getAttendanceSummary = () => {
+        const present = attendanceData.filter(s => s.status === 'Present').length;
+        const absent = attendanceData.filter(s => s.status === 'Absent').length;
+        const leave = attendanceData.filter(s => s.status === 'Leave').length;
+        const late = attendanceData.filter(s => s.status === 'Late').length;
+        return { present, absent, leave, late, total: attendanceData.length };
+    };
 
-    if (loading && attendanceData.length === 0) {
+    const summary = getAttendanceSummary();
+    const summaryPercentage = summary.total > 0 ? ((summary.present / summary.total) * 100).toFixed(1) : 0;
+
+    const filteredStudents = attendanceData.filter(student =>
+        student.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.enrollmentId?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const getStatusColor = (status) => {
+        const map = { Present: styles.statusPresent, Absent: styles.statusAbsent, Leave: styles.statusLeave, Late: styles.statusLate };
+        return map[status] || '';
+    };
+
+    // ── BATCH SELECTION VIEW ──
+    if (!selectedBatch) {
         return (
-            <div className={styles.loadingContainer}>
-                <FaSpinner className={styles.spinner} />
-                <p>Loading attendance data...</p>
+            <div className={styles.container}>
+                <div className={styles.pageHeader}>
+                    <div className={styles.pageHeaderIcon}><FaUserCheck /></div>
+                    <div>
+                        <h1>Attendance Manager</h1>
+                        <p>Select a batch to begin marking attendance</p>
+                    </div>
+                </div>
+
+                {loading ? (
+                    <div className={styles.loaderWrap}>
+                        <div className={styles.loaderSpinner}></div>
+                        <span>Loading batches...</span>
+                    </div>
+                ) : batches.length === 0 ? (
+                    <div className={styles.emptyState}>
+                        <div className={styles.emptyIcon}>📚</div>
+                        <h3>No Batches Assigned</h3>
+                        <p>You don't have any batches assigned yet.</p>
+                    </div>
+                ) : (
+                    <div className={styles.batchesGrid}>
+                        {batches.map((batch, i) => (
+                            <div
+                                key={batch._id}
+                                className={styles.batchCard}
+                                onClick={() => setSelectedBatch(batch)}
+                                style={{ animationDelay: `${i * 60}ms` }}
+                            >
+                                <div className={styles.batchCardAccent}></div>
+                                <div className={styles.batchCardTop}>
+                                    <div className={styles.batchCardEmoji}>📚</div>
+                                    <span className={styles.batchCardStatus}>{batch.status || 'active'}</span>
+                                </div>
+                                <h3 className={styles.batchCardName}>{batch.name}</h3>
+                                <p className={styles.batchCardCode}>{batch.code}</p>
+                                <div className={styles.batchCardMeta}>
+                                    <span><FaUsers /> {batch.studentsCount || 0} Students</span>
+                                    <span><FaClock /> {batch.timings}</span>
+                                </div>
+                                <div className={styles.batchCardCourse}>{batch.course}</div>
+                                <div className={styles.batchCardArrow}>Mark Attendance →</div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         );
     }
 
+    // ── MAIN ATTENDANCE VIEW ──
     return (
         <div className={styles.container}>
-            {/* Stats Cards */}
-            <div className={styles.statsGrid}>
-                <div className={styles.statCard}>
-                    <div className={styles.statIcon}><FaUserGraduate /></div>
-                    <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.totalStudents}</span>
-                        <span className={styles.statLabel}>Total Students</span>
-                    </div>
+            {/* Top Bar */}
+            <div className={styles.topBar}>
+                <button className={styles.backBtn} onClick={() => setSelectedBatch(null)}>
+                    <FaArrowLeft /> Batches
+                </button>
+                <div className={styles.batchTitle}>
+                    <span className={styles.batchTitleName}>{selectedBatch.name}</span>
+                    <span className={styles.batchTitleMeta}>{selectedBatch.code} · {selectedBatch.course}</span>
                 </div>
-                <div className={`${styles.statCard} ${styles.presentCard}`}>
-                    <div className={styles.statIcon}>✓</div>
-                    <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.present}</span>
-                        <span className={styles.statLabel}>Present Today</span>
-                    </div>
-                </div>
-                <div className={`${styles.statCard} ${styles.absentCard}`}>
-                    <div className={styles.statIcon}>✗</div>
-                    <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.absent}</span>
-                        <span className={styles.statLabel}>Absent Today</span>
-                    </div>
-                </div>
-                <div className={`${styles.statCard} ${styles.leaveCard}`}>
-                    <div className={styles.statIcon}>○</div>
-                    <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.leave}</span>
-                        <span className={styles.statLabel}>On Leave</span>
-                    </div>
-                </div>
-                <div className={`${styles.statCard} ${styles.lateCard}`}>
-                    <div className={styles.statIcon}>⏰</div>
-                    <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.late}</span>
-                        <span className={styles.statLabel}>Late Today</span>
-                    </div>
-                </div>
-                <div className={styles.statCard}>
-                    <div className={styles.statIcon}><FaChartLine /></div>
-                    <div className={styles.statInfo}>
-                        <span className={styles.statValue}>{stats.percentage}%</span>
-                        <span className={styles.statLabel}>Attendance %</span>
-                    </div>
+                <div className={styles.topBarRight}>
+                    <span className={styles.studentCountBadge}><FaUsers /> {students.length} Students</span>
                 </div>
             </div>
 
-            {/* Filters Section */}
-            <div className={styles.filtersSection}>
-                <div className={styles.searchBox}>
-                    <FaSearch />
-                    <input 
-                        type="text" 
-                        placeholder="Search student..." 
-                        value={filters.search}
-                        onChange={(e) => setFilters({...filters, search: e.target.value})}
+            {/* Date + Stats Row */}
+            <div className={styles.controlsRow}>
+                <div className={styles.datePickerBox}>
+                    <FaCalendarAlt className={styles.dateIcon} />
+                    <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className={styles.datePicker}
                     />
                 </div>
-                <select 
-                    className={styles.filterSelect}
-                    value={filters.batch}
-                    onChange={(e) => setFilters({...filters, batch: e.target.value})}
-                >
-                    <option value="all">All Batches</option>
-                    {batches.map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
-                <select 
-                    className={styles.filterSelect}
-                    value={filters.status}
-                    onChange={(e) => setFilters({...filters, status: e.target.value})}
-                >
-                    <option value="all">All Status</option>
-                    <option value="Present">Present</option>
-                    <option value="Absent">Absent</option>
-                    <option value="Leave">Leave</option>
-                    <option value="Late">Late</option>
-                </select>
-                <input 
-                    type="date" 
-                    className={styles.dateInput}
-                    value={filters.date}
-                    onChange={(e) => setFilters({...filters, date: e.target.value})}
-                />
-                <button className={styles.filterBtn} onClick={fetchAttendance}><FaFilter /> Apply</button>
-            </div>
-
-            {/* Bulk Actions */}
-            {selectedStudents.length > 0 && (
-                <div className={styles.bulkActions}>
-                    <span>{selectedStudents.length} students selected</span>
-                    <button onClick={() => handleBulkAttendance('Present')} className={styles.bulkPresent}>✓ Mark Present</button>
-                    <button onClick={() => handleBulkAttendance('Absent')} className={styles.bulkAbsent}>✗ Mark Absent</button>
-                    <button onClick={() => handleBulkAttendance('Leave')} className={styles.bulkLeave}>○ Mark Leave</button>
-                    <button onClick={() => handleBulkAttendance('Late')} className={styles.bulkLate}>⏰ Mark Late</button>
+                <div className={styles.statsRow}>
+                    {[
+                        { label: 'Total', value: summary.total, cls: '' },
+                        { label: 'Present', value: summary.present, cls: styles.presentStat },
+                        { label: 'Absent', value: summary.absent, cls: styles.absentStat },
+                        { label: 'Leave', value: summary.leave, cls: styles.leaveStat },
+                        { label: 'Late', value: summary.late, cls: styles.lateStat },
+                        { label: 'Rate', value: `${summaryPercentage}%`, cls: styles.rateStat },
+                    ].map(s => (
+                        <div key={s.label} className={`${styles.statChip} ${s.cls}`}>
+                            <span className={styles.statChipValue}>{s.value}</span>
+                            <span className={styles.statChipLabel}>{s.label}</span>
+                        </div>
+                    ))}
                 </div>
-            )}
-
-            {/* Export Buttons */}
-            <div className={styles.exportSection}>
-                <button onClick={exportToExcel} className={styles.exportBtn}><FaDownload /> Excel</button>
-                <button onClick={exportToPDF} className={styles.exportBtn}><FaPrint /> PDF</button>
             </div>
 
-            {/* Attendance Table */}
-            <div className={styles.tableWrapper}>
-                <table className={styles.attendanceTable}>
-                    <thead>
-                        <tr>
-                            <th><input type="checkbox" onChange={handleSelectAll} checked={selectedStudents.length === filteredData.length && filteredData.length > 0} /></th>
-                            <th>Student Name</th>
-                            <th>Batch</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                            <th>Clock In</th>
-                            <th>Clock Out</th>
-                            <th>Working Hours</th>
-                            <th>Remarks</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredData.map(record => (
-                            <tr key={record._id}>
-                                <td>
-                                    <input 
-                                        type="checkbox" 
-                                        checked={selectedStudents.includes(record.studentId?._id)}
-                                        onChange={() => handleSelectStudent(record.studentId?._id)}
-                                    />
-                                </td>
-                                <td><strong>{record.studentId?.name || 'N/A'}</strong></td>
-                                <td>{record.batchId?.name || '-'}</td>
-                                <td>{new Date(record.date).toLocaleDateString()}</td>
-                                <td>
-                                    <select 
-                                        value={record.status}
-                                        onChange={(e) => markAttendance(record.studentId?._id, e.target.value)}
-                                        className={styles.statusSelect}
-                                    >
-                                        <option value="Present">✓ Present</option>
-                                        <option value="Absent">✗ Absent</option>
-                                        <option value="Leave">○ Leave</option>
-                                        <option value="Late">⏰ Late</option>
-                                    </select>
-                                </td>
-                                <td>{record.clockIn || '-'}</td>
-                                <td>{record.clockOut || '-'}</td>
-                                <td>{record.workingHours || '-'}</td>
-                                <td>{record.remarks || '-'}</td>
-                                <td>
-                                    <div className={styles.actionButtons}>
-                                        <button 
-                                            onClick={() => {
-                                                setEditingRecord(record);
-                                                setShowModal(true);
-                                            }} 
-                                            className={styles.editBtn}
-                                        >
-                                            <FaEdit />
-                                        </button>
-                                        <button 
-                                            onClick={() => handleDeleteAttendance(record._id, record.studentId?.name)} 
-                                            className={styles.deleteBtn}
-                                        >
-                                            <FaTrash />
-                                        </button>
+            {/* Search + Quick Actions */}
+            <div className={styles.actionsBar}>
+                <div className={styles.searchBox}>
+                    <FaSearch className={styles.searchIcon} />
+                    <input
+                        type="text"
+                        placeholder="Search by name, email or enrollment ID..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className={styles.searchInput}
+                    />
+                    {searchTerm && <button className={styles.clearSearch} onClick={() => setSearchTerm('')}><FaTimes /></button>}
+                </div>
+                <div className={styles.quickBtns}>
+                    <button onClick={() => markAll('Present')} className={`${styles.quickBtn} ${styles.qPresent}`}>✓ All Present</button>
+                    <button onClick={() => markAll('Absent')} className={`${styles.quickBtn} ${styles.qAbsent}`}>✗ All Absent</button>
+                    <button onClick={() => markAll('Leave')} className={`${styles.quickBtn} ${styles.qLeave}`}>○ All Leave</button>
+                    <button onClick={() => markAll('Late')} className={`${styles.quickBtn} ${styles.qLate}`}>⏰ All Late</button>
+                    <button onClick={saveAttendance} className={styles.saveBtn} disabled={saving}>
+                        {saving ? <FaSpinner className={styles.spinIcon} /> : <FaSave />}
+                        {saving ? 'Saving...' : 'Save'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Students Table */}
+            <div className={styles.tableCard}>
+                {loading ? (
+                    <div className={styles.loaderWrap}>
+                        <div className={styles.loaderSpinner}></div>
+                        <span>Loading students...</span>
+                    </div>
+                ) : filteredStudents.length === 0 ? (
+                    <div className={styles.emptyState}>
+                        <div className={styles.emptyIcon}>👨‍🎓</div>
+                        <h3>No Students Found</h3>
+                        <p>No students enrolled in this batch yet.</p>
+                    </div>
+                ) : (
+                    <div className={styles.tableScroll}>
+                        <table className={styles.attendanceTable}>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Student</th>
+                                    <th>Enrollment ID</th>
+                                    <th>Status</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredStudents.map((student, index) => (
+                                    <tr key={student.studentId} className={styles.tableRow}>
+                                        <td className={styles.indexCell}>{index + 1}</td>
+                                        <td>
+                                            <div className={styles.studentCell}>
+                                                {student.photo
+                                                    ? <img src={student.photo} alt={student.studentName} className={styles.avatar} />
+                                                    : <div className={styles.avatarFallback}>{student.studentName?.charAt(0)?.toUpperCase()}</div>
+                                                }
+                                                <div>
+                                                    <div className={styles.studentName}>{student.studentName}</div>
+                                                    <div className={styles.studentEmail}>{student.email}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><span className={styles.enrollTag}>{student.enrollmentId || '—'}</span></td>
+                                        <td>
+                                            <div className={styles.statusToggleGroup}>
+                                                {['Present', 'Absent', 'Leave', 'Late'].map(s => (
+                                                    <label
+                                                        key={s}
+                                                        className={`${styles.statusToggle} ${styles[`toggle${s}`]} ${student.status === s ? styles.toggleActive : ''}`}
+                                                    >
+                                                        <input
+                                                            type="radio"
+                                                            name={`status_${student.studentId}`}
+                                                            value={s}
+                                                            checked={student.status === s}
+                                                            onChange={() => handleStatusChange(student.studentId, s)}
+                                                            style={{ display: 'none' }}
+                                                        />
+                                                        {s}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <input
+                                                type="text"
+                                                placeholder="Add remarks..."
+                                                value={student.remarks}
+                                                onChange={(e) => handleRemarksChange(student.studentId, e.target.value)}
+                                                className={styles.remarksInput}
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            {/* Monthly Reports */}
+            <div className={styles.reportsSection}>
+                <div className={styles.reportsSectionHeader}>
+                    <div>
+                        <h3><FaCalendarWeek /> Monthly Reports</h3>
+                        <p>Click any card to view detailed breakdown</p>
+                    </div>
+                </div>
+
+                {monthlyReports.length === 0 ? (
+                    <div className={styles.emptyState}>
+                        <div className={styles.emptyIcon}>📊</div>
+                        <h3>No Reports Yet</h3>
+                        <p>Mark attendance to generate monthly reports.</p>
+                    </div>
+                ) : (
+                    <div className={styles.reportsGrid}>
+                        {monthlyReports.map((report, idx) => {
+                            const monthWord = report.month.split(' ')[0];
+                            const yearWord = report.month.split(' ')[1];
+                            const isGood = report.percentage >= 75;
+                            return (
+                                <div
+                                    key={idx}
+                                    className={`${styles.reportCard} ${isGood ? styles.reportCardGood : styles.reportCardBad}`}
+                                    onClick={() => { setSelectedReport(report); setShowReportModal(true); }}
+                                >
+                                    <div className={styles.reportCardMonth}>
+                                        <span className={styles.reportMonthName}>{monthWord}</span>
+                                        <span className={styles.reportYear}>{yearWord}</span>
                                     </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                                    <div className={styles.reportPercentBig}>{report.percentage}%</div>
+                                    <div className={styles.reportCardStats}>
+                                        <span className={styles.rPresent}>↑ {report.present}</span>
+                                        <span className={styles.rAbsent}>↓ {report.absent}</span>
+                                        <span className={styles.rLeave}>○ {report.leave}</span>
+                                    </div>
+                                    <div className={styles.reportCardFooter}>
+                                        <span>{report.students?.length || 0} students · {report.totalDays} days</span>
+                                        <FaEye />
+                                    </div>
+                                    <div className={styles.reportCardDownload}
+                                        onClick={(e) => { e.stopPropagation(); downloadReport(report); }}
+                                        title="Download Report"
+                                    >
+                                        <FaDownload />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
-            {/* Edit Modal */}
-            {showModal && editingRecord && (
-                <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
+            {/* Report Modal */}
+            {showReportModal && selectedReport && (
+                <div className={styles.modalOverlay} onClick={() => setShowReportModal(false)}>
                     <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
                         <div className={styles.modalHeader}>
-                            <h3>Edit Attendance</h3>
-                            <button onClick={() => setShowModal(false)}><FaTimes /></button>
+                            <div>
+                                <div className={styles.modalHeaderSub}>Attendance Report</div>
+                                <h3 className={styles.modalHeaderTitle}>{selectedReport.month}</h3>
+                                <p className={styles.modalHeaderBatch}>{selectedBatch?.name} · {selectedBatch?.code}</p>
+                            </div>
+                            <button className={styles.modalClose} onClick={() => setShowReportModal(false)}>
+                                <FaTimes />
+                            </button>
                         </div>
+
                         <div className={styles.modalBody}>
-                            <div className={styles.formGroup}>
-                                <label>Student</label>
-                                <input type="text" value={editingRecord.studentId?.name || ''} disabled />
+                            {/* Summary Grid */}
+                            <div className={styles.modalSummaryGrid}>
+                                {[
+                                    { label: 'Students', value: selectedReport.students?.length || 0, color: 'indigo' },
+                                    { label: 'Working Days', value: selectedReport.totalDays, color: 'blue' },
+                                    { label: 'Present', value: selectedReport.present, color: 'green' },
+                                    { label: 'Absent', value: selectedReport.absent, color: 'red' },
+                                    { label: 'Leave', value: selectedReport.leave, color: 'amber' },
+                                    { label: 'Overall %', value: `${selectedReport.percentage}%`, color: selectedReport.percentage >= 75 ? 'green' : 'red' },
+                                ].map(c => (
+                                    <div key={c.label} className={`${styles.summaryCard} ${styles[`card_${c.color}`]}`}>
+                                        <div className={styles.summaryCardValue}>{c.value}</div>
+                                        <div className={styles.summaryCardLabel}>{c.label}</div>
+                                    </div>
+                                ))}
                             </div>
-                            <div className={styles.formGroup}>
-                                <label>Status</label>
-                                <select 
-                                    value={editingRecord.status} 
-                                    onChange={(e) => setEditingRecord({...editingRecord, status: e.target.value})}
-                                >
-                                    <option value="Present">Present</option>
-                                    <option value="Absent">Absent</option>
-                                    <option value="Leave">Leave</option>
-                                    <option value="Late">Late</option>
-                                </select>
-                            </div>
-                            <div className={styles.formRow}>
-                                <div className={styles.formGroup}>
-                                    <label>Clock In</label>
-                                    <input 
-                                        type="time" 
-                                        value={editingRecord.clockIn || ''} 
-                                        onChange={(e) => setEditingRecord({...editingRecord, clockIn: e.target.value})}
-                                    />
-                                </div>
-                                <div className={styles.formGroup}>
-                                    <label>Clock Out</label>
-                                    <input 
-                                        type="time" 
-                                        value={editingRecord.clockOut || ''} 
-                                        onChange={(e) => setEditingRecord({...editingRecord, clockOut: e.target.value})}
-                                    />
-                                </div>
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label>Remarks</label>
-                                <textarea 
-                                    rows="3" 
-                                    value={editingRecord.remarks || ''} 
-                                    onChange={(e) => setEditingRecord({...editingRecord, remarks: e.target.value})}
-                                />
+
+                            {/* Students Table */}
+                            <div className={styles.modalTableSection}>
+                                <h4 className={styles.modalTableTitle}>Student-wise Details</h4>
+                                {selectedReport.students && selectedReport.students.length > 0 ? (
+                                    <div className={styles.modalTableScroll}>
+                                        <table className={styles.detailsTable}>
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Student</th>
+                                                    <th>Present</th>
+                                                    <th>Absent</th>
+                                                    <th>Leave</th>
+                                                    <th>Late</th>
+                                                    <th>Total</th>
+                                                    <th>%</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {selectedReport.students.map((student, idx) => (
+                                                    <tr key={student.id || idx} className={styles.detailsRow}>
+                                                        <td className={styles.idxCell}>{idx + 1}</td>
+                                                        <td>
+                                                            <div className={styles.detailsName}>{student.name}</div>
+                                                            <div className={styles.detailsEnroll}>{student.enrollmentId}</div>
+                                                        </td>
+                                                        <td className={styles.presentVal}>{student.present}</td>
+                                                        <td className={styles.absentVal}>{student.absent}</td>
+                                                        <td className={styles.leaveVal}>{student.leave || 0}</td>
+                                                        <td className={styles.lateVal}>{student.late || 0}</td>
+                                                        <td className={styles.totalVal}>{student.total}</td>
+                                                        <td>
+                                                            <span className={`${styles.percentBadge} ${student.percentage >= 75 ? styles.percentGood : styles.percentBad}`}>
+                                                                {student.percentage}%
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span className={`${styles.statusBadge} ${student.percentage >= 75 ? styles.badgeGood : styles.badgeBad}`}>
+                                                                {student.percentage >= 75 ? <><FaCheckCircle /> Good</> : <><FaTimesCircle /> At Risk</>}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className={styles.noData}>No student data available for this month.</div>
+                                )}
                             </div>
                         </div>
+
                         <div className={styles.modalFooter}>
-                            <button className={styles.cancelBtn} onClick={() => setShowModal(false)}>Cancel</button>
-                            <button className={styles.saveBtn} onClick={handleUpdateAttendance}>Save Changes</button>
+                            <button className={styles.downloadBtn} onClick={() => downloadReport(selectedReport)}>
+                                <FaDownload /> Download PDF Report
+                            </button>
+                            <button className={styles.closeBtn} onClick={() => setShowReportModal(false)}>
+                                Close
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -540,4 +662,4 @@ const AttendanceTable = () => {
     );
 };
 
-export default AttendanceTable;
+export default TrainerAttendanceMarker;

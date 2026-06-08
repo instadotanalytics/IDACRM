@@ -20,12 +20,31 @@ const admissionSchema = new mongoose.Schema(
             enum:    ['active', 'inactive', 'completed'],
             default: 'active'
         },
-        isUserCreated: { type: Boolean, default: false }
+        isUserCreated: { type: Boolean, default: false },
+        
+        // ✅ TRACKING FIELDS - Counselor Information
+        counselorId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+            index: true
+        },
+        counselorName: {
+            type: String,
+            default: ''
+        },
+        
+        // ✅ Lead reference (if converted from lead)
+        leadId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Lead',
+            default: null
+        }
     },
     { timestamps: true }
 );
 
-// ✅ No next() — return promise directly, mongoose handles it
+// Auto-generate enrollmentId
 admissionSchema.pre('save', async function () {
     if (!this.enrollmentId) {
         const year  = new Date().getFullYear();

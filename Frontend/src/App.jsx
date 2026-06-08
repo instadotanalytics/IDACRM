@@ -28,6 +28,7 @@ const RoleBasedRedirect = () => {
         const userData = localStorage.getItem('user');
         
         if (!token || !userData) {
+            // ✅ No token → go to login
             setRedirectPath('/login');
             setIsLoading(false);
             return;
@@ -36,6 +37,7 @@ const RoleBasedRedirect = () => {
         try {
             const user = JSON.parse(userData);
             
+            // ✅ Role based redirect
             switch (user.role) {
                 case 'super_admin':
                     setRedirectPath('/super-admin-dashboard');
@@ -98,13 +100,17 @@ function App() {
                 }}
             />
             <Routes>
-                {/* Public Auth Routes */}
-                <Route path="/login" element={<Login />} />
+                {/* ✅ Public Auth Routes */}
+                {/* Super Admin - Separate login page */}
                 <Route path="/super-admin-login" element={<SuperAdminLogin />} />
+                
+                {/* Other users - Common login page */}
+                <Route path="/login" element={<Login />} />
+                
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 
-                {/* Protected Dashboards - Role Based */}
+                {/* ✅ Protected Dashboards - Role Based */}
                 <Route 
                     path="/super-admin-dashboard" 
                     element={
@@ -159,7 +165,7 @@ function App() {
                     } 
                 />
                 
-                {/* Default Route - Role based redirect */}
+                {/* ✅ Default Route - Role based redirect */}
                 <Route path="/" element={<RoleBasedRedirect />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

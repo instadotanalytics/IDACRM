@@ -6,16 +6,17 @@ import {
 import styles from './TrainerManagement.module.css';
 import AdminAttendanceTable from './AdminAttendanceTable';
 import BatchManagement from '../../TrainerDashboard/Betch/BatchManagement';
+import TrainerAttendanceMarker from '../../TrainerDashboard/AttendanceTable/TrainerAttendanceMarker';
+import Assignments from '../../TrainerDashboard/Performance/Assignments';
+import Tests from '../../TrainerDashboard/Performance/Tests';
+import CourseMaterials from '../../TrainerDashboard/CourseMaterials';
+import StudentPerformance from '../../TrainerDashboard/Performance/StudentPerformance';
 
 const TrainerManagement = () => {
-    const [activeSubTab, setActiveSubTab] = useState('trainers');
+    // ✅ FIXED: Default tab set to 'batches' instead of 'trainers'
+    const [activeSubTab, setActiveSubTab] = useState('batches');
 
-    // Stats data (overview ke liye)
-   
-
-    // Sub-tab menu
     const subTabs = [
-        { id: 'trainers', label: 'Trainers List', icon: FaChalkboardTeacher },
         { id: 'batches', label: 'Batch Assignment', icon: FaBookOpen },
         { id: 'attendance', label: 'Attendance', icon: FaCalendarCheck },
         { id: 'assignments', label: 'Assignments', icon: FaTasks },
@@ -24,40 +25,36 @@ const TrainerManagement = () => {
         { id: 'performance', label: 'Analytics', icon: FaChartLine },
     ];
 
-    // Placeholder component - sirf text dikhega
+    // Simple placeholder component
     const PlaceholderContent = ({ title }) => (
         <div className={styles.placeholderBox}>
-           
+            <h3>{title}</h3>
+            <p>Coming soon...</p>
         </div>
     );
-
-   
 
     // Render content based on active tab
     const renderContent = () => {
         switch(activeSubTab) {
-            case 'trainers':
-                return <PlaceholderContent title="Trainers List" />;
             case 'batches':
                 return <BatchManagement/>;
             case 'attendance':
-                return <AdminAttendanceTable title="Attendance" />;
+                return <TrainerAttendanceMarker/>;
             case 'assignments':
-                return <PlaceholderContent title="Assignments" />;
+                return <Assignments/>;
             case 'tests':
-                return <PlaceholderContent title="Tests" />;
+                return <Tests/>;
             case 'materials':
-                return <PlaceholderContent title="Study Materials" />;
+                return <CourseMaterials/>;
             case 'performance':
-                return <PlaceholderContent title="Analytics" />;
+                return <StudentPerformance/>;
             default:
-                return <PlaceholderContent title="Trainers List" />;
+                return <PlaceholderContent title="Select an option" />;
         }
     };
 
     return (
         <div className={styles.container}>
-           
             <div className={styles.subTabs}>
                 {subTabs.map(tab => (
                     <button

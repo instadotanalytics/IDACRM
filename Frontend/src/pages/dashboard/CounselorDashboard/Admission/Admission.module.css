@@ -1017,3 +1017,21 @@
         justify-content: space-between;
     }
 }
+
+/* Add these styles for tracking display */
+
+.counselorCell {
+    color: #f59e0b;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.counselorCell svg {
+    margin-right: 6px;
+    color: #3b82f6;
+}
+
+.viewRow svg {
+    margin-right: 8px;
+    color: #3b82f6;
+}

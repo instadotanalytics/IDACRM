@@ -5,13 +5,13 @@ import {
     FaSpinner, FaSearch, FaPlus, FaEdit, FaTrash,
     FaEye, FaTimes, FaCheck, FaClock, FaChartLine,
     FaArrowUp, FaArrowDown, FaUser, FaEnvelope, FaBook,
-    FaFilter, FaDownload
+    FaFilter, FaDownload, FaUserTie
 } from 'react-icons/fa';
 import api from '../../../../services/api';
 import styles from './Calls.module.css';
 
 // ─────────────────────────────────────────────
-// Helper functions (outside component)
+// Helper functions
 // ─────────────────────────────────────────────
 const formatDuration = (minutes) => {
     if (!minutes) return '0 min';
@@ -61,15 +61,15 @@ const DEFAULT_FORM = {
 };
 
 // ─────────────────────────────────────────────
-// StatsCards — moved OUTSIDE Calls
+// StatsCards Component
 // ─────────────────────────────────────────────
-const StatsCards = ({ stats, stylesObj }) => (
+const StatsCards = ({ stats, stylesObj, userRole }) => (
     <div className={stylesObj.statsGrid}>
         <div className={stylesObj.statCard}>
             <div className={stylesObj.statIcon}><FaPhoneAlt /></div>
             <div className={stylesObj.statInfo}>
                 <span className={stylesObj.statValue}>{stats.total}</span>
-                <span className={stylesObj.statLabel}>Total Calls Today</span>
+                <span className={stylesObj.statLabel}>Total Calls</span>
             </div>
         </div>
         <div className={stylesObj.statCard}>
@@ -104,7 +104,7 @@ const StatsCards = ({ stats, stylesObj }) => (
 );
 
 // ─────────────────────────────────────────────
-// WeeklyChart — moved OUTSIDE Calls
+// WeeklyChart Component
 // ─────────────────────────────────────────────
 const WeeklyChart = ({ weeklyStats, stylesObj }) => (
     <div className={stylesObj.chartCard}>
@@ -128,9 +128,9 @@ const WeeklyChart = ({ weeklyStats, stylesObj }) => (
 );
 
 // ─────────────────────────────────────────────
-// TodayCallsTable — moved OUTSIDE Calls
+// TodayCallsTable Component
 // ─────────────────────────────────────────────
-const TodayCallsTable = ({ todayCalls, onAdd, onView, onEdit, onDelete, stylesObj }) => (
+const TodayCallsTable = ({ todayCalls, onAdd, onView, onEdit, onDelete, stylesObj, userRole }) => (
     <div className={stylesObj.tableCard}>
         <div className={stylesObj.tableHeader}>
             <h3>Today's Call Logs</h3>
@@ -149,12 +149,13 @@ const TodayCallsTable = ({ todayCalls, onAdd, onView, onEdit, onDelete, stylesOb
                         <th>Course</th>
                         <th>Status</th>
                         <th>Duration</th>
+                        {(userRole === 'admin_manager' || userRole === 'super_admin') && <th>Counselor</th>}
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {todayCalls.length === 0 ? (
-                        <tr><td colSpan="8" className={stylesObj.emptyCell}>No calls today</td></tr>
+                        <tr><td colSpan={userRole === 'admin_manager' ? 9 : 8} className={stylesObj.emptyCell}>No calls today</td></tr>
                     ) : (
                         todayCalls.map(call => (
                             <tr key={call._id}>
@@ -165,6 +166,11 @@ const TodayCallsTable = ({ todayCalls, onAdd, onView, onEdit, onDelete, stylesOb
                                 <td>{call.courseInterest || '-'}</td>
                                 <td>{getStatusIcon(call.callStatus, stylesObj)} {call.callStatus}</td>
                                 <td>{formatDuration(call.duration)}</td>
+                                {(userRole === 'admin_manager' || userRole === 'super_admin') && (
+                                    <td className={stylesObj.counselorCell}>
+                                        {call.counselorName || call.counselorId?.name || '-'}
+                                    </td>
+                                )}
                                 <td className={stylesObj.actionBtns}>
                                     <button className={stylesObj.viewBtn} onClick={() => onView(call)} title="View"><FaEye /></button>
                                     <button className={stylesObj.editBtn} onClick={() => onEdit(call)} title="Edit"><FaEdit /></button>
@@ -180,12 +186,12 @@ const TodayCallsTable = ({ todayCalls, onAdd, onView, onEdit, onDelete, stylesOb
 );
 
 // ─────────────────────────────────────────────
-// AllCallsTable — moved OUTSIDE Calls
+// AllCallsTable Component
 // ─────────────────────────────────────────────
 const AllCallsTable = ({
     filteredCalls, searchTerm, filterType, filterStatus,
     onSearchChange, onTypeChange, onStatusChange, onClearFilters,
-    onView, onEdit, onDelete, stylesObj
+    onView, onEdit, onDelete, stylesObj, userRole
 }) => (
     <div className={stylesObj.tableCard}>
         <div className={stylesObj.tableHeader}>
@@ -229,12 +235,13 @@ const AllCallsTable = ({
                         <th>Course</th>
                         <th>Status</th>
                         <th>Duration</th>
+                        {(userRole === 'admin_manager' || userRole === 'super_admin') && <th>Counselor</th>}
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {filteredCalls.length === 0 ? (
-                        <tr><td colSpan="9" className={stylesObj.emptyCell}>No calls found</td></tr>
+                        <tr><td colSpan={userRole === 'admin_manager' ? 10 : 9} className={stylesObj.emptyCell}>No calls found</td></tr>
                     ) : (
                         filteredCalls.map(call => (
                             <tr key={call._id}>
@@ -250,6 +257,11 @@ const AllCallsTable = ({
                                 <td>{call.courseInterest || '-'}</td>
                                 <td>{getStatusIcon(call.callStatus, stylesObj)} {call.callStatus}</td>
                                 <td>{formatDuration(call.duration)}</td>
+                                {(userRole === 'admin_manager' || userRole === 'super_admin') && (
+                                    <td className={stylesObj.counselorCell}>
+                                        {call.counselorName || call.counselorId?.name || '-'}
+                                    </td>
+                                )}
                                 <td className={stylesObj.actionBtns}>
                                     <button className={stylesObj.viewBtn} onClick={() => onView(call)}><FaEye /></button>
                                     <button className={stylesObj.editBtn} onClick={() => onEdit(call)}><FaEdit /></button>
@@ -265,7 +277,7 @@ const AllCallsTable = ({
 );
 
 // ─────────────────────────────────────────────
-// CallModal — moved OUTSIDE Calls
+// CallModal Component
 // ─────────────────────────────────────────────
 const CallModal = ({ editingCall, callForm, loading, onClose, onChange, onSubmit }) => (
     <div className={styles.modalOverlay} onClick={onClose}>
@@ -276,53 +288,26 @@ const CallModal = ({ editingCall, callForm, loading, onClose, onChange, onSubmit
             </div>
             <form onSubmit={onSubmit}>
                 <div className={styles.modalBody}>
-
                     <div className={styles.formSection}>
                         <h4>Lead Information (Manual Entry)</h4>
                         <div className={styles.formRow}>
                             <div className={styles.formGroup}>
                                 <label>Lead Name *</label>
-                                <input
-                                    type="text"
-                                    name="leadName"
-                                    value={callForm.leadName}
-                                    onChange={onChange}
-                                    placeholder="Enter lead full name"
-                                    required
-                                />
+                                <input type="text" name="leadName" value={callForm.leadName} onChange={onChange} placeholder="Enter lead full name" required />
                             </div>
                             <div className={styles.formGroup}>
                                 <label>Phone Number *</label>
-                                <input
-                                    type="tel"
-                                    name="leadPhone"
-                                    value={callForm.leadPhone}
-                                    onChange={onChange}
-                                    placeholder="Enter phone number"
-                                    required
-                                />
+                                <input type="tel" name="leadPhone" value={callForm.leadPhone} onChange={onChange} placeholder="Enter phone number" required />
                             </div>
                         </div>
                         <div className={styles.formRow}>
                             <div className={styles.formGroup}>
                                 <label>Email Address</label>
-                                <input
-                                    type="email"
-                                    name="leadEmail"
-                                    value={callForm.leadEmail}
-                                    onChange={onChange}
-                                    placeholder="Enter email address"
-                                />
+                                <input type="email" name="leadEmail" value={callForm.leadEmail} onChange={onChange} placeholder="Enter email address" />
                             </div>
                             <div className={styles.formGroup}>
                                 <label>Course Interest</label>
-                                <input
-                                    type="text"
-                                    name="courseInterest"
-                                    value={callForm.courseInterest}
-                                    onChange={onChange}
-                                    placeholder="Enter course name"
-                                />
+                                <input type="text" name="courseInterest" value={callForm.courseInterest} onChange={onChange} placeholder="Enter course name" />
                             </div>
                         </div>
                     </div>
@@ -350,34 +335,16 @@ const CallModal = ({ editingCall, callForm, loading, onClose, onChange, onSubmit
                         <div className={styles.formRow}>
                             <div className={styles.formGroup}>
                                 <label>Call Date & Time</label>
-                                <input
-                                    type="datetime-local"
-                                    name="callTime"
-                                    value={callForm.callTime}
-                                    onChange={onChange}
-                                />
+                                <input type="datetime-local" name="callTime" value={callForm.callTime} onChange={onChange} />
                             </div>
                             <div className={styles.formGroup}>
                                 <label>Duration (minutes)</label>
-                                <input
-                                    type="number"
-                                    name="duration"
-                                    value={callForm.duration}
-                                    onChange={onChange}
-                                    placeholder="e.g., 5"
-                                    min="0"
-                                />
+                                <input type="number" name="duration" value={callForm.duration} onChange={onChange} placeholder="e.g., 5" min="0" />
                             </div>
                         </div>
                         <div className={styles.formGroup}>
                             <label>Call Notes</label>
-                            <textarea
-                                rows="3"
-                                name="notes"
-                                value={callForm.notes}
-                                onChange={onChange}
-                                placeholder="What was discussed in the call?"
-                            />
+                            <textarea rows="3" name="notes" value={callForm.notes} onChange={onChange} placeholder="What was discussed in the call?" />
                         </div>
                     </div>
 
@@ -385,28 +352,17 @@ const CallModal = ({ editingCall, callForm, loading, onClose, onChange, onSubmit
                         <h4>Follow-up Settings</h4>
                         <div className={styles.formGroup}>
                             <label className={styles.checkboxLabel}>
-                                <input
-                                    type="checkbox"
-                                    name="followUpRequired"
-                                    checked={callForm.followUpRequired}
-                                    onChange={onChange}
-                                />
+                                <input type="checkbox" name="followUpRequired" checked={callForm.followUpRequired} onChange={onChange} />
                                 Follow-up Required
                             </label>
                         </div>
                         {callForm.followUpRequired && (
                             <div className={styles.formGroup}>
                                 <label>Follow-up Date</label>
-                                <input
-                                    type="date"
-                                    name="followUpDate"
-                                    value={callForm.followUpDate}
-                                    onChange={onChange}
-                                />
+                                <input type="date" name="followUpDate" value={callForm.followUpDate} onChange={onChange} />
                             </div>
                         )}
                     </div>
-
                 </div>
                 <div className={styles.modalFooter}>
                     <button type="button" className={styles.cancelBtn} onClick={onClose}>Cancel</button>
@@ -421,9 +377,9 @@ const CallModal = ({ editingCall, callForm, loading, onClose, onChange, onSubmit
 );
 
 // ─────────────────────────────────────────────
-// ViewModal — moved OUTSIDE Calls
+// ViewModal Component
 // ─────────────────────────────────────────────
-const ViewModal = ({ selectedCall, onClose, onEdit, stylesObj }) => (
+const ViewModal = ({ selectedCall, onClose, onEdit, stylesObj, userRole }) => (
     <div className={stylesObj.modalOverlay} onClick={onClose}>
         <div className={stylesObj.modal} onClick={(e) => e.stopPropagation()}>
             <div className={stylesObj.modalHeader}>
@@ -433,19 +389,61 @@ const ViewModal = ({ selectedCall, onClose, onEdit, stylesObj }) => (
             <div className={stylesObj.modalBody}>
                 <div className={stylesObj.viewSection}>
                     <h4>Lead Information</h4>
-                    <div className={stylesObj.viewRow}><div className={stylesObj.viewLabel}>Name</div><div className={stylesObj.viewValue}>{selectedCall?.leadName}</div></div>
-                    <div className={stylesObj.viewRow}><div className={stylesObj.viewLabel}>Phone</div><div className={stylesObj.viewValue}>{selectedCall?.leadPhone}</div></div>
-                    <div className={stylesObj.viewRow}><div className={stylesObj.viewLabel}>Email</div><div className={stylesObj.viewValue}>{selectedCall?.leadEmail || '-'}</div></div>
-                    <div className={stylesObj.viewRow}><div className={stylesObj.viewLabel}>Course Interest</div><div className={stylesObj.viewValue}>{selectedCall?.courseInterest || '-'}</div></div>
+                    <div className={stylesObj.viewRow}>
+                        <div className={stylesObj.viewLabel}>Name</div>
+                        <div className={stylesObj.viewValue}>{selectedCall?.leadName}</div>
+                    </div>
+                    <div className={stylesObj.viewRow}>
+                        <div className={stylesObj.viewLabel}>Phone</div>
+                        <div className={stylesObj.viewValue}>{selectedCall?.leadPhone}</div>
+                    </div>
+                    <div className={stylesObj.viewRow}>
+                        <div className={stylesObj.viewLabel}>Email</div>
+                        <div className={stylesObj.viewValue}>{selectedCall?.leadEmail || '-'}</div>
+                    </div>
+                    <div className={stylesObj.viewRow}>
+                        <div className={stylesObj.viewLabel}>Course Interest</div>
+                        <div className={stylesObj.viewValue}>{selectedCall?.courseInterest || '-'}</div>
+                    </div>
                 </div>
                 <div className={stylesObj.viewSection}>
                     <h4>Call Information</h4>
-                    <div className={stylesObj.viewRow}><div className={stylesObj.viewLabel}>Call Time</div><div className={stylesObj.viewValue}>{new Date(selectedCall?.callTime).toLocaleString()}</div></div>
-                    <div className={stylesObj.viewRow}><div className={stylesObj.viewLabel}>Call Type</div><div className={stylesObj.viewValue}>{selectedCall?.callType}</div></div>
-                    <div className={stylesObj.viewRow}><div className={stylesObj.viewLabel}>Call Status</div><div className={stylesObj.viewValue}>{getStatusBadge(selectedCall?.callStatus, stylesObj)}</div></div>
-                    <div className={stylesObj.viewRow}><div className={stylesObj.viewLabel}>Duration</div><div className={stylesObj.viewValue}>{formatDuration(selectedCall?.duration)}</div></div>
-                    <div className={stylesObj.viewRow}><div className={stylesObj.viewLabel}>Notes</div><div className={stylesObj.viewValue}>{selectedCall?.notes || '-'}</div></div>
+                    <div className={stylesObj.viewRow}>
+                        <div className={stylesObj.viewLabel}>Call Time</div>
+                        <div className={stylesObj.viewValue}>{new Date(selectedCall?.callTime).toLocaleString()}</div>
+                    </div>
+                    <div className={stylesObj.viewRow}>
+                        <div className={stylesObj.viewLabel}>Call Type</div>
+                        <div className={stylesObj.viewValue}>{selectedCall?.callType}</div>
+                    </div>
+                    <div className={stylesObj.viewRow}>
+                        <div className={stylesObj.viewLabel}>Call Status</div>
+                        <div className={stylesObj.viewValue}>{getStatusBadge(selectedCall?.callStatus, stylesObj)}</div>
+                    </div>
+                    <div className={stylesObj.viewRow}>
+                        <div className={stylesObj.viewLabel}>Duration</div>
+                        <div className={stylesObj.viewValue}>{formatDuration(selectedCall?.duration)}</div>
+                    </div>
+                    <div className={stylesObj.viewRow}>
+                        <div className={stylesObj.viewLabel}>Notes</div>
+                        <div className={stylesObj.viewValue}>{selectedCall?.notes || '-'}</div>
+                    </div>
                 </div>
+                {(userRole === 'admin_manager' || userRole === 'super_admin') && (
+                    <div className={stylesObj.viewSection}>
+                        <h4>Tracking Information</h4>
+                        <div className={stylesObj.viewRow}>
+                            <div className={stylesObj.viewLabel}>Counselor</div>
+                            <div className={stylesObj.viewValue}>
+                                {selectedCall?.counselorName || selectedCall?.counselorId?.name || '-'}
+                            </div>
+                        </div>
+                        <div className={stylesObj.viewRow}>
+                            <div className={stylesObj.viewLabel}>Created At</div>
+                            <div className={stylesObj.viewValue}>{new Date(selectedCall?.createdAt).toLocaleString()}</div>
+                        </div>
+                    </div>
+                )}
             </div>
             <div className={stylesObj.modalFooter}>
                 <button className={stylesObj.cancelBtn} onClick={onClose}>Close</button>
@@ -476,8 +474,19 @@ const Calls = () => {
     const [filterType, setFilterType] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
     const [callForm, setCallForm] = useState(DEFAULT_FORM);
+    
+    // ✅ Get current user role for tracking display
+    const [userRole, setUserRole] = useState('counselor');
+    const [currentUser, setCurrentUser] = useState(null);
 
     useEffect(() => {
+        // Get current user from localStorage
+        const userData = localStorage.getItem('user');
+        if (userData) {
+            const user = JSON.parse(userData);
+            setCurrentUser(user);
+            setUserRole(user.role);
+        }
         fetchTodayCalls();
         fetchWeeklyStats();
         fetchAllCalls();
@@ -524,7 +533,6 @@ const Calls = () => {
         }
     };
 
-    // ✅ FIXED: Single generic handler for ALL form fields
     const handleChange = useCallback((e) => {
         const { name, value, type, checked } = e.target;
         setCallForm(prev => ({
@@ -646,7 +654,7 @@ const Calls = () => {
                 </div>
             </div>
 
-            <StatsCards stats={stats} stylesObj={styles} />
+            <StatsCards stats={stats} stylesObj={styles} userRole={userRole} />
 
             <div className={styles.tabs}>
                 <button className={`${styles.tab} ${activeTab === 'today' ? styles.active : ''}`} onClick={() => setActiveTab('today')}>
@@ -668,6 +676,7 @@ const Calls = () => {
                     onEdit={openEditModal}
                     onDelete={handleDeleteCall}
                     stylesObj={styles}
+                    userRole={userRole}
                 />
             )}
             {activeTab === 'weekly' && (
@@ -687,6 +696,7 @@ const Calls = () => {
                     onEdit={openEditModal}
                     onDelete={handleDeleteCall}
                     stylesObj={styles}
+                    userRole={userRole}
                 />
             )}
 
@@ -707,6 +717,7 @@ const Calls = () => {
                     onClose={() => setShowViewModal(false)}
                     onEdit={openEditModal}
                     stylesObj={styles}
+                    userRole={userRole}
                 />
             )}
         </div>

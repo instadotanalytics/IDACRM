@@ -78,11 +78,24 @@ const leadSchema = new mongoose.Schema({
         ref: 'Admission'
     },
     conversionDate: Date,
+    
+    // ✅ Tracking fields for counselor
+    counselorId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        index: true  // ✅ For faster queries
+    },
+    counselorName: {
+        type: String,
+        default: ''
+    },
     assignedTo: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
+    
     isActive: {
         type: Boolean,
         default: true
@@ -93,6 +106,7 @@ const leadSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+// ✅ Auto-generate leadId
 leadSchema.pre('save', async function() {
     if (!this.leadId) {
         const Lead = mongoose.model('Lead');

@@ -75,7 +75,12 @@ const DashboardOverview = ({ user }) => {
       const currentUser = storedUser ? JSON.parse(storedUser) : null;
       const userRole = currentUser?.role || 'counselor';
       const userId = currentUser?._id || currentUser?.id;
-
+      
+      console.log('=== DASHBOARD DEBUG ===');
+      console.log('Current User:', currentUser?.name);
+      console.log('User Role:', userRole);
+      console.log('User ID:', userId);
+      
       let leads = [];
       let calls = [];
       let admissions = [];
@@ -94,7 +99,7 @@ const DashboardOverview = ({ user }) => {
           const [leadsRes, callsRes, admissionsRes] = await Promise.all([
             api.get(`/leads/counselor/${userId}`),
             api.get(`/calls/counselor/${userId}`),
-            api.get('/admissions')
+            api.get(`/admissions/counselor/${userId}`)
           ]);
           leads = leadsRes.data.success ? leadsRes.data.data : [];
           calls = callsRes.data.success ? callsRes.data.data : [];
@@ -105,21 +110,35 @@ const DashboardOverview = ({ user }) => {
             api.get('/calls'),
             api.get('/admissions')
           ]);
+          
           const allLeads = leadsRes.data.success ? leadsRes.data.data : [];
           const allCalls = callsRes.data.success ? callsRes.data.data : [];
-          leads = allLeads.filter(l => l.assignedTo === userId || l.counselorId === userId);
-          calls = allCalls.filter(c => c.counselorId === userId);
-          admissions = admissionsRes.data.success ? admissionsRes.data.data : [];
+          const allAdmissions = admissionsRes.data.success ? admissionsRes.data.data : [];
+          
+          leads = allLeads.filter(l => 
+            l.assignedTo === userId || 
+            l.counselorId === userId || 
+            l.counselorId?._id === userId ||
+            l.assignedTo?._id === userId
+          );
+          
+          calls = allCalls.filter(c => 
+            c.counselorId === userId || 
+            c.counselorId?._id === userId
+          );
+          
+          admissions = allAdmissions.filter(a => 
+            a.counselorId === userId || 
+            a.counselorId?._id === userId
+          );
         }
       }
 
       const weeklyData = [0, 0, 0, 0, 0, 0, 0];
       leads.forEach(lead => {
-        const date = new Date(lead.createdAt);
+        const date = new Date(lead.createdAt || lead.enquiryDate);
         const day = date.getDay();
-        if (day >= 0 && day <= 6) {
-          weeklyData[day]++;
-        }
+        if (day >= 0 && day <= 6) weeklyData[day]++;
       });
 
       const today = new Date();
@@ -127,11 +146,8 @@ const DashboardOverview = ({ user }) => {
       const thisWeekStart = new Date(today);
       thisWeekStart.setDate(today.getDate() - today.getDay());
       
-      const newLeadsThisWeek = leads.filter(lead => new Date(lead.createdAt) >= thisWeekStart).length;
-      const todayCalls = calls.filter(call => {
-        const callDate = new Date(call.callTime || call.createdAt);
-        return callDate.toDateString() === today.toDateString();
-      });
+      const newLeadsThisWeek = leads.filter(lead => new Date(lead.createdAt || lead.enquiryDate) >= thisWeekStart).length;
+      const todayCalls = calls.filter(call => new Date(call.callTime || call.createdAt).toDateString() === today.toDateString());
       const totalCalls = calls.length;
       const connectedCalls = calls.filter(call => call.callStatus === 'Connected' || call.status === 'Connected').length;
       const totalLeads = leads.length;
@@ -206,40 +222,28 @@ const DashboardOverview = ({ user }) => {
 
   const lineChartData = {
     labels: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-    datasets: [
-      {
-        label: 'Leads',
-        data: stats.weeklyData,
-        borderColor: '#6366f1',
-        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: '#6366f1',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      },
-    ],
+    datasets: [{
+      label: 'Leads',
+      data: stats.weeklyData,
+      borderColor: '#6366f1',
+      backgroundColor: 'rgba(99, 102, 241, 0.1)',
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: '#6366f1',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+    }],
   };
 
   const lineChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: { mode: 'index', intersect: false }
-    },
+    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
     scales: {
-      y: { 
-        grid: { color: 'rgba(255,255,255,0.1)' }, 
-        ticks: { color: '#a0a0a0' },
-        beginAtZero: true
-      },
-      x: { 
-        grid: { display: false }, 
-        ticks: { color: '#a0a0a0' } 
-      }
+      y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#a0a0a0' }, beginAtZero: true },
+      x: { grid: { display: false }, ticks: { color: '#a0a0a0' } }
     }
   };
 
@@ -257,10 +261,7 @@ const DashboardOverview = ({ user }) => {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { 
-        position: 'bottom', 
-        labels: { color: '#a0a0a0', font: { size: 11 } } 
-      }
+      legend: { position: 'bottom', labels: { color: '#a0a0a0', font: { size: 11 } } }
     }
   };
 
@@ -433,12 +434,20 @@ const CounselorDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
+    // ✅ Force refresh user data from localStorage
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
+    
+    console.log('=== COUNSELOR DASHBOARD ===');
+    console.log('Token exists:', !!token);
     
     if (userData) {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
+      console.log('✅ User loaded:', parsedUser.name);
+      console.log('✅ User Role:', parsedUser.role);
+    } else {
+      console.log('❌ No user data found');
     }
     
     if (!token || !userData) {
@@ -447,9 +456,8 @@ const CounselorDashboard = () => {
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('userRole');
+    // ✅ Clear ALL localStorage
+    localStorage.clear();
     toast.success('Logged out successfully');
     navigate('/login');
   };
@@ -476,6 +484,12 @@ const CounselorDashboard = () => {
       default: return <DashboardOverview user={user} />;
     }
   };
+
+  // ✅ Get display name safely
+  const displayName = user?.name || 'Counselor';
+  const displayRole = user?.role === 'counselor' ? 'Counselor' : 
+                      user?.role === 'admin_manager' ? 'Admin Manager' : 
+                      user?.role === 'super_admin' ? 'Super Admin' : 'Counselor';
 
   return (
     <div className={`${styles.app} ${sidebarCollapsed ? styles.appCollapsed : ''}`}>
@@ -512,13 +526,11 @@ const CounselorDashboard = () => {
 
         <div className={styles.sidebarFooter}>
           <div className={styles.userInfo}>
-            <div className={styles.avatar}>{getInitial(user?.name)}</div>
+            <div className={styles.avatar}>{getInitial(displayName)}</div>
             {!sidebarCollapsed && (
               <div className={styles.userDetails}>
-                <span className={styles.userName}>{user?.name || 'Counselor'}</span>
-                <span className={styles.userRole}>
-                  {user?.role === 'admin_manager' ? 'Admin Manager' : user?.role === 'super_admin' ? 'Super Admin' : 'Counselor'}
-                </span>
+                <span className={styles.userName}>{displayName}</span>
+                <span className={styles.userRole}>{displayRole}</span>
               </div>
             )}
           </div>
@@ -542,12 +554,10 @@ const CounselorDashboard = () => {
             <button className={styles.iconBtn}><FaEnvelope /></button>
             <button className={styles.iconBtn}><FaBell /></button>
             <div className={styles.userProfile}>
-              <div className={styles.avatarSmall}>{getInitial(user?.name)}</div>
+              <div className={styles.avatarSmall}>{getInitial(displayName)}</div>
               <div className={styles.userInfoText}>
-                <span className={styles.userNameText}>{user?.name || 'Counselor'}</span>
-                <span className={styles.userRoleText}>
-                  {user?.role === 'admin_manager' ? 'Admin' : user?.role === 'super_admin' ? 'Super Admin' : 'Counselor'}
-                </span>
+                <span className={styles.userNameText}>{displayName}</span>
+                <span className={styles.userRoleText}>{displayRole}</span>
               </div>
             </div>
           </div>

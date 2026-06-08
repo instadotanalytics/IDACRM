@@ -18,6 +18,10 @@ import AttendanceTable from './AttendanceTable/TrainerAttendanceMarker';
 
 // Batch Management Component (import karo)
 import BatchManagement from '../../../pages/dashboard/TrainerDashboard/Betch/BatchManagement';
+import StudentPerformance from './Performance/StudentPerformance';
+import Assignments from './Performance/Assignments';
+import Tests from './Performance/Tests';
+import CourseMaterials from './CourseMaterials';
 
 const TrainerDashboard = () => {
     const navigate = useNavigate();
@@ -262,13 +266,13 @@ const TrainerDashboard = () => {
             case 'attendance':
                 return <AttendanceTable />;
             case 'assignments':
-                return <PlaceholderContent title="Assignments Module" description="Manage and track student assignments" />;
+                return <Assignments/>;
             case 'tests':
-                return <PlaceholderContent title="Tests Module" description="Create and manage tests, view results" />;
+                return <Tests/>;
             case 'performance':
-                return <PlaceholderContent title="Student Performance Module" description="Track student performance and analytics" />;
+                return <StudentPerformance/>;
             case 'materials':
-                return <PlaceholderContent title="Course Materials Module" description="Upload and manage course materials" />;
+                return <CourseMaterials/>;
             default:
                 return <OverviewComponent />;
         }

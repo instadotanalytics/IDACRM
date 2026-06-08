@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import {
-    FaPlus, FaEdit, FaTrash, FaEye, FaSearch, FaPhone,
-    FaSpinner, FaTimes, FaCheck, FaFilter, FaDownload,
-    FaClock, FaCalendarAlt, FaUser, FaEnvelope, FaPhoneAlt,
+    FaPlus, FaEdit, FaTrash, FaEye, FaSearch, 
+    FaSpinner, FaTimes, FaCheck, 
+    FaClock, FaCalendarAlt, FaUser, FaEnvelope, 
     FaBuilding, FaBookOpen, FaComments, FaChartLine
 } from 'react-icons/fa';
 import api from '../../../../services/api';
@@ -15,7 +15,6 @@ const Leads = () => {
     const [stats, setStats] = useState({});
     const [showModal, setShowModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
-    const [showCallModal, setShowCallModal] = useState(false);
     const [selectedLead, setSelectedLead] = useState(null);
     const [editingLead, setEditingLead] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -37,25 +36,32 @@ const Leads = () => {
         budget: ''
     });
 
-    const [callData, setCallData] = useState({
-        duration: '',
-        notes: '',
-        callType: 'Outgoing'
-    });
-
     useEffect(() => {
         fetchLeads();
     }, [filterStatus, filterSource, searchTerm]);
 
+    // ✅ Get current user for tracking
+    const getCurrentUser = () => {
+        const userData = localStorage.getItem('user');
+        return userData ? JSON.parse(userData) : null;
+    };
+
     const fetchLeads = async () => {
         setLoading(true);
         try {
+            const currentUser = getCurrentUser();
             const params = {};
             if (filterStatus !== 'all') params.status = filterStatus;
             if (filterSource !== 'all') params.source = filterSource;
             if (searchTerm) params.search = searchTerm;
 
-            const response = await api.get('/leads', { params });
+            // ✅ Counselor sirf apne leads dekhega (filter by counselorId)
+            let url = '/leads';
+            if (currentUser?.role === 'counselor') {
+                url = `/leads/counselor/${currentUser._id}`;
+            }
+
+            const response = await api.get(url, { params });
             if (response.data.success) {
                 setLeads(response.data.data);
                 setStats(response.data.stats);
@@ -76,12 +82,19 @@ const Leads = () => {
         e.preventDefault();
         setLoading(true);
         try {
+            const currentUser = getCurrentUser();
             let response;
+            
             if (editingLead) {
                 response = await api.put(`/leads/${editingLead._id}`, formData);
                 toast.success('Lead updated successfully');
             } else {
-                response = await api.post('/leads', formData);
+                // ✅ counselorId auto add hoga backend se
+                const leadData = {
+                    ...formData,
+                    assignedTo: currentUser?._id
+                };
+                response = await api.post('/leads', leadData);
                 toast.success('Lead created successfully');
             }
             
@@ -117,24 +130,6 @@ const Leads = () => {
             } finally {
                 setLoading(false);
             }
-        }
-    };
-
-    const handleAddCall = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            const response = await api.post(`/leads/${selectedLead._id}/call`, callData);
-            if (response.data.success) {
-                toast.success('Call log added');
-                setShowCallModal(false);
-                setCallData({ duration: '', notes: '', callType: 'Outgoing' });
-                fetchLeads();
-            }
-        } catch (error) {
-            toast.error('Failed to add call log');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -298,6 +293,7 @@ const Leads = () => {
                                 <th>Source</th>
                                 <th>Status</th>
                                 <th>Follow-up</th>
+                                <th>Assigned To</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -326,12 +322,14 @@ const Leads = () => {
                                             </div>
                                         )}
                                     </td>
+                                    <td>
+                                        <div className={styles.counselorCell}>
+                                            {lead.counselorName || lead.counselorId?.name || 'Not Assigned'}
+                                        </div>
+                                    </td>
                                     <td className={styles.actionBtns}>
                                         <button className={styles.btnView} onClick={() => { setSelectedLead(lead); setShowViewModal(true); }} title="View">
                                             <FaEye />
-                                        </button>
-                                        <button className={styles.btnCall} onClick={() => { setSelectedLead(lead); setShowCallModal(true); }} title="Add Call">
-                                            <FaPhone />
                                         </button>
                                         <button className={styles.btnEdit} onClick={() => { setEditingLead(lead); setFormData(lead); setShowModal(true); }} title="Edit">
                                             <FaEdit />
@@ -347,7 +345,7 @@ const Leads = () => {
                 )}
             </div>
 
-            {/* Create/Edit Modal */}
+            {/* Create/Edit Modal - Same as before */}
             {showModal && (
                 <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
                     <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -357,6 +355,7 @@ const Leads = () => {
                         </div>
                         <form onSubmit={handleSubmit}>
                             <div className={styles.modalBody}>
+                                {/* Same form fields as before */}
                                 <div className={styles.formRow}>
                                     <div className={styles.formGroup}>
                                         <label>Full Name *</label>
@@ -490,50 +489,18 @@ const Leads = () => {
                                     <div className={styles.viewValue}>{selectedLead.counsellorNotes}</div>
                                 </div>
                             )}
+                            <div className={styles.viewRow}>
+                                <div className={styles.viewLabel}>Created By</div>
+                                <div className={styles.viewValue}>{selectedLead.counselorName || selectedLead.counselorId?.name || 'System'}</div>
+                            </div>
+                            <div className={styles.viewRow}>
+                                <div className={styles.viewLabel}>Created Date</div>
+                                <div className={styles.viewValue}>{new Date(selectedLead.createdAt).toLocaleString()}</div>
+                            </div>
                         </div>
                         <div className={styles.modalFooter}>
                             <button className={styles.cancelBtn} onClick={() => setShowViewModal(false)}>Close</button>
                         </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Call Log Modal */}
-            {showCallModal && selectedLead && (
-                <div className={styles.modalOverlay} onClick={() => setShowCallModal(false)}>
-                    <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                        <div className={styles.modalHeader}>
-                            <h3><FaPhone /> Add Call Log - {selectedLead.name}</h3>
-                            <button onClick={() => setShowCallModal(false)}><FaTimes /></button>
-                        </div>
-                        <form onSubmit={handleAddCall}>
-                            <div className={styles.modalBody}>
-                                <div className={styles.formRow}>
-                                    <div className={styles.formGroup}>
-                                        <label>Call Type</label>
-                                        <select name="callType" value={callData.callType} onChange={(e) => setCallData({...callData, callType: e.target.value})}>
-                                            <option value="Outgoing">Outgoing</option>
-                                            <option value="Incoming">Incoming</option>
-                                        </select>
-                                    </div>
-                                    <div className={styles.formGroup}>
-                                        <label>Duration (minutes)</label>
-                                        <input type="text" name="duration" value={callData.duration} onChange={(e) => setCallData({...callData, duration: e.target.value})} placeholder="e.g., 5 mins" />
-                                    </div>
-                                </div>
-                                <div className={styles.formGroup}>
-                                    <label>Call Notes</label>
-                                    <textarea name="notes" rows="3" value={callData.notes} onChange={(e) => setCallData({...callData, notes: e.target.value})} placeholder="What was discussed?" />
-                                </div>
-                            </div>
-                            <div className={styles.modalFooter}>
-                                <button type="button" className={styles.cancelBtn} onClick={() => setShowCallModal(false)}>Cancel</button>
-                                <button type="submit" className={styles.saveBtn} disabled={loading}>
-                                    {loading ? <FaSpinner className={styles.spin} /> : <FaCheck />}
-                                    Add Call Log
-                                </button>
-                            </div>
-                        </form>
                     </div>
                 </div>
             )}

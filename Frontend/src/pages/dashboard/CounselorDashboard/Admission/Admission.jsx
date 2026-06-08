@@ -4,7 +4,7 @@ import {
     FaUser, FaEnvelope, FaPhone, FaBook, FaCalendarAlt,
     FaMapMarkerAlt, FaUserFriends, FaGraduationCap, FaUpload,
     FaSpinner, FaCheck, FaEye, FaTrash, FaEdit, FaTimes, FaUsers,
-    FaIdCard, FaCamera, FaSearch, FaFilter
+    FaIdCard, FaCamera, FaSearch, FaFilter, FaUserTie
 } from 'react-icons/fa';
 import api from '../../../../services/api';
 import styles from './Admission.module.css';
@@ -17,6 +17,10 @@ const Admission = () => {
     const [activeTab, setActiveTab] = useState('form');
     const [batches, setBatches] = useState([]);
     const [batchesLoading, setBatchesLoading] = useState(false);
+
+    // ✅ Get user role for tracking display
+    const [userRole, setUserRole] = useState('counselor');
+    const [currentUser, setCurrentUser] = useState(null);
 
     // Search and Filter States
     const [searchTerm, setSearchTerm] = useState('');
@@ -56,13 +60,28 @@ const Admission = () => {
     });
 
     useEffect(() => {
+        // ✅ Get current user from localStorage
+        const userData = localStorage.getItem('user');
+        if (userData) {
+            const user = JSON.parse(userData);
+            setCurrentUser(user);
+            setUserRole(user.role);
+        }
         fetchAdmissions();
         fetchBatches();
     }, []);
 
     const fetchAdmissions = async () => {
         try {
-            const response = await api.get('/admissions');
+            const currentUserData = JSON.parse(localStorage.getItem('user'));
+            let url = '/admissions';
+            
+            // ✅ Counselor sirf apne admissions dekhega
+            if (currentUserData?.role === 'counselor') {
+                url = `/admissions/counselor/${currentUserData._id}`;
+            }
+            
+            const response = await api.get(url);
             if (response.data.success) setAdmissions(response.data.data);
         } catch (error) {
             console.error('Error fetching admissions:', error);
@@ -142,7 +161,6 @@ const Admission = () => {
             Object.entries(formData).forEach(([key, val]) => formDataToSend.append(key, val || ''));
             if (selectedImage) formDataToSend.append('photo', selectedImage);
 
-            // ✅ FIXED: Changed from '/admissions/create' to '/admissions'
             const response = await api.post('/admissions', formDataToSend, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
@@ -291,6 +309,15 @@ const Admission = () => {
                         <div className={styles.viewLabel}>Status</div>
                         <div className={styles.viewValue}>{getStatusBadge(student?.status)}</div>
                     </div>
+                    {/* ✅ Show counselor info (Admin only) */}
+                    {(userRole === 'admin_manager' || userRole === 'super_admin') && (
+                        <div className={styles.viewRow}>
+                            <div className={styles.viewLabel}>Admitted By</div>
+                            <div className={styles.viewValue}>
+                                <FaUserTie /> {student?.counselorName || student?.counselorId?.name || 'System'}
+                            </div>
+                        </div>
+                    )}
                     {student?.address && (
                         <div className={styles.viewRow}>
                             <div className={styles.viewLabel}>Address</div>
@@ -631,6 +658,7 @@ const Admission = () => {
                                         <th>Batch</th>
                                         <th>Enrollment ID</th>
                                         <th>Status</th>
+                                        {(userRole === 'admin_manager' || userRole === 'super_admin') && <th>Admitted By</th>}
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -658,6 +686,11 @@ const Admission = () => {
                                                 </span>
                                             </td>
                                             <td>{getStatusBadge(admission.status)}</td>
+                                            {(userRole === 'admin_manager' || userRole === 'super_admin') && (
+                                                <td className={styles.counselorCell}>
+                                                    <FaUserTie /> {admission.counselorName || admission.counselorId?.name || 'System'}
+                                                </td>
+                                            )}
                                             <td>
                                                 <div className={styles.actions}>
                                                     <button className={styles.btnView} onClick={() => handleView(admission)} title="View"><FaEye /></button>
