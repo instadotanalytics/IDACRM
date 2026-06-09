@@ -7,12 +7,10 @@ import {
     FaArrowUp, FaArrowDown, FaUser, FaEnvelope, FaBook,
     FaFilter, FaDownload, FaUserTie
 } from 'react-icons/fa';
-import api from '../../../../services/api';
+import api, { getCurrentUser, getCurrentUserId, getCurrentUserRole } from '../../../../services/api';
 import styles from './Calls.module.css';
 
-// ─────────────────────────────────────────────
 // Helper functions
-// ─────────────────────────────────────────────
 const formatDuration = (minutes) => {
     if (!minutes) return '0 min';
     if (minutes < 60) return `${minutes} min`;
@@ -21,29 +19,29 @@ const formatDuration = (minutes) => {
     return `${hours}h ${mins}m`;
 };
 
-const getStatusIcon = (status, stylesObj) => {
+const getStatusIcon = (status) => {
     switch (status) {
-        case 'Connected': return <FaCheck className={stylesObj.statusConnected} />;
-        case 'Not Answered': return <FaPhoneSlash className={stylesObj.statusNotAnswered} />;
-        case 'Busy': return <FaPhoneSlash className={stylesObj.statusBusy} />;
-        default: return <FaPhone className={stylesObj.statusDefault} />;
+        case 'Connected': return <FaCheck style={{ color: '#10b981' }} />;
+        case 'Not Answered': return <FaPhoneSlash style={{ color: '#f59e0b' }} />;
+        case 'Busy': return <FaPhoneSlash style={{ color: '#ef4444' }} />;
+        default: return <FaPhone />;
     }
 };
 
-const getCallTypeIcon = (type, stylesObj) => {
+const getCallTypeIcon = (type) => {
     return type === 'Outgoing'
-        ? <FaArrowUp className={stylesObj.outgoing} />
-        : <FaArrowDown className={stylesObj.incoming} />;
+        ? <FaArrowUp style={{ color: '#10b981' }} />
+        : <FaArrowDown style={{ color: '#f59e0b' }} />;
 };
 
-const getStatusBadge = (status, stylesObj) => {
+const getStatusBadge = (status) => {
     const map = {
-        'Connected': stylesObj.badgeConnected,
-        'Not Answered': stylesObj.badgeNotAnswered,
-        'Busy': stylesObj.badgeBusy,
-        'Wrong Number': stylesObj.badgeWrongNumber
+        'Connected': styles.badgeConnected,
+        'Not Answered': styles.badgeNotAnswered,
+        'Busy': styles.badgeBusy,
+        'Wrong Number': styles.badgeWrongNumber
     };
-    return <span className={`${stylesObj.badge} ${map[status] || ''}`}>{status}</span>;
+    return <span className={`${styles.badge} ${map[status] || ''}`}>{status}</span>;
 };
 
 const DEFAULT_FORM = {
@@ -60,65 +58,61 @@ const DEFAULT_FORM = {
     followUpDate: ''
 };
 
-// ─────────────────────────────────────────────
 // StatsCards Component
-// ─────────────────────────────────────────────
-const StatsCards = ({ stats, stylesObj, userRole }) => (
-    <div className={stylesObj.statsGrid}>
-        <div className={stylesObj.statCard}>
-            <div className={stylesObj.statIcon}><FaPhoneAlt /></div>
-            <div className={stylesObj.statInfo}>
-                <span className={stylesObj.statValue}>{stats.total}</span>
-                <span className={stylesObj.statLabel}>Total Calls</span>
+const StatsCards = ({ stats }) => (
+    <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+            <div className={styles.statIcon}><FaPhoneAlt /></div>
+            <div className={styles.statInfo}>
+                <span className={styles.statValue}>{stats.total}</span>
+                <span className={styles.statLabel}>Total Calls</span>
             </div>
         </div>
-        <div className={stylesObj.statCard}>
-            <div className={stylesObj.statIcon}><FaArrowUp /></div>
-            <div className={stylesObj.statInfo}>
-                <span className={stylesObj.statValue}>{stats.outgoing}</span>
-                <span className={stylesObj.statLabel}>Outgoing</span>
+        <div className={styles.statCard}>
+            <div className={styles.statIcon}><FaArrowUp /></div>
+            <div className={styles.statInfo}>
+                <span className={styles.statValue}>{stats.outgoing}</span>
+                <span className={styles.statLabel}>Outgoing</span>
             </div>
         </div>
-        <div className={stylesObj.statCard}>
-            <div className={stylesObj.statIcon}><FaArrowDown /></div>
-            <div className={stylesObj.statInfo}>
-                <span className={stylesObj.statValue}>{stats.incoming}</span>
-                <span className={stylesObj.statLabel}>Incoming</span>
+        <div className={styles.statCard}>
+            <div className={styles.statIcon}><FaArrowDown /></div>
+            <div className={styles.statInfo}>
+                <span className={styles.statValue}>{stats.incoming}</span>
+                <span className={styles.statLabel}>Incoming</span>
             </div>
         </div>
-        <div className={stylesObj.statCard}>
-            <div className={stylesObj.statIcon}><FaCheck /></div>
-            <div className={stylesObj.statInfo}>
-                <span className={stylesObj.statValue}>{stats.connected}</span>
-                <span className={stylesObj.statLabel}>Connected</span>
+        <div className={styles.statCard}>
+            <div className={styles.statIcon}><FaCheck /></div>
+            <div className={styles.statInfo}>
+                <span className={styles.statValue}>{stats.connected}</span>
+                <span className={styles.statLabel}>Connected</span>
             </div>
         </div>
-        <div className={stylesObj.statCard}>
-            <div className={stylesObj.statIcon}><FaClock /></div>
-            <div className={stylesObj.statInfo}>
-                <span className={stylesObj.statValue}>{formatDuration(stats.totalDuration)}</span>
-                <span className={stylesObj.statLabel}>Total Duration</span>
+        <div className={styles.statCard}>
+            <div className={styles.statIcon}><FaClock /></div>
+            <div className={styles.statInfo}>
+                <span className={styles.statValue}>{formatDuration(stats.totalDuration)}</span>
+                <span className={styles.statLabel}>Total Duration</span>
             </div>
         </div>
     </div>
 );
 
-// ─────────────────────────────────────────────
 // WeeklyChart Component
-// ─────────────────────────────────────────────
-const WeeklyChart = ({ weeklyStats, stylesObj }) => (
-    <div className={stylesObj.chartCard}>
+const WeeklyChart = ({ weeklyStats }) => (
+    <div className={styles.chartCard}>
         <h3>Weekly Call Activity</h3>
-        <div className={stylesObj.barChart}>
+        <div className={styles.barChart}>
             {weeklyStats.map((day, idx) => (
-                <div key={idx} className={stylesObj.barItem}>
-                    <div className={stylesObj.barLabel}>{day.date}</div>
-                    <div className={stylesObj.barWrapper}>
+                <div key={idx} className={styles.barItem}>
+                    <div className={styles.barLabel}>{day.date}</div>
+                    <div className={styles.barWrapper}>
                         <div
-                            className={stylesObj.bar}
+                            className={styles.bar}
                             style={{ height: `${Math.min(day.calls * 15, 100)}%` }}
                         >
-                            <span className={stylesObj.barValue}>{day.calls}</span>
+                            <span className={styles.barValue}>{day.calls}</span>
                         </div>
                     </div>
                 </div>
@@ -127,19 +121,17 @@ const WeeklyChart = ({ weeklyStats, stylesObj }) => (
     </div>
 );
 
-// ─────────────────────────────────────────────
 // TodayCallsTable Component
-// ─────────────────────────────────────────────
-const TodayCallsTable = ({ todayCalls, onAdd, onView, onEdit, onDelete, stylesObj, userRole }) => (
-    <div className={stylesObj.tableCard}>
-        <div className={stylesObj.tableHeader}>
-            <h3>Today's Call Logs</h3>
-            <button className={stylesObj.addBtn} onClick={onAdd}>
+const TodayCallsTable = ({ todayCalls, onAdd, onView, onEdit, onDelete, userRole }) => (
+    <div className={styles.tableCard}>
+        <div className={styles.tableHeader}>
+            <h3>Today's Call Logs - {new Date().toLocaleDateString()}</h3>
+            <button className={styles.addBtn} onClick={onAdd}>
                 <FaPlus /> Add Call
             </button>
         </div>
-        <div className={stylesObj.tableWrapper}>
-            <table className={stylesObj.table}>
+        <div className={styles.tableWrapper}>
+            <table className={styles.table}>
                 <thead>
                     <tr>
                         <th>Time</th>
@@ -155,26 +147,31 @@ const TodayCallsTable = ({ todayCalls, onAdd, onView, onEdit, onDelete, stylesOb
                 </thead>
                 <tbody>
                     {todayCalls.length === 0 ? (
-                        <tr><td colSpan={userRole === 'admin_manager' ? 9 : 8} className={stylesObj.emptyCell}>No calls today</td></tr>
+                        <tr><td colSpan={userRole === 'admin_manager' ? 9 : 8} className={styles.emptyCell}>
+                            <div className={styles.emptyIcon}>📞</div>
+                            <p>No calls recorded today</p>
+                            <button className={styles.addFirstBtn} onClick={onAdd}>Add your first call</button>
+                         </td>
+                        </tr>
                     ) : (
                         todayCalls.map(call => (
                             <tr key={call._id}>
                                 <td>{new Date(call.callTime).toLocaleTimeString()}</td>
-                                <td>{getCallTypeIcon(call.callType, stylesObj)} {call.callType}</td>
+                                <td>{getCallTypeIcon(call.callType)} {call.callType}</td>
                                 <td><strong>{call.leadName}</strong></td>
                                 <td>{call.leadPhone}</td>
                                 <td>{call.courseInterest || '-'}</td>
-                                <td>{getStatusIcon(call.callStatus, stylesObj)} {call.callStatus}</td>
+                                <td>{getStatusIcon(call.callStatus)} {call.callStatus}</td>
                                 <td>{formatDuration(call.duration)}</td>
                                 {(userRole === 'admin_manager' || userRole === 'super_admin') && (
-                                    <td className={stylesObj.counselorCell}>
+                                    <td className={styles.counselorCell}>
                                         {call.counselorName || call.counselorId?.name || '-'}
                                     </td>
                                 )}
-                                <td className={stylesObj.actionBtns}>
-                                    <button className={stylesObj.viewBtn} onClick={() => onView(call)} title="View"><FaEye /></button>
-                                    <button className={stylesObj.editBtn} onClick={() => onEdit(call)} title="Edit"><FaEdit /></button>
-                                    <button className={stylesObj.deleteBtn} onClick={() => onDelete(call._id)} title="Delete"><FaTrash /></button>
+                                <td className={styles.actionBtns}>
+                                    <button className={styles.viewBtn} onClick={() => onView(call)} title="View"><FaEye /></button>
+                                    <button className={styles.editBtn} onClick={() => onEdit(call)} title="Edit"><FaEdit /></button>
+                                    <button className={styles.deleteBtn} onClick={() => onDelete(call._id)} title="Delete"><FaTrash /></button>
                                 </td>
                             </tr>
                         ))
@@ -185,19 +182,17 @@ const TodayCallsTable = ({ todayCalls, onAdd, onView, onEdit, onDelete, stylesOb
     </div>
 );
 
-// ─────────────────────────────────────────────
 // AllCallsTable Component
-// ─────────────────────────────────────────────
 const AllCallsTable = ({
     filteredCalls, searchTerm, filterType, filterStatus,
     onSearchChange, onTypeChange, onStatusChange, onClearFilters,
-    onView, onEdit, onDelete, stylesObj, userRole
+    onView, onEdit, onDelete, userRole
 }) => (
-    <div className={stylesObj.tableCard}>
-        <div className={stylesObj.tableHeader}>
+    <div className={styles.tableCard}>
+        <div className={styles.tableHeader}>
             <h3>All Call History</h3>
-            <div className={stylesObj.filterGroup}>
-                <div className={stylesObj.searchBox}>
+            <div className={styles.filterGroup}>
+                <div className={styles.searchBox}>
                     <FaSearch />
                     <input
                         type="text"
@@ -206,12 +201,12 @@ const AllCallsTable = ({
                         onChange={onSearchChange}
                     />
                 </div>
-                <select className={stylesObj.filterSelect} value={filterType} onChange={onTypeChange}>
+                <select className={styles.filterSelect} value={filterType} onChange={onTypeChange}>
                     <option value="all">All Types</option>
                     <option value="Outgoing">Outgoing</option>
                     <option value="Incoming">Incoming</option>
                 </select>
-                <select className={stylesObj.filterSelect} value={filterStatus} onChange={onStatusChange}>
+                <select className={styles.filterSelect} value={filterStatus} onChange={onStatusChange}>
                     <option value="all">All Status</option>
                     <option value="Connected">Connected</option>
                     <option value="Not Answered">Not Answered</option>
@@ -219,12 +214,12 @@ const AllCallsTable = ({
                     <option value="Wrong Number">Wrong Number</option>
                 </select>
                 {(filterType !== 'all' || filterStatus !== 'all' || searchTerm) && (
-                    <button className={stylesObj.clearFilters} onClick={onClearFilters}>Clear Filters</button>
+                    <button className={styles.clearFilters} onClick={onClearFilters}>Clear Filters</button>
                 )}
             </div>
         </div>
-        <div className={stylesObj.tableWrapper}>
-            <table className={stylesObj.table}>
+        <div className={styles.tableWrapper}>
+            <table className={styles.table}>
                 <thead>
                     <tr>
                         <th>Date & Time</th>
@@ -241,7 +236,7 @@ const AllCallsTable = ({
                 </thead>
                 <tbody>
                     {filteredCalls.length === 0 ? (
-                        <tr><td colSpan={userRole === 'admin_manager' ? 10 : 9} className={stylesObj.emptyCell}>No calls found</td></tr>
+                        <tr><td colSpan={userRole === 'admin_manager' ? 10 : 9} className={styles.emptyCell}>No calls found</td></tr>
                     ) : (
                         filteredCalls.map(call => (
                             <tr key={call._id}>
@@ -250,22 +245,22 @@ const AllCallsTable = ({
                                     <br />
                                     <small>{new Date(call.callTime).toLocaleTimeString()}</small>
                                 </td>
-                                <td>{getCallTypeIcon(call.callType, stylesObj)} {call.callType}</td>
+                                <td>{getCallTypeIcon(call.callType)} {call.callType}</td>
                                 <td><strong>{call.leadName}</strong></td>
                                 <td>{call.leadPhone}</td>
                                 <td>{call.leadEmail || '-'}</td>
                                 <td>{call.courseInterest || '-'}</td>
-                                <td>{getStatusIcon(call.callStatus, stylesObj)} {call.callStatus}</td>
+                                <td>{getStatusIcon(call.callStatus)} {call.callStatus}</td>
                                 <td>{formatDuration(call.duration)}</td>
                                 {(userRole === 'admin_manager' || userRole === 'super_admin') && (
-                                    <td className={stylesObj.counselorCell}>
+                                    <td className={styles.counselorCell}>
                                         {call.counselorName || call.counselorId?.name || '-'}
                                     </td>
                                 )}
-                                <td className={stylesObj.actionBtns}>
-                                    <button className={stylesObj.viewBtn} onClick={() => onView(call)}><FaEye /></button>
-                                    <button className={stylesObj.editBtn} onClick={() => onEdit(call)}><FaEdit /></button>
-                                    <button className={stylesObj.deleteBtn} onClick={() => onDelete(call._id)}><FaTrash /></button>
+                                <td className={styles.actionBtns}>
+                                    <button className={styles.viewBtn} onClick={() => onView(call)}><FaEye /></button>
+                                    <button className={styles.editBtn} onClick={() => onEdit(call)}><FaEdit /></button>
+                                    <button className={styles.deleteBtn} onClick={() => onDelete(call._id)}><FaTrash /></button>
                                 </td>
                             </tr>
                         ))
@@ -276,9 +271,7 @@ const AllCallsTable = ({
     </div>
 );
 
-// ─────────────────────────────────────────────
 // CallModal Component
-// ─────────────────────────────────────────────
 const CallModal = ({ editingCall, callForm, loading, onClose, onChange, onSubmit }) => (
     <div className={styles.modalOverlay} onClick={onClose}>
         <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -289,25 +282,25 @@ const CallModal = ({ editingCall, callForm, loading, onClose, onChange, onSubmit
             <form onSubmit={onSubmit}>
                 <div className={styles.modalBody}>
                     <div className={styles.formSection}>
-                        <h4>Lead Information (Manual Entry)</h4>
+                        <h4>Lead Information</h4>
                         <div className={styles.formRow}>
                             <div className={styles.formGroup}>
                                 <label>Lead Name *</label>
-                                <input type="text" name="leadName" value={callForm.leadName} onChange={onChange} placeholder="Enter lead full name" required />
+                                <input type="text" name="leadName" value={callForm.leadName} onChange={onChange} required />
                             </div>
                             <div className={styles.formGroup}>
                                 <label>Phone Number *</label>
-                                <input type="tel" name="leadPhone" value={callForm.leadPhone} onChange={onChange} placeholder="Enter phone number" required />
+                                <input type="tel" name="leadPhone" value={callForm.leadPhone} onChange={onChange} required />
                             </div>
                         </div>
                         <div className={styles.formRow}>
                             <div className={styles.formGroup}>
                                 <label>Email Address</label>
-                                <input type="email" name="leadEmail" value={callForm.leadEmail} onChange={onChange} placeholder="Enter email address" />
+                                <input type="email" name="leadEmail" value={callForm.leadEmail} onChange={onChange} />
                             </div>
                             <div className={styles.formGroup}>
                                 <label>Course Interest</label>
-                                <input type="text" name="courseInterest" value={callForm.courseInterest} onChange={onChange} placeholder="Enter course name" />
+                                <input type="text" name="courseInterest" value={callForm.courseInterest} onChange={onChange} />
                             </div>
                         </div>
                     </div>
@@ -339,12 +332,12 @@ const CallModal = ({ editingCall, callForm, loading, onClose, onChange, onSubmit
                             </div>
                             <div className={styles.formGroup}>
                                 <label>Duration (minutes)</label>
-                                <input type="number" name="duration" value={callForm.duration} onChange={onChange} placeholder="e.g., 5" min="0" />
+                                <input type="number" name="duration" value={callForm.duration} onChange={onChange} min="0" step="1" />
                             </div>
                         </div>
                         <div className={styles.formGroup}>
                             <label>Call Notes</label>
-                            <textarea rows="3" name="notes" value={callForm.notes} onChange={onChange} placeholder="What was discussed in the call?" />
+                            <textarea rows="3" name="notes" value={callForm.notes} onChange={onChange} placeholder="What was discussed?" />
                         </div>
                     </div>
 
@@ -376,86 +369,47 @@ const CallModal = ({ editingCall, callForm, loading, onClose, onChange, onSubmit
     </div>
 );
 
-// ─────────────────────────────────────────────
 // ViewModal Component
-// ─────────────────────────────────────────────
-const ViewModal = ({ selectedCall, onClose, onEdit, stylesObj, userRole }) => (
-    <div className={stylesObj.modalOverlay} onClick={onClose}>
-        <div className={stylesObj.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={stylesObj.modalHeader}>
+const ViewModal = ({ selectedCall, onClose, onEdit, userRole }) => (
+    <div className={styles.modalOverlay} onClick={onClose}>
+        <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
                 <h3><FaEye /> Call Details</h3>
                 <button onClick={onClose}><FaTimes /></button>
             </div>
-            <div className={stylesObj.modalBody}>
-                <div className={stylesObj.viewSection}>
+            <div className={styles.modalBody}>
+                <div className={styles.viewSection}>
                     <h4>Lead Information</h4>
-                    <div className={stylesObj.viewRow}>
-                        <div className={stylesObj.viewLabel}>Name</div>
-                        <div className={stylesObj.viewValue}>{selectedCall?.leadName}</div>
-                    </div>
-                    <div className={stylesObj.viewRow}>
-                        <div className={stylesObj.viewLabel}>Phone</div>
-                        <div className={stylesObj.viewValue}>{selectedCall?.leadPhone}</div>
-                    </div>
-                    <div className={stylesObj.viewRow}>
-                        <div className={stylesObj.viewLabel}>Email</div>
-                        <div className={stylesObj.viewValue}>{selectedCall?.leadEmail || '-'}</div>
-                    </div>
-                    <div className={stylesObj.viewRow}>
-                        <div className={stylesObj.viewLabel}>Course Interest</div>
-                        <div className={stylesObj.viewValue}>{selectedCall?.courseInterest || '-'}</div>
-                    </div>
+                    <div className={styles.viewRow}><div className={styles.viewLabel}>Name:</div><div className={styles.viewValue}>{selectedCall?.leadName}</div></div>
+                    <div className={styles.viewRow}><div className={styles.viewLabel}>Phone:</div><div className={styles.viewValue}>{selectedCall?.leadPhone}</div></div>
+                    <div className={styles.viewRow}><div className={styles.viewLabel}>Email:</div><div className={styles.viewValue}>{selectedCall?.leadEmail || '-'}</div></div>
+                    <div className={styles.viewRow}><div className={styles.viewLabel}>Course:</div><div className={styles.viewValue}>{selectedCall?.courseInterest || '-'}</div></div>
                 </div>
-                <div className={stylesObj.viewSection}>
+                <div className={styles.viewSection}>
                     <h4>Call Information</h4>
-                    <div className={stylesObj.viewRow}>
-                        <div className={stylesObj.viewLabel}>Call Time</div>
-                        <div className={stylesObj.viewValue}>{new Date(selectedCall?.callTime).toLocaleString()}</div>
-                    </div>
-                    <div className={stylesObj.viewRow}>
-                        <div className={stylesObj.viewLabel}>Call Type</div>
-                        <div className={stylesObj.viewValue}>{selectedCall?.callType}</div>
-                    </div>
-                    <div className={stylesObj.viewRow}>
-                        <div className={stylesObj.viewLabel}>Call Status</div>
-                        <div className={stylesObj.viewValue}>{getStatusBadge(selectedCall?.callStatus, stylesObj)}</div>
-                    </div>
-                    <div className={stylesObj.viewRow}>
-                        <div className={stylesObj.viewLabel}>Duration</div>
-                        <div className={stylesObj.viewValue}>{formatDuration(selectedCall?.duration)}</div>
-                    </div>
-                    <div className={stylesObj.viewRow}>
-                        <div className={stylesObj.viewLabel}>Notes</div>
-                        <div className={stylesObj.viewValue}>{selectedCall?.notes || '-'}</div>
-                    </div>
+                    <div className={styles.viewRow}><div className={styles.viewLabel}>Date & Time:</div><div className={styles.viewValue}>{new Date(selectedCall?.callTime).toLocaleString()}</div></div>
+                    <div className={styles.viewRow}><div className={styles.viewLabel}>Call Type:</div><div className={styles.viewValue}>{selectedCall?.callType}</div></div>
+                    <div className={styles.viewRow}><div className={styles.viewLabel}>Status:</div><div className={styles.viewValue}>{getStatusBadge(selectedCall?.callStatus)}</div></div>
+                    <div className={styles.viewRow}><div className={styles.viewLabel}>Duration:</div><div className={styles.viewValue}>{formatDuration(selectedCall?.duration)}</div></div>
+                    <div className={styles.viewRow}><div className={styles.viewLabel}>Notes:</div><div className={styles.viewValue}>{selectedCall?.notes || '-'}</div></div>
                 </div>
                 {(userRole === 'admin_manager' || userRole === 'super_admin') && (
-                    <div className={stylesObj.viewSection}>
+                    <div className={styles.viewSection}>
                         <h4>Tracking Information</h4>
-                        <div className={stylesObj.viewRow}>
-                            <div className={stylesObj.viewLabel}>Counselor</div>
-                            <div className={stylesObj.viewValue}>
-                                {selectedCall?.counselorName || selectedCall?.counselorId?.name || '-'}
-                            </div>
-                        </div>
-                        <div className={stylesObj.viewRow}>
-                            <div className={stylesObj.viewLabel}>Created At</div>
-                            <div className={stylesObj.viewValue}>{new Date(selectedCall?.createdAt).toLocaleString()}</div>
-                        </div>
+                        <div className={styles.viewRow}><div className={styles.viewLabel}>Counselor:</div><div className={styles.viewValue}>{selectedCall?.counselorName || '-'}</div></div>
+                        <div className={styles.viewRow}><div className={styles.viewLabel}>Created At:</div><div className={styles.viewValue}>{new Date(selectedCall?.createdAt).toLocaleString()}</div></div>
                     </div>
                 )}
             </div>
-            <div className={stylesObj.modalFooter}>
-                <button className={stylesObj.cancelBtn} onClick={onClose}>Close</button>
-                <button className={stylesObj.editBtn} onClick={() => { onClose(); onEdit(selectedCall); }}>Edit Call</button>
+            <div className={styles.modalFooter}>
+                <button className={styles.cancelBtn} onClick={onClose}>Close</button>
+                <button className={styles.editBtn} onClick={() => { onClose(); onEdit(selectedCall); }}>Edit Call</button>
             </div>
         </div>
     </div>
 );
 
-// ─────────────────────────────────────────────
 // Main Calls Component
-// ─────────────────────────────────────────────
 const Calls = () => {
     const [loading, setLoading] = useState(false);
     const [todayCalls, setTodayCalls] = useState([]);
@@ -474,17 +428,11 @@ const Calls = () => {
     const [filterType, setFilterType] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
     const [callForm, setCallForm] = useState(DEFAULT_FORM);
-    
-    // ✅ Get current user role for tracking display
     const [userRole, setUserRole] = useState('counselor');
-    const [currentUser, setCurrentUser] = useState(null);
 
     useEffect(() => {
-        // Get current user from localStorage
-        const userData = localStorage.getItem('user');
-        if (userData) {
-            const user = JSON.parse(userData);
-            setCurrentUser(user);
+        const user = getCurrentUser();
+        if (user) {
             setUserRole(user.role);
         }
         fetchTodayCalls();
@@ -654,7 +602,7 @@ const Calls = () => {
                 </div>
             </div>
 
-            <StatsCards stats={stats} stylesObj={styles} userRole={userRole} />
+            <StatsCards stats={stats} />
 
             <div className={styles.tabs}>
                 <button className={`${styles.tab} ${activeTab === 'today' ? styles.active : ''}`} onClick={() => setActiveTab('today')}>
@@ -675,12 +623,11 @@ const Calls = () => {
                     onView={(call) => { setSelectedCall(call); setShowViewModal(true); }}
                     onEdit={openEditModal}
                     onDelete={handleDeleteCall}
-                    stylesObj={styles}
                     userRole={userRole}
                 />
             )}
             {activeTab === 'weekly' && (
-                <WeeklyChart weeklyStats={weeklyStats} stylesObj={styles} />
+                <WeeklyChart weeklyStats={weeklyStats} />
             )}
             {activeTab === 'all' && (
                 <AllCallsTable
@@ -695,7 +642,6 @@ const Calls = () => {
                     onView={(call) => { setSelectedCall(call); setShowViewModal(true); }}
                     onEdit={openEditModal}
                     onDelete={handleDeleteCall}
-                    stylesObj={styles}
                     userRole={userRole}
                 />
             )}
@@ -716,7 +662,6 @@ const Calls = () => {
                     selectedCall={selectedCall}
                     onClose={() => setShowViewModal(false)}
                     onEdit={openEditModal}
-                    stylesObj={styles}
                     userRole={userRole}
                 />
             )}

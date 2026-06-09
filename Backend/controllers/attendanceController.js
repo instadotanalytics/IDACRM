@@ -2,7 +2,7 @@ import Attendance from '../models/Attendance.js';
 import Admission from '../models/Admission.js';
 import Batch from '../models/Batch.js';
 
-// ==================== SAVE BULK ATTENDANCE (WITH TRACKING) ====================
+// ==================== SAVE BULK ATTENDANCE ====================
 export const saveBulkAttendance = async (req, res) => {
     try {
         const { records } = req.body;
@@ -15,8 +15,9 @@ export const saveBulkAttendance = async (req, res) => {
         }
 
         console.log('=========================================');
-        console.log('📝 Saving Attendance by Trainer:', req.user.name);
-        console.log('🆔 Trainer ID:', req.user._id);
+        console.log('📝 Saving Attendance by:', req.user.name);
+        console.log('🆔 User ID:', req.user._id);
+        console.log('👤 User Role:', req.user.role);
         console.log('📊 Records count:', records.length);
         console.log('=========================================');
 
@@ -34,18 +35,16 @@ export const saveBulkAttendance = async (req, res) => {
             });
             
             if (attendance) {
-                // Update existing record
                 attendance.status = normalizedStatus;
                 attendance.remarks = record.remarks || '';
                 attendance.markedBy = req.user._id;
-                attendance.trainerId = req.user._id;        // ✅ TRACKING
-                attendance.trainerName = req.user.name;     // ✅ TRACKING
+                attendance.trainerId = req.user._id;
+                attendance.trainerName = req.user.name;
                 attendance.updatedAt = new Date();
                 await attendance.save();
                 savedRecords.push(attendance);
                 console.log(`✅ Updated attendance for student ${record.studentId}`);
             } else {
-                // Create new record
                 attendance = await Attendance.create({
                     studentId: record.studentId,
                     batchId: record.batchId,
@@ -53,8 +52,8 @@ export const saveBulkAttendance = async (req, res) => {
                     status: normalizedStatus,
                     remarks: record.remarks || '',
                     markedBy: req.user._id,
-                    trainerId: req.user._id,        // ✅ TRACKING - who marked attendance
-                    trainerName: req.user.name      // ✅ TRACKING - trainer name
+                    trainerId: req.user._id,
+                    trainerName: req.user.name
                 });
                 savedRecords.push(attendance);
                 console.log(`✅ Created attendance for student ${record.studentId}`);
@@ -75,7 +74,7 @@ export const saveBulkAttendance = async (req, res) => {
     }
 };
 
-// ==================== GET ATTENDANCE (WITH TRAINER FILTER) ====================
+// ==================== GET ATTENDANCE ====================
 export const getAttendance = async (req, res) => {
     try {
         const { batchId, date, studentId } = req.query;
@@ -83,13 +82,6 @@ export const getAttendance = async (req, res) => {
         let query = {};
         if (batchId) query.batchId = batchId;
         if (studentId) query.studentId = studentId;
-        
-        // ✅ Trainer can only see attendance of their own batches
-        if (req.user.role === 'trainer') {
-            const trainerBatches = await Batch.find({ trainerId: req.user._id }).select('_id');
-            const batchIds = trainerBatches.map(b => b._id);
-            query.batchId = { $in: batchIds };
-        }
         
         if (date) {
             const searchDate = new Date(date);
@@ -101,7 +93,7 @@ export const getAttendance = async (req, res) => {
             .populate('studentId', 'name email enrollmentId photo')
             .populate('batchId', 'name code')
             .populate('markedBy', 'name')
-            .populate('trainerId', 'name email')  // ✅ Populate trainer info
+            .populate('trainerId', 'name email')
             .sort({ date: -1 });
         
         res.json({ success: true, data: attendance });
@@ -112,7 +104,7 @@ export const getAttendance = async (req, res) => {
     }
 };
 
-// ==================== GET ATTENDANCE BY TRAINER (TRACKING REPORT) ====================
+// ==================== GET ATTENDANCE BY TRAINER ====================
 export const getAttendanceByTrainer = async (req, res) => {
     try {
         const { trainerId, startDate, endDate } = req.query;
@@ -133,7 +125,6 @@ export const getAttendanceByTrainer = async (req, res) => {
             .populate('trainerId', 'name email')
             .sort({ date: -1 });
         
-        // Calculate stats
         const stats = {
             totalRecords: attendance.length,
             present: attendance.filter(a => a.status === 'Present').length,
@@ -157,7 +148,7 @@ export const getAttendanceByTrainer = async (req, res) => {
     }
 };
 
-// ==================== GET MONTHLY REPORT (WITH TRACKING) ====================
+// ==================== GET MONTHLY REPORT ====================
 export const getMonthlyReport = async (req, res) => {
     try {
         const { batchId } = req.query;
@@ -169,19 +160,14 @@ export const getMonthlyReport = async (req, res) => {
             });
         }
         
+        console.log('Fetching monthly report for batch:', batchId);
+        console.log('Requested by:', req.user.name, '- Role:', req.user.role);
+        
         const batch = await Batch.findById(batchId);
         if (!batch) {
             return res.status(404).json({ 
                 success: false, 
                 message: 'Batch not found' 
-            });
-        }
-        
-        // ✅ Check if trainer has access to this batch
-        if (req.user.role === 'trainer' && batch.trainerId?.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ 
-                success: false, 
-                message: 'Access denied. You can only view your own batches.' 
             });
         }
         
@@ -219,16 +205,16 @@ export const getMonthlyReport = async (req, res) => {
             );
             
             const present = studentAttendance.filter(r => 
-                r.status === 'Present' || r.status === 'present'
+                r.status === 'Present'
             ).length;
             const absent = studentAttendance.filter(r => 
-                r.status === 'Absent' || r.status === 'absent'
+                r.status === 'Absent'
             ).length;
             const leave = studentAttendance.filter(r => 
-                r.status === 'Leave' || r.status === 'leave'
+                r.status === 'Leave'
             ).length;
             const late = studentAttendance.filter(r => 
-                r.status === 'Late' || r.status === 'late'
+                r.status === 'Late'
             ).length;
             
             const total = present + absent + leave + late;
@@ -269,7 +255,8 @@ export const getMonthlyReport = async (req, res) => {
             late: totalLate,
             percentage: parseFloat(overallPercentage),
             students: studentStats,
-            markedBy: req.user.name  // ✅ TRACKING - who generated report
+            generatedBy: req.user.name,
+            generatedAt: new Date().toLocaleString()
         }];
         
         res.json({ success: true, data: result });
@@ -294,8 +281,8 @@ export const updateAttendance = async (req, res) => {
                 status: normalizedStatus,
                 remarks: req.body.remarks,
                 markedBy: req.user._id,
-                trainerId: req.user._id,        // ✅ TRACKING
-                trainerName: req.user.name,     // ✅ TRACKING
+                trainerId: req.user._id,
+                trainerName: req.user.name,
                 updatedAt: new Date()
             },
             { new: true }
@@ -342,3 +329,7 @@ export const deleteAttendance = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// ✅ NO DUPLICATE EXPORTS - All functions are already exported with 'export const'
+// The functions above already have 'export const' at their definitions
+// So no separate export block is needed at the bottom

@@ -23,37 +23,76 @@ const TrainerAttendanceMarker = () => {
     const [selectedReport, setSelectedReport] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentUser, setCurrentUser] = useState(null);
+    const [userRole, setUserRole] = useState('');
 
     // ✅ Get current user for tracking
     useEffect(() => {
         const userData = localStorage.getItem('user');
         if (userData) {
-            const user = JSON.parse(userData);
-            setCurrentUser(user);
-            console.log('Current Trainer:', user.name);
-            console.log('Trainer ID:', user._id);
+            try {
+                const user = JSON.parse(userData);
+                setCurrentUser(user);
+                setUserRole(user.role);
+                console.log('=== ATTENDANCE MANAGER ===');
+                console.log('Current User:', user.name);
+                console.log('User ID:', user._id || user.id);
+                console.log('User Role:', user.role);
+            } catch (error) {
+                console.error('Error parsing user:', error);
+            }
         }
+        fetchBatches();
     }, []);
 
     const fetchBatches = async () => {
         setLoading(true);
         try {
-            const response = await api.get('/batches/trainer/assigned');
-            if (response.data.success) {
-                setBatches(response.data.data);
-            } else {
-                const allBatchesRes = await api.get('/batches');
-                if (allBatchesRes.data.success) {
-                    const user = JSON.parse(localStorage.getItem('user'));
-                    const trainerBatches = allBatchesRes.data.data.filter(
-                        batch => batch.trainerId?._id === user?._id || batch.trainerId === user?._id
-                    );
-                    setBatches(trainerBatches);
+            const userId = currentUser?._id || currentUser?.id;
+            console.log('Fetching batches for user ID:', userId);
+            console.log('User Role:', userRole);
+            
+            let allBatches = [];
+            
+            // ✅ If user is trainer, get assigned batches
+            if (userRole === 'trainer') {
+                try {
+                    const response = await api.get('/batches/trainer/assigned');
+                    if (response.data.success) {
+                        allBatches = response.data.data;
+                        console.log('Trainer assigned batches:', allBatches.length);
+                    }
+                } catch (err) {
+                    console.log('Trainer endpoint failed');
                 }
+            }
+            
+            // ✅ If no batches found or user is counselor, get all batches
+            if (allBatches.length === 0) {
+                const response = await api.get('/batches');
+                if (response.data.success) {
+                    allBatches = response.data.data;
+                    console.log('All batches:', allBatches.length);
+                }
+            }
+            
+            // ✅ If user is counselor, filter batches they have access to
+            let finalBatches = allBatches;
+            if (userRole === 'counselor') {
+                // Counselors can see all batches or only their assigned ones
+                // For now, show all batches
+                finalBatches = allBatches;
+            }
+            
+            console.log('Final batches to display:', finalBatches.length);
+            setBatches(finalBatches);
+            
+            if (finalBatches.length === 0) {
+                toast.error('No batches available. Contact admin.');
             }
         } catch (error) {
             console.error('Error fetching batches:', error);
             toast.error('Failed to fetch batches');
+            setBatches([]);
         } finally {
             setLoading(false);
         }
@@ -63,14 +102,22 @@ const TrainerAttendanceMarker = () => {
         if (!selectedBatch) return;
         setLoading(true);
         try {
+            console.log('Fetching students for batch:', selectedBatch.name);
+            console.log('Batch ID:', selectedBatch._id);
+            
             const response = await api.get('/admissions');
             if (response.data.success) {
                 const allStudents = response.data.data;
+                console.log('Total students:', allStudents.length);
+                
                 const batchStudents = allStudents.filter(student => {
                     const studentBatchId = student.batchId?._id || student.batchId;
                     return studentBatchId === selectedBatch._id;
                 });
+                
+                console.log('Students in this batch:', batchStudents.length);
                 setStudents(batchStudents);
+                
                 const initialAttendance = batchStudents.map(student => ({
                     studentId: student._id,
                     studentName: student.name,
@@ -137,20 +184,27 @@ const TrainerAttendanceMarker = () => {
         }
     };
 
-    useEffect(() => { fetchBatches(); }, []);
     useEffect(() => {
-        if (selectedBatch) { fetchStudentsByBatch(); fetchMonthlyReports(); }
+        if (selectedBatch) {
+            fetchStudentsByBatch();
+            fetchMonthlyReports();
+        }
     }, [selectedBatch]);
+    
     useEffect(() => {
-        if (selectedBatch && selectedDate && students.length > 0) { fetchAttendanceForDate(); }
-    }, [selectedDate]);
+        if (selectedBatch && selectedDate && students.length > 0) {
+            fetchAttendanceForDate();
+        }
+    }, [selectedDate, students]);
 
     const handleStatusChange = (studentId, status) => {
         setAttendanceData(prev => prev.map(s => s.studentId === studentId ? { ...s, status } : s));
     };
+    
     const handleRemarksChange = (studentId, remarks) => {
         setAttendanceData(prev => prev.map(s => s.studentId === studentId ? { ...s, remarks } : s));
     };
+    
     const markAll = (status) => {
         setAttendanceData(prev => prev.map(s => ({ ...s, status })));
     };
@@ -160,13 +214,16 @@ const TrainerAttendanceMarker = () => {
         if (attendanceData.length === 0) { toast.error('No students in this batch'); return; }
         setSaving(true);
         try {
+            const userId = currentUser?._id || currentUser?.id;
             const records = attendanceData.map(student => ({
                 studentId: student.studentId,
                 batchId: selectedBatch._id,
                 date: selectedDate,
                 status: student.status,
                 remarks: student.remarks,
-                attendanceId: student.attendanceId
+                attendanceId: student.attendanceId,
+                trainerId: userId,
+                trainerName: currentUser?.name
             }));
             const response = await api.post('/attendance/bulk', { records });
             if (response.data.success) {
@@ -175,13 +232,13 @@ const TrainerAttendanceMarker = () => {
                 await fetchAttendanceForDate();
             }
         } catch (error) {
+            console.error('Save attendance error:', error);
             toast.error(error.response?.data?.message || 'Failed to save attendance');
         } finally {
             setSaving(false);
         }
     };
 
-    // ✅ PDF DOWNLOAD FUNCTION with tracking info
     const downloadReport = (report) => {
         const reportToDownload = report || selectedReport;
         if (!reportToDownload) return;
@@ -209,7 +266,7 @@ const TrainerAttendanceMarker = () => {
                 <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;text-align:center;">
                     <span style="background:${student.percentage >= 75 ? '#dcfce7' : '#fee2e2'};color:${student.percentage >= 75 ? '#16a34a' : '#dc2626'};padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">${student.percentage >= 75 ? '✓ Good' : '⚠ At Risk'}</span>
                 </td>
-            </tr>
+            </table>
         `).join('') || '';
 
         const html = `
@@ -339,8 +396,9 @@ const TrainerAttendanceMarker = () => {
                 ) : batches.length === 0 ? (
                     <div className={styles.emptyState}>
                         <div className={styles.emptyIcon}>📚</div>
-                        <h3>No Batches Assigned</h3>
-                        <p>You don't have any batches assigned yet.</p>
+                        <h3>No Batches Available</h3>
+                        <p>No batches are available in the system.</p>
+                        <p className={styles.hintText}>Contact admin to create batches.</p>
                     </div>
                 ) : (
                     <div className={styles.batchesGrid}>
@@ -359,7 +417,7 @@ const TrainerAttendanceMarker = () => {
                                 <h3 className={styles.batchCardName}>{batch.name}</h3>
                                 <p className={styles.batchCardCode}>{batch.code}</p>
                                 <div className={styles.batchCardMeta}>
-                                    <span><FaUsers /> {batch.studentsCount || 0} Students</span>
+                                    <span><FaUsers /> {batch.studentsCount || batch.currentStudents || 0} Students</span>
                                     <span><FaClock /> {batch.timings}</span>
                                 </div>
                                 <div className={styles.batchCardCourse}>{batch.course}</div>
@@ -375,7 +433,7 @@ const TrainerAttendanceMarker = () => {
     // ── MAIN ATTENDANCE VIEW ──
     return (
         <div className={styles.container}>
-            {/* Top Bar with Trainer Info */}
+            {/* Top Bar with User Info */}
             <div className={styles.topBar}>
                 <button className={styles.backBtn} onClick={() => setSelectedBatch(null)}>
                     <FaArrowLeft /> Batches
@@ -386,7 +444,7 @@ const TrainerAttendanceMarker = () => {
                 </div>
                 <div className={styles.topBarRight}>
                     <span className={styles.trainerBadge}>
-                        <FaUserTie /> {currentUser?.name || 'Trainer'}
+                        <FaUserTie /> {currentUser?.name || 'User'}
                     </span>
                     <span className={styles.studentCountBadge}><FaUsers /> {students.length} Students</span>
                 </div>
@@ -468,7 +526,7 @@ const TrainerAttendanceMarker = () => {
                                     <th>Enrollment ID</th>
                                     <th>Status</th>
                                     <th>Remarks</th>
-                                    {(currentUser?.role === 'admin_manager' || currentUser?.role === 'super_admin') && <th>Marked By</th>}
+                                    {(userRole === 'admin_manager' || userRole === 'super_admin') && <th>Marked By</th>}
                                 </tr>
                             </thead>
                             <tbody>
@@ -517,7 +575,7 @@ const TrainerAttendanceMarker = () => {
                                                 className={styles.remarksInput}
                                             />
                                         </td>
-                                        {(currentUser?.role === 'admin_manager' || currentUser?.role === 'super_admin') && (
+                                        {(userRole === 'admin_manager' || userRole === 'super_admin') && (
                                             <td className={styles.markedByCell}>
                                                 {student.markedBy || currentUser?.name || '-'}
                                             </td>
@@ -594,7 +652,7 @@ const TrainerAttendanceMarker = () => {
                                 <h3 className={styles.modalHeaderTitle}>{selectedReport.month}</h3>
                                 <p className={styles.modalHeaderBatch}>{selectedBatch?.name} · {selectedBatch?.code}</p>
                                 <p className={styles.modalHeaderTrainer}>
-                                    <FaUserTie /> Generated by: {currentUser?.name || 'Trainer'}
+                                    <FaUserTie /> Generated by: {currentUser?.name || 'User'}
                                 </p>
                             </div>
                             <button className={styles.modalClose} onClick={() => setShowReportModal(false)}>

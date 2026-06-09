@@ -21,6 +21,7 @@ const Admission = () => {
     // ✅ Get user role for tracking display
     const [userRole, setUserRole] = useState('counselor');
     const [currentUser, setCurrentUser] = useState(null);
+    const [userId, setUserId] = useState(null);
 
     // Search and Filter States
     const [searchTerm, setSearchTerm] = useState('');
@@ -59,44 +60,111 @@ const Admission = () => {
         admissionDate: new Date().toISOString().split('T')[0]
     });
 
-    useEffect(() => {
-        // ✅ Get current user from localStorage
-        const userData = localStorage.getItem('user');
-        if (userData) {
+    // ✅ Helper function to get user data safely
+    const getUserData = () => {
+        try {
+            const userData = localStorage.getItem('user');
+            if (!userData) return null;
             const user = JSON.parse(userData);
-            setCurrentUser(user);
-            setUserRole(user.role);
+            console.log('User data from storage:', user);
+            return user;
+        } catch (error) {
+            console.error('Error parsing user data:', error);
+            return null;
         }
+    };
+
+    // ✅ Helper function to get user ID safely
+    const getUserId = () => {
+        const user = getUserData();
+        if (!user) return null;
+        // Try different possible ID field names
+        return user._id || user.id || user.userId || null;
+    };
+
+    useEffect(() => {
+        // ✅ Get current user safely
+        const user = getUserData();
+        const id = getUserId();
+        
+        if (user) {
+            setCurrentUser(user);
+            setUserRole(user.role || 'counselor');
+            setUserId(id);
+            console.log('Current User:', user.name);
+            console.log('User Role:', user.role);
+            console.log('User ID:', id);
+        }
+        
         fetchAdmissions();
         fetchBatches();
     }, []);
 
     const fetchAdmissions = async () => {
         try {
-            const currentUserData = JSON.parse(localStorage.getItem('user'));
+            const id = getUserId();
+            const user = getUserData();
+            
+            console.log('Fetching admissions - User ID:', id);
+            console.log('Fetching admissions - User Role:', user?.role);
+            
             let url = '/admissions';
             
-            // ✅ Counselor sirf apne admissions dekhega
-            if (currentUserData?.role === 'counselor') {
-                url = `/admissions/counselor/${currentUserData._id}`;
+            // ✅ Only use counselor endpoint if user is counselor AND has valid ID
+            if (user?.role === 'counselor' && id && id !== 'undefined') {
+                url = `/admissions/counselor/${id}`;
+                console.log('Using counselor endpoint:', url);
+            } else {
+                console.log('Using general admissions endpoint');
             }
             
             const response = await api.get(url);
-            if (response.data.success) setAdmissions(response.data.data);
+            if (response.data.success) {
+                setAdmissions(response.data.data);
+                console.log('Admissions fetched:', response.data.data.length);
+            }
         } catch (error) {
             console.error('Error fetching admissions:', error);
-            toast.error('Failed to fetch admissions');
+            // Don't show toast for 403, just set empty array
+            if (error.response?.status !== 403) {
+                toast.error('Failed to fetch admissions');
+            }
+            setAdmissions([]);
         }
     };
 
     const fetchBatches = async () => {
         setBatchesLoading(true);
         try {
-            const response = await api.get('/batches');
-            if (response.data.success) setBatches(response.data.data);
+            const user = getUserData();
+            // ✅ Try different endpoints for batches
+            let url = '/batches';
+            
+            // If trainer, try trainer endpoint first
+            if (user?.role === 'trainer') {
+                try {
+                    const trainerRes = await api.get('/batches/trainer/assigned');
+                    if (trainerRes.data.success && trainerRes.data.data.length > 0) {
+                        setBatches(trainerRes.data.data);
+                        setBatchesLoading(false);
+                        return;
+                    }
+                } catch (err) {
+                    console.log('Trainer batches endpoint failed, trying general');
+                }
+            }
+            
+            const response = await api.get(url);
+            if (response.data.success) {
+                setBatches(response.data.data);
+            }
         } catch (error) {
             console.error('Error fetching batches:', error);
-            toast.error('Failed to fetch batches');
+            // Don't show error for 403, just use empty array
+            if (error.response?.status !== 403) {
+                toast.error('Failed to fetch batches');
+            }
+            setBatches([]);
         } finally {
             setBatchesLoading(false);
         }
@@ -157,9 +225,18 @@ const Admission = () => {
 
         setLoading(true);
         try {
+            const user = getUserData();
+            const id = getUserId();
+            
             const formDataToSend = new FormData();
             Object.entries(formData).forEach(([key, val]) => formDataToSend.append(key, val || ''));
             if (selectedImage) formDataToSend.append('photo', selectedImage);
+            
+            // ✅ Add counselor tracking info
+            if (id && id !== 'undefined') {
+                formDataToSend.append('counselorId', id);
+            }
+            formDataToSend.append('counselorName', user?.name || '');
 
             const response = await api.post('/admissions', formDataToSend, {
                 headers: { 'Content-Type': 'multipart/form-data' }
@@ -309,7 +386,6 @@ const Admission = () => {
                         <div className={styles.viewLabel}>Status</div>
                         <div className={styles.viewValue}>{getStatusBadge(student?.status)}</div>
                     </div>
-                    {/* ✅ Show counselor info (Admin only) */}
                     {(userRole === 'admin_manager' || userRole === 'super_admin') && (
                         <div className={styles.viewRow}>
                             <div className={styles.viewLabel}>Admitted By</div>
@@ -573,7 +649,6 @@ const Admission = () => {
             {/* List Tab with Search and Filter */}
             {activeTab === 'list' && (
                 <div className={styles.listWrapper}>
-
                     {/* Search and Filter Bar */}
                     <div className={styles.filterBar}>
                         <div className={styles.searchBox}>
@@ -677,7 +752,7 @@ const Admission = () => {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className={styles.phoneCell}>{admission.phone}</td>
+                                            <td className={styles.phoneCell}>{admission.phone} </td>
                                             <td>{admission.course}</td>
                                             <td>{admission.batchId?.name || <span className={styles.na}>—</span>}</td>
                                             <td>

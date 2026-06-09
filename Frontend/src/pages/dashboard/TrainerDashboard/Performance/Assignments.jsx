@@ -19,26 +19,13 @@ const Assignments = () => {
   const [students, setStudents] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState(null);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
-  const [selectedStudent, setSelectedStudent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [file, setFile] = useState(null);
-  const [submissionFile, setSubmissionFile] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-
-  // ✅ Get current user for tracking
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      const user = JSON.parse(userData);
-      setCurrentUser(user);
-      console.log('Current User:', user.name);
-      console.log('User Role:', user.role);
-    }
-  }, []);
+  const [userRole, setUserRole] = useState('');
 
   const [formData, setFormData] = useState({
     title: '',
@@ -50,23 +37,51 @@ const Assignments = () => {
     attachments: []
   });
 
-  // Fetch trainer's batches
+  // ✅ Get current user for tracking
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      setCurrentUser(user);
+      setUserRole(user.role);
+      console.log('=== ASSIGNMENTS ===');
+      console.log('Current User:', user.name);
+      console.log('User Role:', user.role);
+    }
+    fetchBatches();
+  }, []);
+
+  // Fetch batches based on role
   const fetchBatches = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/batches/trainer/assigned');
-      if (response.data.success) {
-        setBatches(response.data.data);
+      let batchesData = [];
+      
+      if (userRole === 'trainer') {
+        // Trainer sees their assigned batches
+        try {
+          const response = await api.get('/batches/trainer/assigned');
+          if (response.data.success) {
+            batchesData = response.data.data;
+          }
+        } catch (err) {
+          console.log('Trainer endpoint failed, fetching all batches');
+          const response = await api.get('/batches');
+          if (response.data.success) {
+            batchesData = response.data.data;
+          }
+        }
       } else {
-        const allBatchesRes = await api.get('/batches');
-        if (allBatchesRes.data.success) {
-          const user = JSON.parse(localStorage.getItem('user'));
-          const trainerBatches = allBatchesRes.data.data.filter(
-            batch => batch.trainerId?._id === user?._id || batch.trainerId === user?._id
-          );
-          setBatches(trainerBatches);
+        // Counselor or other roles see all batches
+        const response = await api.get('/batches');
+        if (response.data.success) {
+          batchesData = response.data.data;
         }
       }
+      
+      setBatches(batchesData);
+      console.log('Batches loaded:', batchesData.length);
+      
     } catch (error) {
       console.error('Error fetching batches:', error);
       toast.error('Failed to fetch batches');
@@ -85,6 +100,7 @@ const Assignments = () => {
       });
       if (response.data.success) {
         setAssignments(response.data.data);
+        console.log('Assignments loaded:', response.data.data.length);
       }
     } catch (error) {
       console.error('Error fetching assignments:', error);
@@ -106,15 +122,12 @@ const Assignments = () => {
           return studentBatchId === selectedBatch._id;
         });
         setStudents(batchStudents);
+        console.log('Students in batch:', batchStudents.length);
       }
     } catch (error) {
       console.error('Error fetching students:', error);
     }
   };
-
-  useEffect(() => {
-    fetchBatches();
-  }, []);
 
   useEffect(() => {
     if (selectedBatch) {
@@ -143,11 +156,17 @@ const Assignments = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!formData.title || !formData.course || !formData.dueDate) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+    
     setLoading(true);
     try {
       const submitData = new FormData();
       submitData.append('title', formData.title);
-      submitData.append('description', formData.description);
+      submitData.append('description', formData.description || '');
       submitData.append('course', formData.course);
       submitData.append('batchId', selectedBatch._id);
       submitData.append('dueDate', formData.dueDate);
@@ -223,42 +242,13 @@ const Assignments = () => {
     }
   };
 
-  const handleSubmissionUpload = async (e) => {
-    e.preventDefault();
-    if (!submissionFile) {
-      toast.error('Please select a file to upload');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const submitData = new FormData();
-      submitData.append('assignmentId', selectedAssignment._id);
-      submitData.append('studentId', selectedStudent?._id);
-      submitData.append('studentName', selectedStudent?.name);
-      submitData.append('submission', submissionFile);
-
-      const response = await api.post('/assignments/submit', submitData);
-      if (response.data.success) {
-        toast.success(`Assignment submitted by ${selectedStudent?.name}`);
-        setShowSubmitModal(false);
-        setSubmissionFile(null);
-        fetchAssignments();
-      }
-    } catch (error) {
-      console.error('Submission error:', error);
-      toast.error(error.response?.data?.message || 'Failed to submit');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const filteredAssignments = assignments.filter(assignment =>
     assignment.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     assignment.course?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusBadge = (dueDate) => {
+    if (!dueDate) return <span className={`${styles.badge} ${styles.active}`}>Active</span>;
     const today = new Date();
     const due = new Date(dueDate);
     if (due < today) {
@@ -287,8 +277,8 @@ const Assignments = () => {
           ) : batches.length === 0 ? (
             <div className={styles.emptyContainer}>
               <div className={styles.emptyIcon}>📋</div>
-              <h3>No batches assigned</h3>
-              <p>You don't have any batches assigned yet.</p>
+              <h3>No batches available</h3>
+              <p>No batches are available in the system.</p>
             </div>
           ) : (
             batches.map(batch => (
@@ -302,7 +292,7 @@ const Assignments = () => {
                   <h3>{batch.name}</h3>
                   <p>{batch.code}</p>
                   <div className={styles.batchCardStats}>
-                    <span><FaUserGraduate /> {batch.studentsCount || 0} Students</span>
+                    <span><FaUserGraduate /> {batch.studentsCount || batch.currentStudents || 0} Students</span>
                     <span><FaCalendarAlt /> {batch.timings}</span>
                   </div>
                 </div>
@@ -322,20 +312,22 @@ const Assignments = () => {
         ← Back to Batches
       </button>
 
-      {/* Batch Header with Trainer Info */}
+      {/* Batch Header */}
       <div className={styles.batchHeader}>
         <div>
           <h2>{selectedBatch.name}</h2>
           <p>{selectedBatch.code} | {selectedBatch.course} | {selectedBatch.timings}</p>
           <div className={styles.trainerInfo}>
-            <FaUserTie /> Trainer: {currentUser?.name || 'Not assigned'}
+            <FaUserTie /> {userRole === 'trainer' ? 'Trainer' : 'Instructor'}: {currentUser?.name || 'Not assigned'}
           </div>
         </div>
         <div className={styles.batchStats}>
           <span><FaUserGraduate /> {students.length} Students</span>
-          <button className={styles.createBtn} onClick={() => setShowModal(true)}>
-            <FaPlus /> Create Assignment
-          </button>
+          {userRole === 'trainer' && (
+            <button className={styles.createBtn} onClick={() => setShowModal(true)}>
+              <FaPlus /> Create Assignment
+            </button>
+          )}
         </div>
       </div>
 
@@ -371,10 +363,12 @@ const Assignments = () => {
           <div className={styles.emptyContainer}>
             <div className={styles.emptyIcon}>📋</div>
             <h3>No assignments</h3>
-            <p>Create your first assignment for this batch</p>
-            <button className={styles.createFirstBtn} onClick={() => setShowModal(true)}>
-              Create Assignment
-            </button>
+            <p>No assignments found for this batch.</p>
+            {userRole === 'trainer' && (
+              <button className={styles.createFirstBtn} onClick={() => setShowModal(true)}>
+                Create Assignment
+              </button>
+            )}
           </div>
         ) : (
           filteredAssignments.map(assignment => (
@@ -388,13 +382,12 @@ const Assignments = () => {
               </div>
               <div className={styles.assignmentInfo}>
                 <p><FaBookOpen /> Course: {assignment.course}</p>
-                <p><FaCalendarAlt /> Due: {new Date(assignment.dueDate).toLocaleDateString()}</p>
+                <p><FaCalendarAlt /> Due: {assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'Not set'}</p>
                 <p><FaStar /> Total Marks: {assignment.totalMarks}</p>
-                {/* ✅ TRACKING: Show who created this assignment */}
                 <p className={styles.trackingInfo}>
-                  <FaUserTie /> Created by: {assignment.createdByName || assignment.trainerName || currentUser?.name || 'System'}
+                  <FaUserTie /> Created by: {assignment.createdByName || assignment.trainerName || 'System'}
                 </p>
-                <p className={styles.description}>{assignment.description}</p>
+                {assignment.description && <p className={styles.description}>{assignment.description}</p>}
               </div>
               <div className={styles.assignmentStats}>
                 <div className={styles.stat}>
@@ -413,32 +406,36 @@ const Assignments = () => {
                 }}>
                   <FaEye /> View Details
                 </button>
-                <button className={styles.editBtn} onClick={() => {
-                  setEditingAssignment(assignment);
-                  setFormData({
-                    title: assignment.title,
-                    description: assignment.description,
-                    course: assignment.course,
-                    batchId: assignment.batchId,
-                    dueDate: assignment.dueDate?.split('T')[0],
-                    totalMarks: assignment.totalMarks,
-                    attachments: []
-                  });
-                  setShowModal(true);
-                }}>
-                  <FaEdit /> Edit
-                </button>
-                <button className={styles.deleteBtn} onClick={() => handleDelete(assignment._id, assignment.title)}>
-                  <FaTrash /> Delete
-                </button>
+                {userRole === 'trainer' && (
+                  <>
+                    <button className={styles.editBtn} onClick={() => {
+                      setEditingAssignment(assignment);
+                      setFormData({
+                        title: assignment.title,
+                        description: assignment.description || '',
+                        course: assignment.course,
+                        batchId: assignment.batchId,
+                        dueDate: assignment.dueDate ? assignment.dueDate.split('T')[0] : '',
+                        totalMarks: assignment.totalMarks,
+                        attachments: []
+                      });
+                      setShowModal(true);
+                    }}>
+                      <FaEdit /> Edit
+                    </button>
+                    <button className={styles.deleteBtn} onClick={() => handleDelete(assignment._id, assignment.title)}>
+                      <FaTrash /> Delete
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Create/Edit Assignment Modal */}
-      {showModal && (
+      {/* Create/Edit Assignment Modal - Only for Trainers */}
+      {showModal && userRole === 'trainer' && (
         <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
@@ -449,66 +446,30 @@ const Assignments = () => {
               <div className={styles.modalBody}>
                 <div className={styles.formGroup}>
                   <label>Title *</label>
-                  <input
-                    type="text"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleChange}
-                    required
-                  />
+                  <input type="text" name="title" value={formData.title} onChange={handleChange} required />
                 </div>
                 <div className={styles.formGroup}>
                   <label>Course *</label>
-                  <input
-                    type="text"
-                    name="course"
-                    value={formData.course}
-                    onChange={handleChange}
-                    required
-                  />
+                  <input type="text" name="course" value={formData.course} onChange={handleChange} required />
                 </div>
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
                     <label>Due Date *</label>
-                    <input
-                      type="date"
-                      name="dueDate"
-                      value={formData.dueDate}
-                      onChange={handleChange}
-                      required
-                    />
+                    <input type="date" name="dueDate" value={formData.dueDate} onChange={handleChange} required />
                   </div>
                   <div className={styles.formGroup}>
                     <label>Total Marks</label>
-                    <input
-                      type="number"
-                      name="totalMarks"
-                      value={formData.totalMarks}
-                      onChange={handleChange}
-                      min="0"
-                      max="1000"
-                    />
+                    <input type="number" name="totalMarks" value={formData.totalMarks} onChange={handleChange} min="0" max="1000" />
                   </div>
                 </div>
                 <div className={styles.formGroup}>
                   <label>Description</label>
-                  <textarea
-                    name="description"
-                    rows="4"
-                    value={formData.description}
-                    onChange={handleChange}
-                    placeholder="Describe the assignment, instructions, etc."
-                  />
+                  <textarea name="description" rows="4" value={formData.description} onChange={handleChange} placeholder="Describe the assignment, instructions, etc." />
                 </div>
                 <div className={styles.formGroup}>
                   <label>Attachments</label>
                   <div className={styles.fileUpload}>
-                    <input
-                      type="file"
-                      id="attachment"
-                      onChange={handleFileChange}
-                      style={{ display: 'none' }}
-                    />
+                    <input type="file" id="attachment" onChange={handleFileChange} style={{ display: 'none' }} />
                     <label htmlFor="attachment" className={styles.fileLabel}>
                       <FaCloudUploadAlt /> {file ? file.name : 'Upload File (PDF, DOC, ZIP)'}
                     </label>
@@ -519,15 +480,12 @@ const Assignments = () => {
                     )}
                   </div>
                 </div>
-                {/* ✅ Tracking info in modal */}
                 <div className={styles.trackingNote}>
                   <FaInfoCircle /> Assignment will be created as: {currentUser?.name}
                 </div>
               </div>
               <div className={styles.modalFooter}>
-                <button type="button" className={styles.cancelBtn} onClick={() => setShowModal(false)}>
-                  Cancel
-                </button>
+                <button type="button" className={styles.cancelBtn} onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit" className={styles.saveBtn} disabled={loading}>
                   {loading ? <FaSpinner className={styles.spinner} /> : <FaCheck />}
                   {editingAssignment ? 'Update' : 'Create'}
@@ -549,13 +507,12 @@ const Assignments = () => {
             <div className={styles.modalBody}>
               <div className={styles.assignmentDetail}>
                 <p><strong>Course:</strong> {selectedAssignment.course}</p>
-                <p><strong>Due Date:</strong> {new Date(selectedAssignment.dueDate).toLocaleString()}</p>
+                <p><strong>Due Date:</strong> {selectedAssignment.dueDate ? new Date(selectedAssignment.dueDate).toLocaleString() : 'Not set'}</p>
                 <p><strong>Total Marks:</strong> {selectedAssignment.totalMarks}</p>
-                {/* ✅ Tracking info */}
                 <p><strong>Created By:</strong> {selectedAssignment.createdByName || selectedAssignment.trainerName || 'System'}</p>
                 <p><strong>Created At:</strong> {new Date(selectedAssignment.createdAt).toLocaleString()}</p>
                 <p><strong>Description:</strong></p>
-                <p className={styles.descriptionText}>{selectedAssignment.description}</p>
+                <p className={styles.descriptionText}>{selectedAssignment.description || 'No description'}</p>
                 {selectedAssignment.attachments?.length > 0 && (
                   <div className={styles.attachments}>
                     <strong>Attachments:</strong>
@@ -571,7 +528,7 @@ const Assignments = () => {
               <div className={styles.submissionsSection}>
                 <h4>Student Submissions</h4>
                 <div className={styles.submissionsTable}>
-                  <table>
+                  <table className={styles.table}>
                     <thead>
                       <tr>
                         <th>Student Name</th>
@@ -591,23 +548,31 @@ const Assignments = () => {
                         return (
                           <tr key={student._id}>
                             <td>{student.name}</td>
-                            <td>{submission ? <FaCheck className={styles.submittedIcon} /> : <FaTimes className={styles.pendingIcon} />}</td>
+                            <td>
+                              {submission ? (
+                                <FaCheck className={styles.submittedIcon} />
+                              ) : (
+                                <FaTimes className={styles.pendingIcon} />
+                              )}
+                            </td>
                             <td>{submission ? new Date(submission.submittedAt).toLocaleString() : '-'}</td>
                             <td>
                               {submission?.marks !== undefined ? (
                                 <span className={styles.marksBadge}>{submission.marks}/{selectedAssignment.totalMarks}</span>
                               ) : (
-                                <input
-                                  type="number"
-                                  className={styles.marksInput}
-                                  placeholder="Enter marks"
-                                  onBlur={(e) => {
-                                    const marks = parseInt(e.target.value);
-                                    if (!isNaN(marks)) {
-                                      handleGradeSubmit(student._id, marks, '', student.name);
-                                    }
-                                  }}
-                                />
+                                userRole === 'trainer' && (
+                                  <input
+                                    type="number"
+                                    className={styles.marksInput}
+                                    placeholder="Enter marks"
+                                    onBlur={(e) => {
+                                      const marks = parseInt(e.target.value);
+                                      if (!isNaN(marks)) {
+                                        handleGradeSubmit(student._id, marks, '', student.name);
+                                      }
+                                    }}
+                                  />
+                                )
                               )}
                             </td>
                             <td>

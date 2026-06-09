@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { 
   FaPlus, FaEdit, FaTrash, FaEye, FaSearch, 
   FaSpinner, FaTimes, FaCheck, FaUserTie, 
   FaCalendarAlt, FaClock, FaUsers, FaBookOpen,
   FaChalkboardTeacher, FaBuilding, FaArrowLeft,
-  FaUserCircle, FaInfoCircle
+  FaInfoCircle
 } from 'react-icons/fa';
 import api from '../../../../services/api';
 import styles from './BatchManagement.module.css';
@@ -13,10 +13,6 @@ import styles from './BatchManagement.module.css';
 const BatchManagement = ({ onBack }) => {
     const [loading, setLoading] = useState(false);
     const [batches, setBatches] = useState([]);
-    const [trainers, setTrainers] = useState([]);
-    const [filteredTrainers, setFilteredTrainers] = useState([]);
-    const [showTrainerDropdown, setShowTrainerDropdown] = useState(false);
-    const [trainerSearchTerm, setTrainerSearchTerm] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
     const [selectedBatch, setSelectedBatch] = useState(null);
@@ -24,14 +20,12 @@ const BatchManagement = ({ onBack }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [userRole, setUserRole] = useState('');
     const [currentUser, setCurrentUser] = useState(null);
-    const trainerInputRef = useRef(null);
     
     const [formData, setFormData] = useState({
         name: '',
         code: '',
         course: '',
         trainerId: '',
-        trainerName: '',
         startDate: '',
         endDate: '',
         timings: '',
@@ -54,44 +48,12 @@ const BatchManagement = ({ onBack }) => {
             console.log('User Role:', user.role);
         }
         fetchBatches();
-        fetchTrainers();
-    }, []);
-
-    // Filter trainers based on search term
-    useEffect(() => {
-        if (trainerSearchTerm.trim() === '') {
-            setFilteredTrainers([]);
-            return;
-        }
-        const filtered = trainers.filter(trainer =>
-            trainer.name.toLowerCase().includes(trainerSearchTerm.toLowerCase()) ||
-            trainer.email.toLowerCase().includes(trainerSearchTerm.toLowerCase())
-        );
-        setFilteredTrainers(filtered);
-    }, [trainerSearchTerm, trainers]);
-
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (trainerInputRef.current && !trainerInputRef.current.contains(event.target)) {
-                setShowTrainerDropdown(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const fetchBatches = async () => {
         setLoading(true);
         try {
-            let url = '/batches';
-            
-            // ✅ Trainer sirf apne batches dekhega
-            if (userRole === 'trainer') {
-                url = '/batches/trainer/assigned-with-count';
-            }
-            
-            const response = await api.get(url);
+            const response = await api.get('/batches');
             if (response.data.success) {
                 setBatches(response.data.data);
                 console.log('Batches fetched:', response.data.data.length);
@@ -104,44 +66,11 @@ const BatchManagement = ({ onBack }) => {
         }
     };
 
-    const fetchTrainers = async () => {
-        try {
-            const response = await api.get('/users?role=trainer');
-            if (response.data.success) {
-                setTrainers(response.data.data.users);
-            }
-        } catch (error) {
-            console.error('Error fetching trainers:', error);
-        }
-    };
-
     const handleChange = (e) => {
         setFormData({
             ...formData,
             [e.target.name]: e.target.value
         });
-    };
-
-    const handleTrainerSearch = (e) => {
-        const value = e.target.value;
-        setTrainerSearchTerm(value);
-        setShowTrainerDropdown(true);
-        
-        setFormData({
-            ...formData,
-            trainerName: value,
-            trainerId: ''
-        });
-    };
-
-    const selectTrainer = (trainer) => {
-        setFormData({
-            ...formData,
-            trainerId: trainer._id,
-            trainerName: trainer.name
-        });
-        setTrainerSearchTerm(trainer.name);
-        setShowTrainerDropdown(false);
     };
 
     const handleDayToggle = (day) => {
@@ -163,29 +92,8 @@ const BatchManagement = ({ onBack }) => {
         setLoading(true);
         
         try {
-            // Validate required fields
-            if (!formData.name) {
-                toast.error('Batch name is required');
-                setLoading(false);
-                return;
-            }
-            if (!formData.course) {
-                toast.error('Course name is required');
-                setLoading(false);
-                return;
-            }
-            if (!formData.startDate) {
-                toast.error('Start date is required');
-                setLoading(false);
-                return;
-            }
-            if (!formData.endDate) {
-                toast.error('End date is required');
-                setLoading(false);
-                return;
-            }
-            if (!formData.timings) {
-                toast.error('Timings are required');
+            if (!formData.name || !formData.course || !formData.startDate || !formData.endDate || !formData.timings) {
+                toast.error('Please fill all required fields');
                 setLoading(false);
                 return;
             }
@@ -204,8 +112,6 @@ const BatchManagement = ({ onBack }) => {
                 description: formData.description || ''
             };
             
-            console.log('Submitting batch data:', submitData);
-            
             let response;
             if (editingBatch) {
                 response = await api.put(`/batches/${editingBatch._id}`, submitData);
@@ -223,7 +129,6 @@ const BatchManagement = ({ onBack }) => {
                     code: '',
                     course: '',
                     trainerId: '',
-                    trainerName: '',
                     startDate: '',
                     endDate: '',
                     timings: '',
@@ -232,13 +137,11 @@ const BatchManagement = ({ onBack }) => {
                     room: '',
                     description: ''
                 });
-                setTrainerSearchTerm('');
                 fetchBatches();
             }
         } catch (error) {
             console.error('Submit error:', error);
-            const errorMsg = error.response?.data?.message || 'Operation failed';
-            toast.error(errorMsg);
+            toast.error(error.response?.data?.message || 'Operation failed');
         } finally {
             setLoading(false);
         }
@@ -263,14 +166,12 @@ const BatchManagement = ({ onBack }) => {
     };
 
     const openEditModal = (batch) => {
-        const trainerName = batch.trainerId?.name || '';
         setEditingBatch(batch);
         setFormData({
             name: batch.name,
             code: batch.code || '',
             course: batch.course,
             trainerId: batch.trainerId?._id || batch.trainerId || '',
-            trainerName: trainerName,
             startDate: batch.startDate ? new Date(batch.startDate).toISOString().split('T')[0] : '',
             endDate: batch.endDate ? new Date(batch.endDate).toISOString().split('T')[0] : '',
             timings: batch.timings || '',
@@ -279,7 +180,6 @@ const BatchManagement = ({ onBack }) => {
             room: batch.room || '',
             description: batch.description || ''
         });
-        setTrainerSearchTerm(trainerName);
         setShowModal(true);
     };
 
@@ -298,6 +198,8 @@ const BatchManagement = ({ onBack }) => {
         }
     };
 
+    const isAdmin = userRole === 'admin_manager' || userRole === 'super_admin';
+
     return (
         <div className={styles.container}>
             <div className={styles.header}>
@@ -311,11 +213,9 @@ const BatchManagement = ({ onBack }) => {
                             <FaArrowLeft /> Back to Dashboard
                         </button>
                     )}
-                    {(userRole === 'admin_manager' || userRole === 'super_admin') && (
-                        <button className={styles.createBtn} onClick={() => { setEditingBatch(null); setShowModal(true); }}>
-                            <FaPlus /> Create Batch
-                        </button>
-                    )}
+                    <button className={styles.createBtn} onClick={() => { setEditingBatch(null); setShowModal(true); }}>
+                        <FaPlus /> Create Batch
+                    </button>
                 </div>
             </div>
 
@@ -331,23 +231,21 @@ const BatchManagement = ({ onBack }) => {
             </div>
 
             {/* Batches Grid */}
-            {loading && batches.length === 0 ? (
-                <div className={styles.loadingContainer}>
-                    <FaSpinner className={styles.spinner} /> Loading batches...
-                </div>
-            ) : filteredBatches.length === 0 ? (
-                <div className={styles.emptyContainer}>
-                    <FaChalkboardTeacher className={styles.emptyIcon} />
-                    <p>No batches found</p>
-                    {(userRole === 'admin_manager' || userRole === 'super_admin') && (
+            <div className={styles.batchesGrid}>
+                {loading && batches.length === 0 ? (
+                    <div className={styles.loadingContainer}>
+                        <FaSpinner className={styles.spinner} /> Loading batches...
+                    </div>
+                ) : filteredBatches.length === 0 ? (
+                    <div className={styles.emptyContainer}>
+                        <FaChalkboardTeacher className={styles.emptyIcon} />
+                        <p>No batches found</p>
                         <button onClick={() => { setEditingBatch(null); setShowModal(true); }}>
                             Create your first batch
                         </button>
-                    )}
-                </div>
-            ) : (
-                <div className={styles.batchesGrid}>
-                    {filteredBatches.map(batch => (
+                    </div>
+                ) : (
+                    filteredBatches.map(batch => (
                         <div key={batch._id} className={styles.batchCard}>
                             <div className={styles.batchHeader}>
                                 <div>
@@ -363,33 +261,25 @@ const BatchManagement = ({ onBack }) => {
                                 <p><FaClock /> <strong>Timings:</strong> {batch.timings}</p>
                                 <p><FaUsers /> <strong>Capacity:</strong> {batch.currentStudents || batch.studentsCount || 0}/{batch.capacity}</p>
                                 {batch.room && <p><FaBuilding /> <strong>Room:</strong> {batch.room}</p>}
-                                
-                                {/* ✅ TRACKING: Show who created this batch */}
-                                {batch.createdBy && (
-                                    <p className={styles.trackingInfo}>
-                                        <FaInfoCircle /> <strong>Created By:</strong> {batch.createdBy?.name || batch.createdByName || 'System'}
-                                    </p>
-                                )}
+                                <p className={styles.trackingInfo}>
+                                    <FaInfoCircle /> <strong>Created By:</strong> {batch.createdBy?.name || batch.createdByName || 'System'}
+                                </p>
                             </div>
                             <div className={styles.batchActions}>
                                 <button onClick={() => { setSelectedBatch(batch); setShowViewModal(true); }} className={styles.viewBtn}>
                                     <FaEye /> View
                                 </button>
-                                {(userRole === 'admin_manager' || userRole === 'super_admin') && (
-                                    <>
-                                        <button onClick={() => openEditModal(batch)} className={styles.editBtn}>
-                                            <FaEdit /> Edit
-                                        </button>
-                                        <button onClick={() => handleDelete(batch._id, batch.name)} className={styles.deleteBtn}>
-                                            <FaTrash /> Delete
-                                        </button>
-                                    </>
-                                )}
+                                <button onClick={() => openEditModal(batch)} className={styles.editBtn}>
+                                    <FaEdit /> Edit
+                                </button>
+                                <button onClick={() => handleDelete(batch._id, batch.name)} className={styles.deleteBtn}>
+                                    <FaTrash /> Delete
+                                </button>
                             </div>
                         </div>
-                    ))}
-                </div>
-            )}
+                    ))
+                )}
+            </div>
 
             {/* View Batch Modal */}
             {showViewModal && selectedBatch && (
@@ -440,16 +330,15 @@ const BatchManagement = ({ onBack }) => {
                                 <span className={styles.detailLabel}>Status:</span>
                                 <span className={styles.detailValue}>{getStatusBadge(selectedBatch.status)}</span>
                             </div>
-                            <div className={styles.detailRow}>
-                                <span className={styles.detailLabel}>Room:</span>
-                                <span className={styles.detailValue}>{selectedBatch.room || 'Not assigned'}</span>
-                            </div>
-                            {/* ✅ TRACKING: Show creator info */}
+                            {selectedBatch.room && (
+                                <div className={styles.detailRow}>
+                                    <span className={styles.detailLabel}>Room:</span>
+                                    <span className={styles.detailValue}>{selectedBatch.room}</span>
+                                </div>
+                            )}
                             <div className={styles.detailRow}>
                                 <span className={styles.detailLabel}>Created By:</span>
-                                <span className={styles.detailValue}>
-                                    {selectedBatch.createdBy?.name || selectedBatch.createdByName || 'System'}
-                                </span>
+                                <span className={styles.detailValue}>{selectedBatch.createdBy?.name || selectedBatch.createdByName || 'System'}</span>
                             </div>
                             <div className={styles.detailRow}>
                                 <span className={styles.detailLabel}>Created At:</span>
@@ -482,128 +371,44 @@ const BatchManagement = ({ onBack }) => {
                                 <div className={styles.formRow}>
                                     <div className={styles.formGroup}>
                                         <label>Batch Name *</label>
-                                        <input 
-                                            type="text" 
-                                            name="name" 
-                                            value={formData.name} 
-                                            onChange={handleChange} 
-                                            required 
-                                        />
+                                        <input type="text" name="name" value={formData.name} onChange={handleChange} required />
                                     </div>
                                     <div className={styles.formGroup}>
                                         <label>Batch Code</label>
-                                        <input 
-                                            type="text" 
-                                            name="code" 
-                                            value={formData.code} 
-                                            onChange={handleChange} 
-                                            placeholder="Auto-generated" 
-                                        />
+                                        <input type="text" name="code" value={formData.code} onChange={handleChange} placeholder="Auto-generated" />
                                     </div>
                                 </div>
 
                                 <div className={styles.formRow}>
                                     <div className={styles.formGroup}>
                                         <label>Course *</label>
-                                        <input 
-                                            type="text" 
-                                            name="course" 
-                                            value={formData.course} 
-                                            onChange={handleChange} 
-                                            required 
-                                        />
+                                        <input type="text" name="course" value={formData.course} onChange={handleChange} required />
                                     </div>
-                                    {(userRole === 'admin_manager' || userRole === 'super_admin') && (
-                                        <div className={styles.formGroup} ref={trainerInputRef}>
-                                            <label>Assign Trainer</label>
-                                            <div className={styles.trainerSearchContainer}>
-                                                <FaUserCircle className={styles.trainerIcon} />
-                                                <input 
-                                                    type="text"
-                                                    placeholder="Type trainer name to search..."
-                                                    value={trainerSearchTerm}
-                                                    onChange={handleTrainerSearch}
-                                                    onFocus={() => setShowTrainerDropdown(true)}
-                                                    className={styles.trainerSearchInput}
-                                                    autoComplete="off"
-                                                />
-                                                {showTrainerDropdown && filteredTrainers.length > 0 && (
-                                                    <div className={styles.trainerDropdown}>
-                                                        {filteredTrainers.map(trainer => (
-                                                            <div 
-                                                                key={trainer._id}
-                                                                className={styles.trainerItem}
-                                                                onClick={() => selectTrainer(trainer)}
-                                                            >
-                                                                <FaUserCircle className={styles.trainerItemIcon} />
-                                                                <div className={styles.trainerItemInfo}>
-                                                                    <div className={styles.trainerItemName}>{trainer.name}</div>
-                                                                    <div className={styles.trainerItemEmail}>{trainer.email}</div>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                {showTrainerDropdown && trainerSearchTerm && filteredTrainers.length === 0 && (
-                                                    <div className={styles.trainerDropdown}>
-                                                        <div className={styles.noTrainerFound}>
-                                                            No trainer found with name "{trainerSearchTerm}"
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {formData.trainerId && (
-                                                <div className={styles.selectedTrainer}>
-                                                    Selected: <strong>{formData.trainerName}</strong>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                    <div className={styles.formGroup}>
+                                        <label>Assign Trainer (Trainer ID)</label>
+                                        <input type="text" name="trainerId" value={formData.trainerId} onChange={handleChange} placeholder="Trainer ID (optional)" />
+                                    </div>
                                 </div>
 
                                 <div className={styles.formRow}>
                                     <div className={styles.formGroup}>
                                         <label>Start Date *</label>
-                                        <input 
-                                            type="date" 
-                                            name="startDate" 
-                                            value={formData.startDate} 
-                                            onChange={handleChange} 
-                                            required 
-                                        />
+                                        <input type="date" name="startDate" value={formData.startDate} onChange={handleChange} required />
                                     </div>
                                     <div className={styles.formGroup}>
                                         <label>End Date *</label>
-                                        <input 
-                                            type="date" 
-                                            name="endDate" 
-                                            value={formData.endDate} 
-                                            onChange={handleChange} 
-                                            required 
-                                        />
+                                        <input type="date" name="endDate" value={formData.endDate} onChange={handleChange} required />
                                     </div>
                                 </div>
 
                                 <div className={styles.formRow}>
                                     <div className={styles.formGroup}>
                                         <label>Timings *</label>
-                                        <input 
-                                            type="text" 
-                                            name="timings" 
-                                            value={formData.timings} 
-                                            onChange={handleChange} 
-                                            placeholder="e.g., 10:00 AM - 1:00 PM" 
-                                            required 
-                                        />
+                                        <input type="text" name="timings" value={formData.timings} onChange={handleChange} placeholder="e.g., 10:00 AM - 1:00 PM" required />
                                     </div>
                                     <div className={styles.formGroup}>
                                         <label>Room/Venue</label>
-                                        <input 
-                                            type="text" 
-                                            name="room" 
-                                            value={formData.room} 
-                                            onChange={handleChange} 
-                                        />
+                                        <input type="text" name="room" value={formData.room} onChange={handleChange} />
                                     </div>
                                 </div>
 
@@ -626,32 +431,17 @@ const BatchManagement = ({ onBack }) => {
                                 <div className={styles.formRow}>
                                     <div className={styles.formGroup}>
                                         <label>Capacity</label>
-                                        <input 
-                                            type="number" 
-                                            name="capacity" 
-                                            value={formData.capacity} 
-                                            onChange={handleChange} 
-                                            min="1" 
-                                            max="100" 
-                                        />
+                                        <input type="number" name="capacity" value={formData.capacity} onChange={handleChange} min="1" max="100" />
                                     </div>
                                 </div>
 
                                 <div className={styles.formGroup}>
                                     <label>Description</label>
-                                    <textarea 
-                                        name="description" 
-                                        rows="3" 
-                                        value={formData.description} 
-                                        onChange={handleChange} 
-                                        placeholder="Optional batch description"
-                                    />
+                                    <textarea name="description" rows="3" value={formData.description} onChange={handleChange} placeholder="Optional batch description" />
                                 </div>
                             </div>
                             <div className={styles.modalFooter}>
-                                <button type="button" className={styles.cancelBtn} onClick={() => setShowModal(false)}>
-                                    Cancel
-                                </button>
+                                <button type="button" className={styles.cancelBtn} onClick={() => setShowModal(false)}>Cancel</button>
                                 <button type="submit" className={styles.saveBtn} disabled={loading}>
                                     {loading ? <FaSpinner className={styles.spinner} /> : <FaCheck />}
                                     {editingBatch ? 'Update Batch' : 'Create Batch'}

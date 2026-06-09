@@ -70,7 +70,7 @@ export const createTest = async (req, res) => {
     }
 };
 
-// @desc    Get all tests (with tracking info)
+// @desc    Get all tests (everyone can view)
 // @route   GET /api/tests
 export const getTests = async (req, res) => {
     try {
@@ -79,6 +79,7 @@ export const getTests = async (req, res) => {
         let query = {};
         if (batchId) query.batchId = batchId;
         
+        // ✅ No role restriction - everyone can view tests
         const tests = await Test.find(query)
             .populate('batchId', 'name code')
             .populate('createdBy', 'name')

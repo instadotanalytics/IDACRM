@@ -9,6 +9,7 @@ export const createMaterial = async (req, res) => {
 
         console.log('=========================================');
         console.log('📝 Creating Course Material by:', req.user.name);
+        console.log('👤 User Role:', req.user.role);
         console.log('📋 Title:', title);
         console.log('📁 Type:', type);
         console.log('=========================================');
@@ -32,7 +33,6 @@ export const createMaterial = async (req, res) => {
             fileSize = (req.file.size / (1024 * 1024)).toFixed(2) + ' MB';
         }
 
-        // ✅ Create material with tracking fields
         const material = await CourseMaterial.create({
             title,
             description: description || '',
@@ -47,9 +47,9 @@ export const createMaterial = async (req, res) => {
             duration: duration || '',
             size: fileSize,
             createdBy: req.user._id,
-            createdByName: req.user.name,     // ✅ Who created
-            trainerId: req.user._id,           // ✅ Which trainer
-            trainerName: req.user.name         // ✅ Trainer name
+            createdByName: req.user.name,
+            trainerId: req.user._id,
+            trainerName: req.user.name
         });
 
         console.log(`✅ Material created by ${req.user.name}: ${material._id}`);
@@ -66,7 +66,7 @@ export const createMaterial = async (req, res) => {
     }
 };
 
-// @desc    Get all course materials (with tracking info)
+// @desc    Get all course materials (everyone can view)
 // @route   GET /api/course-materials
 export const getMaterials = async (req, res) => {
     try {
@@ -77,12 +77,12 @@ export const getMaterials = async (req, res) => {
         if (type) query.type = type;
         if (course) query.course = course;
         
+        // ✅ No role restriction - everyone can view materials
         const materials = await CourseMaterial.find(query)
             .populate('batchId', 'name code')
             .populate('createdBy', 'name')
             .sort({ createdAt: -1 });
         
-        // Add createdByName to each material
         const materialsWithTracking = materials.map(m => ({
             ...m.toObject(),
             createdByName: m.createdByName || m.createdBy?.name || 'System'
@@ -126,6 +126,15 @@ export const updateMaterial = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Material not found' });
         }
         
+        // ✅ Check permission: only creator or admin can update
+        if (req.user.role !== 'admin_manager' && req.user.role !== 'super_admin' && 
+            material.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Access denied. You can only update your own materials.' 
+            });
+        }
+        
         const updateData = { ...req.body };
         
         if (req.file) {
@@ -166,6 +175,15 @@ export const deleteMaterial = async (req, res) => {
         
         if (!material) {
             return res.status(404).json({ success: false, message: 'Material not found' });
+        }
+        
+        // ✅ Check permission: only creator or admin can delete
+        if (req.user.role !== 'admin_manager' && req.user.role !== 'super_admin' && 
+            material.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Access denied. You can only delete your own materials.' 
+            });
         }
         
         if (material.filePublicId) {

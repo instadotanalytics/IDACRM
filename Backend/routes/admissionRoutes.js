@@ -5,22 +5,19 @@ import {
     createAdmission,
     updateAdmission,
     deleteAdmission,
-    getAdmissionsByCounselorForDashboard,
-    getCounselorWiseAdmissionStats  // ✅ New admin report
+    getAdmissionsByCounselorForDashboard
 } from '../controllers/admissionController.js';
-import { protect, adminManagerOnly } from '../middleware/authMiddleware.js';
+import { protect, counselorOnly } from '../middleware/authMiddleware.js';
 import { uploadPhoto } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
 router.use(protect);
 
-// ✅ Admin report route
-router.get('/counselor-stats', adminManagerOnly, getCounselorWiseAdmissionStats);
+// ✅ Counselor routes (must be BEFORE /:id)
+router.get('/counselor/:counselorId', counselorOnly, getAdmissionsByCounselorForDashboard);
 
-// ✅ Dashboard route for counselor
-router.get('/counselor/:counselorId', getAdmissionsByCounselorForDashboard);
-
+// General routes
 router.get('/', getAllAdmissions);
 router.get('/:id', getAdmissionById);
 router.post('/', uploadPhoto, createAdmission);

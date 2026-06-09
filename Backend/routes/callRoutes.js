@@ -8,20 +8,21 @@ import {
     deleteCallLog,
     getCallsByCounselor,
     getCallsByCounselorForDashboard,
-    getCounselorWiseCallStats  // ✅ New admin report
+    getCounselorWiseCallStats
 } from '../controllers/callLogController.js';
-import { protect, adminManagerOnly } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 router.use(protect);
 
 // ✅ Admin report route
-router.get('/counselor-stats', adminManagerOnly, getCounselorWiseCallStats);
+router.get('/counselor-stats', getCounselorWiseCallStats);
 
 // ✅ Dashboard route for counselor
 router.get('/counselor/:counselorId', getCallsByCounselorForDashboard);
 
+// ✅ Main routes
 router.post('/', addCallLog);
 router.get('/today', getTodayCalls);
 router.get('/weekly', getWeeklyCalls);

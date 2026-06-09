@@ -7,14 +7,14 @@ import {
     updateAttendance,
     deleteAttendance
 } from '../controllers/attendanceController.js';
-import { protect, trainerOnly } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
+// ✅ All routes require authentication (no trainerOnly restriction)
 router.use(protect);
-router.use(trainerOnly);
 
-// ✅ Routes with tracking
+// ✅ Routes - Now accessible by both trainers and counselors
 router.post('/bulk', saveBulkAttendance);
 router.get('/', getAttendance);
 router.get('/trainer/stats', getAttendanceByTrainer);

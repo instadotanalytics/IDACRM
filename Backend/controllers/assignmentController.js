@@ -59,7 +59,7 @@ export const createAssignment = async (req, res) => {
     }
 };
 
-// @desc    Get all assignments (with tracking info)
+// @desc    Get all assignments (everyone can view)
 // @route   GET /api/assignments
 export const getAssignments = async (req, res) => {
     try {
@@ -69,14 +69,20 @@ export const getAssignments = async (req, res) => {
         if (batchId) query.batchId = batchId;
         if (status) query.status = status;
         
-        // If trainer, show only their batches
+        // ✅ If user is trainer, show only their batches' assignments
+        // ✅ If user is counselor, show all assignments (for their batches)
         if (req.user.role === 'trainer') {
             const Batch = await import('../models/Batch.js').then(m => m.default);
             const trainerBatches = await Batch.find({ trainerId: req.user._id });
             const batchIds = trainerBatches.map(b => b._id);
-            query.batchId = { $in: batchIds };
-            if (batchId) query.batchId = batchId;
+            if (batchId) {
+                query.batchId = batchId;
+            } else if (batchIds.length > 0) {
+                query.batchId = { $in: batchIds };
+            }
         }
+        
+        // ✅ For counselor - show all assignments (no filter)
         
         const assignments = await Assignment.find(query)
             .populate('batchId', 'name code')
@@ -84,7 +90,6 @@ export const getAssignments = async (req, res) => {
             .populate('trainerId', 'name')
             .sort({ createdAt: -1 });
         
-        // Calculate submission stats for each assignment
         const assignmentsWithStats = assignments.map(assignment => {
             const totalSubmissions = assignment.submissions.length;
             const gradedSubmissions = assignment.submissions.filter(s => s.graded).length;

@@ -9,7 +9,9 @@ const api = axios.create({
   }
 });
 
-// Add token to requests
+// =======================
+// REQUEST INTERCEPTOR
+// =======================
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -21,23 +23,37 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Handle auth errors - FIXED - No automatic redirect
+// =======================
+// RESPONSE INTERCEPTOR
+// =======================
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error('API Error:', error.response?.status, error.config?.url);
     
-    // Only clear storage and redirect on 401, but let ProtectedRoute handle it
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
-      const isLoginPage = currentPath === '/super-admin-login' || currentPath === '/login';
+      const isLoginPage = currentPath === '/login' || currentPath === '/super-admin-login';
       
       if (!isLoginPage) {
-        console.log('401 Unauthorized, clearing session');
+        let role = null;
+        try {
+          const userData = localStorage.getItem('user');
+          if (userData) {
+            role = JSON.parse(userData).role;
+          }
+        } catch (err) {
+          console.error('User parse error:', err);
+        }
+        
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        // Don't redirect here - let ProtectedRoute handle it
-        window.dispatchEvent(new Event('authError'));
+        
+        if (role === 'super_admin') {
+          window.location.href = '/super-admin-login';
+        } else {
+          window.location.href = '/login';
+        }
       }
     }
     
@@ -45,7 +61,59 @@ api.interceptors.response.use(
   }
 );
 
-// Super Admin API
+// =======================
+// HELPER FUNCTIONS - FIXED
+// =======================
+export const getCurrentUser = () => {
+  try {
+    const userData = localStorage.getItem('user');
+    if (!userData) return null;
+    const user = JSON.parse(userData);
+    return user;
+  } catch (error) {
+    console.error('Error getting user:', error);
+    return null;
+  }
+};
+
+export const getCurrentUserId = () => {
+  try {
+    const user = getCurrentUser();
+    if (!user) return null;
+    // Try all possible ID field names
+    return user._id || user.id || user.userId || null;
+  } catch (error) {
+    console.error('Error getting user ID:', error);
+    return null;
+  }
+};
+
+export const getCurrentUserRole = () => {
+  try {
+    const user = getCurrentUser();
+    if (!user) return null;
+    return user.role || null;
+  } catch (error) {
+    console.error('Error getting user role:', error);
+    return null;
+  }
+};
+
+// =======================
+// AUTH API
+// =======================
+export const authAPI = {
+  login: (credentials) => api.post('/auth/login', credentials),
+  getProfile: () => api.get('/auth/me'),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, newPassword }),
+  changePassword: (currentPassword, newPassword) => api.post('/auth/change-password', { currentPassword, newPassword }),
+  logout: () => api.post('/auth/logout')
+};
+
+// =======================
+// SUPER ADMIN API
+// =======================
 export const superAdminAPI = {
   login: (credentials) => api.post('/super-admin/login', credentials),
   getProfile: () => api.get('/super-admin/profile'),
@@ -57,14 +125,15 @@ export const superAdminAPI = {
   logout: () => api.post('/super-admin/logout')
 };
 
-// Auth API
-export const authAPI = {
-  login: (credentials) => api.post('/auth/login', credentials),
-  getProfile: () => api.get('/auth/me'),
-  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
-  resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, newPassword }),
-  changePassword: (currentPassword, newPassword) => api.post('/auth/change-password', { currentPassword, newPassword }),
-  logout: () => api.post('/auth/logout')
+// =======================
+// GENERIC API METHODS
+// =======================
+export const apiService = {
+  get: (url, config = {}) => api.get(url, config),
+  post: (url, data, config = {}) => api.post(url, data, config),
+  put: (url, data, config = {}) => api.put(url, data, config),
+  patch: (url, data, config = {}) => api.patch(url, data, config),
+  delete: (url, config = {}) => api.delete(url, config)
 };
 
 export default api;

@@ -10,9 +10,11 @@ export const addCallLog = async (req, res) => {
             notes, followUpRequired, followUpDate
         } = req.body;
 
-        console.log('Adding call log for:', leadName, leadPhone);
-        console.log('Counselor ID:', req.user.id);
-        console.log('Counselor Name:', req.user.name);
+        console.log('=========================================');
+        console.log('📞 Adding call log for:', leadName);
+        console.log('👤 Counselor ID:', req.user.id);
+        console.log('👤 Counselor Name:', req.user.name);
+        console.log('=========================================');
 
         if (!leadName) {
             return res.status(400).json({ success: false, message: 'Lead name is required' });
@@ -21,7 +23,6 @@ export const addCallLog = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Phone number is required' });
         }
 
-        // ✅ Auto-add counselor tracking fields
         const callLog = await CallLog.create({
             leadName: leadName.trim(),
             leadPhone: leadPhone.trim(),
@@ -29,17 +30,17 @@ export const addCallLog = async (req, res) => {
             courseInterest: courseInterest || '',
             callType: callType || 'Outgoing',
             callStatus: callStatus || 'Connected',
-            duration: duration || 0,
-            callTime: callTime || Date.now(),
+            duration: parseInt(duration) || 0,
+            callTime: callTime || new Date(),
             notes: notes || '',
             followUpRequired: followUpRequired || false,
             followUpDate: followUpDate || null,
-            counselorId: req.user.id,           // ✅ Auto track counselor ID
-            counselorName: req.user.name,       // ✅ Auto track counselor name
+            counselorId: req.user.id,
+            counselorName: req.user.name,
             createdBy: req.user.id
         });
 
-        console.log('Call log added with counselorId:', callLog.counselorId);
+        console.log('✅ Call log added with ID:', callLog._id);
 
         res.status(201).json({
             success: true,
@@ -52,7 +53,7 @@ export const addCallLog = async (req, res) => {
     }
 };
 
-// @desc    Get today's calls (for logged-in counselor)
+// @desc    Get today's calls
 // @route   GET /api/calls/today
 export const getTodayCalls = async (req, res) => {
     try {
@@ -61,11 +62,17 @@ export const getTodayCalls = async (req, res) => {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         
-        // ✅ Filter by logged-in counselor
-        const calls = await CallLog.find({
-            counselorId: req.user.id,
+        let query = {
             callTime: { $gte: today, $lt: tomorrow }
-        }).sort('-callTime');
+        };
+        
+        if (req.user.role !== 'admin_manager' && req.user.role !== 'super_admin') {
+            query.counselorId = req.user.id;
+        }
+        
+        const calls = await CallLog.find(query)
+            .populate('counselorId', 'name email')
+            .sort({ callTime: -1 });
         
         const stats = {
             total: calls.length,
@@ -73,6 +80,8 @@ export const getTodayCalls = async (req, res) => {
             incoming: calls.filter(c => c.callType === 'Incoming').length,
             connected: calls.filter(c => c.callStatus === 'Connected').length,
             notAnswered: calls.filter(c => c.callStatus === 'Not Answered').length,
+            busy: calls.filter(c => c.callStatus === 'Busy').length,
+            wrongNumber: calls.filter(c => c.callStatus === 'Wrong Number').length,
             totalDuration: calls.reduce((sum, c) => sum + (c.duration || 0), 0)
         };
         
@@ -83,7 +92,7 @@ export const getTodayCalls = async (req, res) => {
     }
 };
 
-// @desc    Get weekly call stats (for logged-in counselor)
+// @desc    Get weekly call stats
 // @route   GET /api/calls/weekly
 export const getWeeklyCalls = async (req, res) => {
     try {
@@ -92,48 +101,56 @@ export const getWeeklyCalls = async (req, res) => {
         weekStart.setDate(today.getDate() - 6);
         weekStart.setHours(0, 0, 0, 0);
         
-        // ✅ Filter by logged-in counselor
-        const calls = await CallLog.find({
-            counselorId: req.user.id,
+        let query = {
             callTime: { $gte: weekStart }
-        }).sort('callTime');
+        };
+        
+        if (req.user.role !== 'admin_manager' && req.user.role !== 'super_admin') {
+            query.counselorId = req.user.id;
+        }
+        
+        const calls = await CallLog.find(query).sort('callTime');
         
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const dailyStats = {};
+        const weeklyData = [];
         
         for (let i = 0; i < 7; i++) {
             const date = new Date(weekStart);
             date.setDate(weekStart.getDate() + i);
             const dayName = days[date.getDay()];
-            dailyStats[dayName] = { date: dayName, calls: 0, duration: 0 };
+            const dayCalls = calls.filter(call => {
+                const callDate = new Date(call.callTime);
+                return callDate.toDateString() === date.toDateString();
+            });
+            
+            weeklyData.push({
+                date: dayName,
+                fullDate: date.toLocaleDateString(),
+                calls: dayCalls.length,
+                duration: dayCalls.reduce((sum, c) => sum + (c.duration || 0), 0),
+                connected: dayCalls.filter(c => c.callStatus === 'Connected').length
+            });
         }
         
-        calls.forEach(call => {
-            const dayName = days[new Date(call.callTime).getDay()];
-            if (dailyStats[dayName]) {
-                dailyStats[dayName].calls++;
-                dailyStats[dayName].duration += call.duration || 0;
-            }
-        });
-        
-        res.json({ success: true, data: Object.values(dailyStats) });
+        res.json({ success: true, data: weeklyData });
     } catch (error) {
         console.error('Get weekly calls error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// @desc    Get all calls (Admin can see all, Counselor sees only their own)
+// @desc    Get all calls (with filters)
 // @route   GET /api/calls
 export const getAllCalls = async (req, res) => {
     try {
-        const { startDate, endDate, callType, callStatus, search } = req.query;
+        const { startDate, endDate, callType, callStatus, search, counselorId } = req.query;
         
         let query = {};
         
-        // ✅ Role-based filtering
-        if (req.user.role === 'counselor') {
+        if (req.user.role !== 'admin_manager' && req.user.role !== 'super_admin') {
             query.counselorId = req.user.id;
+        } else if (counselorId && counselorId !== 'all') {
+            query.counselorId = counselorId;
         }
         
         if (startDate && endDate) {
@@ -153,25 +170,34 @@ export const getAllCalls = async (req, res) => {
             ];
         }
         
-        let calls = await CallLog.find(query)
+        const calls = await CallLog.find(query)
             .populate('counselorId', 'name email')
-            .sort('-callTime');
+            .sort({ callTime: -1 });
         
-        // ✅ If admin, show all; if counselor, already filtered
-        res.json({ success: true, data: calls });
+        const stats = {
+            total: calls.length,
+            outgoing: calls.filter(c => c.callType === 'Outgoing').length,
+            incoming: calls.filter(c => c.callType === 'Incoming').length,
+            connected: calls.filter(c => c.callStatus === 'Connected').length,
+            notAnswered: calls.filter(c => c.callStatus === 'Not Answered').length,
+            busy: calls.filter(c => c.callStatus === 'Busy').length,
+            wrongNumber: calls.filter(c => c.callStatus === 'Wrong Number').length,
+            totalDuration: calls.reduce((sum, c) => sum + (c.duration || 0), 0)
+        };
+        
+        res.json({ success: true, data: calls, stats });
     } catch (error) {
         console.error('Get all calls error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// @desc    Get calls by specific counselor (Admin only)
+// @desc    Get calls by counselor
 // @route   GET /api/calls/counselor/:counselorId
 export const getCallsByCounselor = async (req, res) => {
     try {
         const { counselorId } = req.params;
         
-        // ✅ Admin only or same counselor
         if (req.user.role !== 'admin_manager' && req.user.role !== 'super_admin' && req.user.id !== counselorId) {
             return res.status(403).json({ 
                 success: false, 
@@ -179,34 +205,26 @@ export const getCallsByCounselor = async (req, res) => {
             });
         }
         
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
         const calls = await CallLog.find({ counselorId })
             .populate('counselorId', 'name email')
             .sort({ callTime: -1 });
         
         const stats = {
             total: calls.length,
-            today: calls.filter(c => new Date(c.callTime) >= today).length,
+            today: calls.filter(c => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return new Date(c.callTime) >= today;
+            }).length,
             outgoing: calls.filter(c => c.callType === 'Outgoing').length,
             incoming: calls.filter(c => c.callType === 'Incoming').length,
-            connected: calls.filter(c => c.callStatus === 'Connected').length,
-            notAnswered: calls.filter(c => c.callStatus === 'Not Answered').length
+            connected: calls.filter(c => c.callStatus === 'Connected').length
         };
         
-        res.json({ 
-            success: true, 
-            data: calls, 
-            stats,
-            counselorId: counselorId 
-        });
+        res.json({ success: true, data: calls, stats, counselorId });
     } catch (error) {
         console.error('getCallsByCounselor error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -216,15 +234,16 @@ export const getCallsByCounselorForDashboard = async (req, res) => {
     try {
         const counselorId = req.params.counselorId || req.user._id;
         
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
         const calls = await CallLog.find({ counselorId })
             .sort({ callTime: -1 });
         
         const stats = {
             total: calls.length,
-            today: calls.filter(c => new Date(c.callTime) >= today).length,
+            today: calls.filter(c => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return new Date(c.callTime) >= today;
+            }).length,
             outgoing: calls.filter(c => c.callType === 'Outgoing').length,
             incoming: calls.filter(c => c.callType === 'Incoming').length,
             connected: calls.filter(c => c.callStatus === 'Connected').length
@@ -247,7 +266,6 @@ export const updateCallLog = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Call log not found' });
         }
         
-        // ✅ Check permission: can only update own calls (unless admin)
         if (req.user.role !== 'admin_manager' && req.user.role !== 'super_admin' && callLog.counselorId.toString() !== req.user.id) {
             return res.status(403).json({ 
                 success: false, 
@@ -278,7 +296,6 @@ export const deleteCallLog = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Call log not found' });
         }
         
-        // ✅ Check permission: can only delete own calls (unless admin)
         if (req.user.role !== 'admin_manager' && req.user.role !== 'super_admin' && callLog.counselorId.toString() !== req.user.id) {
             return res.status(403).json({ 
                 success: false, 
@@ -294,11 +311,10 @@ export const deleteCallLog = async (req, res) => {
     }
 };
 
-// @desc    Get counselor wise call statistics (Admin report)
+// @desc    Get counselor wise call statistics
 // @route   GET /api/calls/counselor-stats
 export const getCounselorWiseCallStats = async (req, res) => {
     try {
-        // ✅ Admin only
         if (req.user.role !== 'admin_manager' && req.user.role !== 'super_admin') {
             return res.status(403).json({ 
                 success: false, 

@@ -6,9 +6,9 @@ import {
   FaClock, FaUserGraduate, FaBookOpen, FaFileAlt,
   FaVideo, FaFilePdf, FaLink, FaDownload,
   FaUpload, FaCloudUploadAlt, FaChalkboardTeacher,
-  FaUserTie, FaInfoCircle
+  FaUserTie, FaInfoCircle, FaArrowLeft
 } from 'react-icons/fa';
-import api from '../../../services/api';
+import api, { getCurrentUser, getCurrentUserRole } from '../../../services/api';
 import styles from './CourseMaterials.module.css';
 
 const CourseMaterials = () => {
@@ -16,26 +16,13 @@ const CourseMaterials = () => {
   const [batches, setBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [materials, setMaterials] = useState([]);
-  const [groupedMaterials, setGroupedMaterials] = useState({});
   const [showModal, setShowModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState(null);
-  const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [file, setFile] = useState(null);
-  
-  // ✅ Get current user for tracking
   const [currentUser, setCurrentUser] = useState(null);
-
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      const user = JSON.parse(userData);
-      setCurrentUser(user);
-      console.log('Current User:', user.name);
-    }
-  }, []);
+  const [userRole, setUserRole] = useState('');
 
   const [formData, setFormData] = useState({
     title: '',
@@ -49,31 +36,56 @@ const CourseMaterials = () => {
   });
 
   const materialTypes = [
-    { value: 'video', label: '🎬 Video', icon: FaVideo, color: '#6366f1' },
-    { value: 'pdf', label: '📄 PDF', icon: FaFilePdf, color: '#ef4444' },
-    { value: 'document', label: '📝 Document', icon: FaFileAlt, color: '#10b981' },
-    { value: 'presentation', label: '📊 Presentation', icon: FaFileAlt, color: '#f59e0b' },
-    { value: 'link', label: '🔗 External Link', icon: FaLink, color: '#8b5cf6' },
-    { value: 'assignment', label: '✏️ Assignment', icon: FaBookOpen, color: '#ec489a' }
+    { value: 'video', label: 'Video', icon: FaVideo, color: '#6366f1' },
+    { value: 'pdf', label: 'PDF', icon: FaFilePdf, color: '#ef4444' },
+    { value: 'document', label: 'Document', icon: FaFileAlt, color: '#10b981' },
+    { value: 'presentation', label: 'Presentation', icon: FaFileAlt, color: '#f59e0b' },
+    { value: 'link', label: 'External Link', icon: FaLink, color: '#8b5cf6' },
+    { value: 'assignment', label: 'Assignment', icon: FaBookOpen, color: '#ec489a' }
   ];
 
-  // Fetch trainer's batches
+  // Get current user
+  useEffect(() => {
+    const user = getCurrentUser();
+    const role = getCurrentUserRole();
+    if (user) {
+      setCurrentUser(user);
+      setUserRole(role);
+      console.log('=== COURSE MATERIALS ===');
+      console.log('Current User:', user.name);
+      console.log('User Role:', role);
+    }
+    fetchBatches();
+  }, []);
+
+  // Fetch batches based on role
   const fetchBatches = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/batches/trainer/assigned');
-      if (response.data.success) {
-        setBatches(response.data.data);
+      let batchesData = [];
+      
+      if (userRole === 'trainer') {
+        try {
+          const response = await api.get('/batches/trainer/assigned');
+          if (response.data.success) {
+            batchesData = response.data.data;
+          }
+        } catch (err) {
+          const response = await api.get('/batches');
+          if (response.data.success) {
+            batchesData = response.data.data;
+          }
+        }
       } else {
-        const allBatchesRes = await api.get('/batches');
-        if (allBatchesRes.data.success) {
-          const user = JSON.parse(localStorage.getItem('user'));
-          const trainerBatches = allBatchesRes.data.data.filter(
-            batch => batch.trainerId?._id === user?._id || batch.trainerId === user?._id
-          );
-          setBatches(trainerBatches);
+        const response = await api.get('/batches');
+        if (response.data.success) {
+          batchesData = response.data.data;
         }
       }
+      
+      setBatches(batchesData);
+      console.log('Batches loaded:', batchesData.length);
+      
     } catch (error) {
       console.error('Error fetching batches:', error);
       toast.error('Failed to fetch batches');
@@ -92,17 +104,7 @@ const CourseMaterials = () => {
       });
       if (response.data.success) {
         setMaterials(response.data.data);
-        
-        // Group by type
-        const grouped = {
-          videos: response.data.data.filter(m => m.type === 'video'),
-          pdfs: response.data.data.filter(m => m.type === 'pdf'),
-          documents: response.data.data.filter(m => m.type === 'document'),
-          presentations: response.data.data.filter(m => m.type === 'presentation'),
-          links: response.data.data.filter(m => m.type === 'link'),
-          assignments: response.data.data.filter(m => m.type === 'assignment')
-        };
-        setGroupedMaterials(grouped);
+        console.log('Materials loaded:', response.data.data.length);
       }
     } catch (error) {
       console.error('Error fetching materials:', error);
@@ -113,13 +115,13 @@ const CourseMaterials = () => {
   };
 
   useEffect(() => {
-    fetchBatches();
-  }, []);
-
-  useEffect(() => {
     if (selectedBatch) {
       fetchMaterials();
-      setFormData({ ...formData, course: selectedBatch.course, batchId: selectedBatch._id });
+      setFormData({ 
+        ...formData, 
+        course: selectedBatch.course, 
+        batchId: selectedBatch._id 
+      });
     }
   }, [selectedBatch]);
 
@@ -283,8 +285,8 @@ const CourseMaterials = () => {
           ) : batches.length === 0 ? (
             <div className={styles.emptyContainer}>
               <div className={styles.emptyIcon}>📚</div>
-              <h3>No batches assigned</h3>
-              <p>You don't have any batches assigned yet.</p>
+              <h3>No batches available</h3>
+              <p>No batches are available in the system.</p>
             </div>
           ) : (
             batches.map(batch => (
@@ -298,7 +300,7 @@ const CourseMaterials = () => {
                   <h3>{batch.name}</h3>
                   <p>{batch.code}</p>
                   <div className={styles.batchCardStats}>
-                    <span><FaUserGraduate /> {batch.studentsCount || 0} Students</span>
+                    <span><FaUserGraduate /> {batch.studentsCount || batch.currentStudents || 0} Students</span>
                     <span><FaClock /> {batch.timings}</span>
                   </div>
                 </div>
@@ -315,23 +317,25 @@ const CourseMaterials = () => {
     <div className={styles.container}>
       {/* Back Button */}
       <button className={styles.backBtn} onClick={() => setSelectedBatch(null)}>
-        ← Back to Batches
+        <FaArrowLeft /> Back to Batches
       </button>
 
-      {/* Batch Header with Trainer Info */}
+      {/* Batch Header */}
       <div className={styles.batchHeader}>
         <div>
           <h2>{selectedBatch.name}</h2>
           <p>{selectedBatch.code} | {selectedBatch.course} | {selectedBatch.timings}</p>
           <div className={styles.trainerInfo}>
-            <FaUserTie /> Trainer: {currentUser?.name || 'Not assigned'}
+            <FaUserTie /> {userRole === 'trainer' ? 'Trainer' : 'Instructor'}: {currentUser?.name || 'Not assigned'}
           </div>
         </div>
         <div className={styles.batchStats}>
           <span><FaBookOpen /> {materials.length} Materials</span>
-          <button className={styles.createBtn} onClick={() => setShowModal(true)}>
-            <FaPlus /> Add Material
-          </button>
+          {(userRole === 'trainer' || userRole === 'admin_manager') && (
+            <button className={styles.createBtn} onClick={() => setShowModal(true)}>
+              <FaPlus /> Add Material
+            </button>
+          )}
         </div>
       </div>
 
@@ -352,12 +356,12 @@ const CourseMaterials = () => {
           onChange={(e) => setFilterType(e.target.value)}
         >
           <option value="all">All Types</option>
-          <option value="video">🎬 Videos</option>
-          <option value="pdf">📄 PDFs</option>
-          <option value="document">📝 Documents</option>
-          <option value="presentation">📊 Presentations</option>
-          <option value="link">🔗 Links</option>
-          <option value="assignment">✏️ Assignments</option>
+          <option value="video">Videos</option>
+          <option value="pdf">PDFs</option>
+          <option value="document">Documents</option>
+          <option value="presentation">Presentations</option>
+          <option value="link">Links</option>
+          <option value="assignment">Assignments</option>
         </select>
       </div>
 
@@ -372,9 +376,11 @@ const CourseMaterials = () => {
             <div className={styles.emptyIcon}>📚</div>
             <h3>No materials found</h3>
             <p>Add your first course material for this batch</p>
-            <button className={styles.createFirstBtn} onClick={() => setShowModal(true)}>
-              Add Material
-            </button>
+            {(userRole === 'trainer' || userRole === 'admin_manager') && (
+              <button className={styles.createFirstBtn} onClick={() => setShowModal(true)}>
+                Add Material
+              </button>
+            )}
           </div>
         ) : (
           typeFilteredMaterials.map(material => (
@@ -384,10 +390,16 @@ const CourseMaterials = () => {
                   {getTypeIcon(material.type)}
                   <span>{getTypeLabel(material.type)}</span>
                 </div>
-                <div className={styles.materialActions}>
-                  <button onClick={() => handleEdit(material)}><FaEdit /></button>
-                  <button onClick={() => handleDelete(material._id, material.title)}><FaTrash /></button>
-                </div>
+                {(userRole === 'trainer' || userRole === 'admin_manager') && (
+                  <div className={styles.materialActions}>
+                    <button onClick={() => handleEdit(material)} title="Edit">
+                      <FaEdit />
+                    </button>
+                    <button onClick={() => handleDelete(material._id, material.title)} title="Delete">
+                      <FaTrash />
+                    </button>
+                  </div>
+                )}
               </div>
               <div className={styles.materialContent}>
                 <h3>{material.title}</h3>
@@ -395,9 +407,8 @@ const CourseMaterials = () => {
                 {material.description && <p className={styles.description}>{material.description}</p>}
                 {material.duration && <p className={styles.duration}>⏱️ Duration: {material.duration}</p>}
                 {material.size && <p className={styles.size}>📦 Size: {material.size}</p>}
-                {/* ✅ TRACKING: Show who created this material */}
                 <p className={styles.trackingInfo}>
-                  <FaUserTie /> Created by: {material.createdByName || material.createdBy?.name || currentUser?.name || 'System'}
+                  <FaUserTie /> Created by: {material.createdByName || material.createdBy?.name || 'System'}
                 </p>
               </div>
               <div className={styles.materialFooter}>
@@ -421,7 +432,7 @@ const CourseMaterials = () => {
       </div>
 
       {/* Create/Edit Modal */}
-      {showModal && (
+      {showModal && (userRole === 'trainer' || userRole === 'admin_manager') && (
         <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
@@ -490,7 +501,6 @@ const CourseMaterials = () => {
                   </div>
                 </div>
 
-                {/* ✅ Tracking Note */}
                 <div className={styles.trackingNote}>
                   <FaInfoCircle /> Material will be added by: {currentUser?.name}
                 </div>

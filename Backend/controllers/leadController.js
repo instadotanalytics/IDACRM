@@ -61,7 +61,6 @@ export const getLeadById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Lead not found' });
     }
     
-    // ✅ Counselor can only see their own leads
     if (req.user?.role === 'counselor' && lead.counselorId?._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
@@ -79,8 +78,8 @@ export const createLead = async (req, res) => {
     
     const lead = new Lead({
       ...req.body,
-      counselorId: currentUser._id,           // ✅ Auto-track counselor ID
-      counselorName: currentUser.name,         // ✅ Auto-track counselor name
+      counselorId: currentUser._id,
+      counselorName: currentUser.name,
       assignedTo: req.body.assignedTo || currentUser._id,
       createdBy: currentUser._id
     });
@@ -102,7 +101,6 @@ export const updateLead = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Lead not found' });
     }
     
-    // ✅ Counselor can only update their own leads
     if (req.user?.role === 'counselor' && lead.counselorId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
@@ -126,6 +124,16 @@ export const deleteLead = async (req, res) => {
     
     if (!lead) {
       return res.status(404).json({ success: false, message: 'Lead not found' });
+    }
+    
+    // Check permission: users can only delete their own leads
+    if (req.user.role !== 'admin_manager' && req.user.role !== 'super_admin') {
+      if (lead.counselorId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Access denied. You can only delete your own leads.' 
+        });
+      }
     }
     
     await lead.deleteOne();
@@ -205,3 +213,5 @@ export const getCounselorWiseStats = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// ✅ NO DUPLICATE EXPORTS - All functions are already exported with 'export' keyword

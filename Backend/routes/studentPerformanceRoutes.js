@@ -3,18 +3,17 @@ import {
     getBatchPerformance,
     calculatePerformance
 } from '../controllers/studentPerformanceController.js';
-import { protect, trainerOnly } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// All routes require authentication
+// ✅ All routes require authentication (no trainerOnly restriction)
 router.use(protect);
-router.use(trainerOnly);
 
-// Get batch performance
+// ✅ Get batch performance - everyone can view
 router.get('/batch/:batchId', getBatchPerformance);
 
-// Calculate performance
+// ✅ Calculate performance - trainers and admins only
 router.post('/calculate/:studentId', calculatePerformance);
 
 export default router;

@@ -53,7 +53,7 @@ const callLogSchema = new mongoose.Schema({
         default: null
     },
     
-    // ✅ TRACKING FIELDS - Counselor Information
+    // ✅ TRACKING FIELDS
     counselorId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -64,17 +64,20 @@ const callLogSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
-    
-    // ✅ For lead reference (optional, if linked to lead)
     leadId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Lead',
         default: null
+    },
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }
 }, { timestamps: true });
 
-// Index for faster queries
+// Indexes for faster queries
 callLogSchema.index({ counselorId: 1, callTime: -1 });
+callLogSchema.index({ callTime: 1 });
 callLogSchema.index({ leadName: 'text', leadPhone: 'text' });
 
 const CallLog = mongoose.model('CallLog', callLogSchema);

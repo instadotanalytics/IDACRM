@@ -29,15 +29,18 @@ const Tests = () => {
   
   // ✅ Get current user for tracking
   const [currentUser, setCurrentUser] = useState(null);
+  const [userRole, setUserRole] = useState('');
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
       const user = JSON.parse(userData);
       setCurrentUser(user);
+      setUserRole(user.role);
       console.log('Current User:', user.name);
       console.log('User Role:', user.role);
     }
+    fetchBatches();
   }, []);
 
   const [formData, setFormData] = useState({
@@ -59,23 +62,34 @@ const Tests = () => {
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [editingQuestionIndex, setEditingQuestionIndex] = useState(null);
 
-  // Fetch trainer's batches
+  // Fetch batches based on role
   const fetchBatches = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/batches/trainer/assigned');
-      if (response.data.success) {
-        setBatches(response.data.data);
+      let batchesData = [];
+      
+      if (userRole === 'trainer') {
+        try {
+          const response = await api.get('/batches/trainer/assigned');
+          if (response.data.success) {
+            batchesData = response.data.data;
+          }
+        } catch (err) {
+          const response = await api.get('/batches');
+          if (response.data.success) {
+            batchesData = response.data.data;
+          }
+        }
       } else {
-        const allBatchesRes = await api.get('/batches');
-        if (allBatchesRes.data.success) {
-          const user = JSON.parse(localStorage.getItem('user'));
-          const trainerBatches = allBatchesRes.data.data.filter(
-            batch => batch.trainerId?._id === user?._id || batch.trainerId === user?._id
-          );
-          setBatches(trainerBatches);
+        const response = await api.get('/batches');
+        if (response.data.success) {
+          batchesData = response.data.data;
         }
       }
+      
+      setBatches(batchesData);
+      console.log('Batches loaded:', batchesData.length);
+      
     } catch (error) {
       console.error('Error fetching batches:', error);
       toast.error('Failed to fetch batches');
@@ -94,6 +108,7 @@ const Tests = () => {
       });
       if (response.data.success) {
         setTests(response.data.data);
+        console.log('Tests loaded:', response.data.data.length);
       }
     } catch (error) {
       console.error('Error fetching tests:', error);
@@ -115,15 +130,12 @@ const Tests = () => {
           return studentBatchId === selectedBatch._id;
         });
         setStudents(batchStudents);
+        console.log('Students in batch:', batchStudents.length);
       }
     } catch (error) {
       console.error('Error fetching students:', error);
     }
   };
-
-  useEffect(() => {
-    fetchBatches();
-  }, []);
 
   useEffect(() => {
     if (selectedBatch) {
@@ -234,8 +246,6 @@ const Tests = () => {
     const startDateTime = formData.startDate ? `${formData.startDate}T00:00` : '';
     const endDateTime = formData.endDate ? `${formData.endDate}T23:59` : '';
 
-    console.log('Submitting test by:', currentUser?.name);
-
     setLoading(true);
     try {
       const submitData = new FormData();
@@ -339,8 +349,8 @@ const Tests = () => {
           ) : batches.length === 0 ? (
             <div className={styles.emptyContainer}>
               <div className={styles.emptyIcon}>📋</div>
-              <h3>No batches assigned</h3>
-              <p>You don't have any batches assigned yet.</p>
+              <h3>No batches available</h3>
+              <p>No batches are available in the system.</p>
             </div>
           ) : (
             batches.map(batch => (
@@ -354,7 +364,7 @@ const Tests = () => {
                   <h3>{batch.name}</h3>
                   <p>{batch.code}</p>
                   <div className={styles.batchCardStats}>
-                    <span><FaUserGraduate /> {batch.studentsCount || 0} Students</span>
+                    <span><FaUserGraduate /> {batch.studentsCount || batch.currentStudents || 0} Students</span>
                     <span><FaClock /> {batch.timings}</span>
                   </div>
                 </div>
@@ -374,20 +384,22 @@ const Tests = () => {
         ← Back to Batches
       </button>
 
-      {/* Batch Header with Trainer Info */}
+      {/* Batch Header */}
       <div className={styles.batchHeader}>
         <div>
           <h2>{selectedBatch.name}</h2>
           <p>{selectedBatch.code} | {selectedBatch.course} | {selectedBatch.timings}</p>
           <div className={styles.trainerInfo}>
-            <FaUserTie /> Trainer: {currentUser?.name || 'Not assigned'}
+            <FaUserTie /> {userRole === 'trainer' ? 'Trainer' : 'Instructor'}: {currentUser?.name || 'Not assigned'}
           </div>
         </div>
         <div className={styles.batchStats}>
           <span><FaUserGraduate /> {students.length} Students</span>
-          <button className={styles.createBtn} onClick={() => setShowModal(true)}>
-            <FaPlus /> Create Test
-          </button>
+          {userRole === 'trainer' && (
+            <button className={styles.createBtn} onClick={() => setShowModal(true)}>
+              <FaPlus /> Create Test
+            </button>
+          )}
         </div>
       </div>
 
@@ -424,10 +436,12 @@ const Tests = () => {
           <div className={styles.emptyContainer}>
             <div className={styles.emptyIcon}>📋</div>
             <h3>No tests</h3>
-            <p>Create your first test for this batch</p>
-            <button className={styles.createFirstBtn} onClick={() => setShowModal(true)}>
-              Create Test
-            </button>
+            <p>No tests found for this batch.</p>
+            {userRole === 'trainer' && (
+              <button className={styles.createFirstBtn} onClick={() => setShowModal(true)}>
+                Create Test
+              </button>
+            )}
           </div>
         ) : (
           filteredTests.map(test => (
@@ -446,9 +460,8 @@ const Tests = () => {
                 <p><FaClock /> Duration: {test.duration} minutes</p>
                 <p><FaQuestionCircle /> Questions: {test.questions?.length || 0}</p>
                 <p><FaTrophy /> Total Marks: {test.totalMarks}</p>
-                {/* ✅ TRACKING: Show who created this test */}
                 <p className={styles.trackingInfo}>
-                  <FaUserTie /> Created by: {test.createdByName || test.trainerName || currentUser?.name || 'System'}
+                  <FaUserTie /> Created by: {test.createdByName || test.trainerName || 'System'}
                 </p>
               </div>
               <div className={styles.testStats}>
@@ -474,34 +487,38 @@ const Tests = () => {
                 }}>
                   <FaChartLine /> Results
                 </button>
-                <button className={styles.editBtn} onClick={() => {
-                  setEditingTest(test);
-                  setFormData({
-                    title: test.title,
-                    description: test.description || '',
-                    course: test.course,
-                    batchId: test.batchId,
-                    duration: test.duration,
-                    startDate: test.startDate?.split('T')[0] || '',
-                    endDate: test.endDate?.split('T')[0] || ''
-                  });
-                  setQuestionsList(test.questions || []);
-                  setUploadMethod(test.pdfUrl ? 'pdf' : 'manual');
-                  setShowModal(true);
-                }}>
-                  <FaEdit /> Edit
-                </button>
-                <button className={styles.deleteBtn} onClick={() => handleDelete(test._id, test.title)}>
-                  <FaTrash /> Delete
-                </button>
+                {userRole === 'trainer' && (
+                  <>
+                    <button className={styles.editBtn} onClick={() => {
+                      setEditingTest(test);
+                      setFormData({
+                        title: test.title,
+                        description: test.description || '',
+                        course: test.course,
+                        batchId: test.batchId,
+                        duration: test.duration,
+                        startDate: test.startDate?.split('T')[0] || '',
+                        endDate: test.endDate?.split('T')[0] || ''
+                      });
+                      setQuestionsList(test.questions || []);
+                      setUploadMethod(test.pdfUrl ? 'pdf' : 'manual');
+                      setShowModal(true);
+                    }}>
+                      <FaEdit /> Edit
+                    </button>
+                    <button className={styles.deleteBtn} onClick={() => handleDelete(test._id, test.title)}>
+                      <FaTrash /> Delete
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Create/Edit Test Modal */}
-      {showModal && (
+      {/* Create/Edit Test Modal - Only for Trainers */}
+      {showModal && userRole === 'trainer' && (
         <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
           <div className={`${styles.modal} ${styles.largeModal}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
@@ -544,7 +561,6 @@ const Tests = () => {
                   </div>
                 </div>
 
-                {/* Upload Method Selection */}
                 <div className={styles.uploadMethodSection}>
                   <label>Question Upload Method *</label>
                   <div className={styles.methodButtons}>
@@ -565,20 +581,12 @@ const Tests = () => {
                   </div>
                 </div>
 
-                {/* PDF Upload Section */}
                 {uploadMethod === 'pdf' && (
                   <div className={styles.pdfUploadSection}>
                     <div className={styles.pdfUploadArea}>
-                      <input
-                        type="file"
-                        id="pdfFile"
-                        accept=".pdf"
-                        onChange={handlePdfFileChange}
-                        style={{ display: 'none' }}
-                      />
+                      <input type="file" id="pdfFile" accept=".pdf" onChange={handlePdfFileChange} style={{ display: 'none' }} />
                       <label htmlFor="pdfFile" className={styles.pdfLabel}>
-                        <FaCloudUploadAlt />
-                        {pdfFile ? pdfFile.name : 'Click to upload PDF file'}
+                        <FaCloudUploadAlt /> {pdfFile ? pdfFile.name : 'Click to upload PDF file'}
                         <small>PDF file with questions (Max 20MB)</small>
                       </label>
                       {pdfFile && (
@@ -587,18 +595,9 @@ const Tests = () => {
                         </button>
                       )}
                     </div>
-                    <div className={styles.pdfInfo}>
-                      <p>📄 PDF Format Instructions:</p>
-                      <ul>
-                        <li>Each question should start with number (1., 2., etc.)</li>
-                        <li>Options should be A., B., C., D.</li>
-                        <li>Answer should be mentioned as "Answer: A"</li>
-                      </ul>
-                    </div>
                   </div>
                 )}
 
-                {/* Manual Questions Section */}
                 {uploadMethod === 'manual' && (
                   <div className={styles.questionsSection}>
                     <div className={styles.sectionHeader}>
@@ -609,7 +608,7 @@ const Tests = () => {
                     </div>
                     
                     {questionsList.length === 0 ? (
-                      <div className={styles.noQuestions}>No questions added yet. Click "Add Question" to create questions.</div>
+                      <div className={styles.noQuestions}>No questions added yet.</div>
                     ) : (
                       <div className={styles.questionsList}>
                         {questionsList.map((q, idx) => (
@@ -637,7 +636,6 @@ const Tests = () => {
                   </div>
                 )}
 
-                {/* Tracking Note */}
                 <div className={styles.trackingNote}>
                   <FaInfoCircle /> Test will be created as: {currentUser?.name}
                 </div>
@@ -654,8 +652,8 @@ const Tests = () => {
         </div>
       )}
 
-      {/* Question Modal for Manual Entry */}
-      {showQuestionModal && (
+      {/* Question Modal */}
+      {showQuestionModal && userRole === 'trainer' && (
         <div className={styles.modalOverlay} onClick={() => setShowQuestionModal(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
@@ -672,7 +670,7 @@ const Tests = () => {
                 {questionForm.options.map((opt, idx) => (
                   <div key={idx} className={styles.optionInput}>
                     <span>{String.fromCharCode(65 + idx)}.</span>
-                    <input type="text" value={opt} onChange={(e) => handleOptionChange(idx, e.target.value)} placeholder={`Option ${String.fromCharCode(65 + idx)}`} required />
+                    <input type="text" value={opt} onChange={(e) => handleOptionChange(idx, e.target.value)} required />
                   </div>
                 ))}
               </div>
@@ -715,39 +713,12 @@ const Tests = () => {
                 <p><strong>Start Date:</strong> {new Date(selectedTest.startDate).toLocaleString()}</p>
                 <p><strong>End Date:</strong> {new Date(selectedTest.endDate).toLocaleString()}</p>
                 <p><strong>Total Marks:</strong> {selectedTest.totalMarks}</p>
-                <p><strong>Questions:</strong> {selectedTest.questions?.length || 0}</p>
-                {/* ✅ TRACKING: Show creator info */}
-                <p><strong>Created By:</strong> {selectedTest.createdByName || selectedTest.trainerName || currentUser?.name || 'System'}</p>
+                <p><strong>Created By:</strong> {selectedTest.createdByName || selectedTest.trainerName || 'System'}</p>
                 <p><strong>Created At:</strong> {new Date(selectedTest.createdAt).toLocaleString()}</p>
                 {selectedTest.pdfUrl && (
-                  <p><strong>PDF:</strong> <a href={selectedTest.pdfUrl} target="_blank" rel="noopener noreferrer" className={styles.pdfLink}><FaFilePdf /> Download Question Paper</a></p>
+                  <p><strong>PDF:</strong> <a href={selectedTest.pdfUrl} target="_blank" rel="noopener noreferrer" className={styles.pdfLink}><FaFilePdf /> Download</a></p>
                 )}
-                <p><strong>Description:</strong></p>
-                <p className={styles.descriptionText}>{selectedTest.description || 'No description'}</p>
               </div>
-
-              {selectedTest.questions?.length > 0 && (
-                <div className={styles.questionsPreview}>
-                  <h4>Questions Preview</h4>
-                  {selectedTest.questions.slice(0, 5).map((q, idx) => (
-                    <div key={idx} className={styles.previewQuestion}>
-                      <div className={styles.previewQuestionText}>
-                        <strong>Q{idx + 1}.</strong> {q.question} <span className={styles.marksBadge}>[{q.marks} marks]</span>
-                      </div>
-                      <div className={styles.previewOptions}>
-                        {q.options.map((opt, optIdx) => (
-                          <div key={optIdx} className={q.correctAnswer === optIdx ? styles.correctPreview : ''}>
-                            {String.fromCharCode(65 + optIdx)}. {opt} {q.correctAnswer === optIdx && <span className={styles.correctTick}>✓</span>}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  {selectedTest.questions.length > 5 && (
-                    <p className={styles.moreQuestions}>... and {selectedTest.questions.length - 5} more questions</p>
-                  )}
-                </div>
-              )}
             </div>
             <div className={styles.modalFooter}>
               <button className={styles.closeBtn} onClick={() => setShowViewModal(false)}>Close</button>
@@ -766,31 +737,14 @@ const Tests = () => {
             </div>
             <div className={styles.modalBody}>
               <div className={styles.resultsSummary}>
-                <div className={styles.summaryCard}>
-                  <span>Total Students</span>
-                  <strong>{students.length}</strong>
-                </div>
-                <div className={styles.summaryCard}>
-                  <span>Attempted</span>
-                  <strong>{selectedTest.results?.length || 0}</strong>
-                </div>
-                <div className={styles.summaryCard}>
-                  <span>Average Score</span>
-                  <strong>{selectedTest.averageScore || 0}%</strong>
-                </div>
+                <div className={styles.summaryCard}><span>Total Students</span><strong>{students.length}</strong></div>
+                <div className={styles.summaryCard}><span>Attempted</span><strong>{selectedTest.results?.length || 0}</strong></div>
+                <div className={styles.summaryCard}><span>Average Score</span><strong>{selectedTest.averageScore || 0}%</strong></div>
               </div>
-
               <div className={styles.resultsTable}>
                 <table className={styles.table}>
                   <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Student Name</th>
-                      <th>Enrollment ID</th>
-                      <th>Score</th>
-                      <th>Percentage</th>
-                      <th>Status</th>
-                    </tr>
+                    <tr><th>#</th><th>Student Name</th><th>Enrollment ID</th><th>Score</th><th>Percentage</th><th>Status</th></tr>
                   </thead>
                   <tbody>
                     {students.map((student, idx) => {
@@ -801,16 +755,8 @@ const Tests = () => {
                           <td>{student.name}</td>
                           <td>{student.enrollmentId}</td>
                           <td>{result ? `${result.totalScore}/${selectedTest.totalMarks}` : '-'}</td>
-                          <td className={result?.percentage >= 60 ? styles.highScore : styles.lowScore}>
-                            {result ? `${result.percentage}%` : '-'}
-                          </td>
-                          <td>
-                            {result ? (
-                              <span className={styles.submittedBadge}>Submitted</span>
-                            ) : (
-                              <span className={styles.pendingBadge}>Not Started</span>
-                            )}
-                          </td>
+                          <td className={result?.percentage >= 60 ? styles.highScore : styles.lowScore}>{result ? `${result.percentage}%` : '-'}</td>
+                          <td>{result ? <span className={styles.submittedBadge}>Submitted</span> : <span className={styles.pendingBadge}>Not Started</span>}</td>
                         </tr>
                       );
                     })}

@@ -6,7 +6,7 @@ import {
   FaTachometerAlt, FaUsers, FaChartLine, FaFileAlt, FaPhoneAlt,
   FaCog, FaClock, FaTimes, FaPhone, 
   FaEnvelope as FaEnvelopeIcon, FaSpinner, FaArrowUp, FaArrowDown,
-  FaCalendarAlt, FaUserGraduate, FaPhoneVolume
+  FaCalendarAlt, FaUserGraduate, FaPhoneVolume, FaUserTie
 } from 'react-icons/fa';
 import { Line, Doughnut } from 'react-chartjs-2';
 import {
@@ -25,7 +25,7 @@ import styles from './CounselorDashboard.module.css';
 import Admission from './Admission/Admission';
 import Leads from './Leads/Leades';
 import Calls from './CallsCounsler/Calls';
-import api from '../../../services/api';
+import api, { getCurrentUser, getCurrentUserId, getCurrentUserRole } from '../../../services/api';
 
 ChartJS.register(
   CategoryScale,
@@ -71,10 +71,9 @@ const DashboardOverview = ({ user }) => {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const storedUser = localStorage.getItem('user');
-      const currentUser = storedUser ? JSON.parse(storedUser) : null;
-      const userRole = currentUser?.role || 'counselor';
-      const userId = currentUser?._id || currentUser?.id;
+      const currentUser = getCurrentUser();
+      const userId = getCurrentUserId();
+      const userRole = getCurrentUserRole();
       
       console.log('=== DASHBOARD DEBUG ===');
       console.log('Current User:', currentUser?.name);
@@ -105,6 +104,7 @@ const DashboardOverview = ({ user }) => {
           calls = callsRes.data.success ? callsRes.data.data : [];
           admissions = admissionsRes.data.success ? admissionsRes.data.data : [];
         } catch (err) {
+          console.log('Counselor endpoints failed, using fallback');
           const [leadsRes, callsRes, admissionsRes] = await Promise.all([
             api.get('/leads'),
             api.get('/calls'),
@@ -134,6 +134,7 @@ const DashboardOverview = ({ user }) => {
         }
       }
 
+      // Weekly data calculation
       const weeklyData = [0, 0, 0, 0, 0, 0, 0];
       leads.forEach(lead => {
         const date = new Date(lead.createdAt || lead.enquiryDate);
@@ -147,7 +148,10 @@ const DashboardOverview = ({ user }) => {
       thisWeekStart.setDate(today.getDate() - today.getDay());
       
       const newLeadsThisWeek = leads.filter(lead => new Date(lead.createdAt || lead.enquiryDate) >= thisWeekStart).length;
-      const todayCalls = calls.filter(call => new Date(call.callTime || call.createdAt).toDateString() === today.toDateString());
+      const todayCalls = calls.filter(call => {
+        const callDate = new Date(call.callTime || call.createdAt);
+        return callDate.toDateString() === today.toDateString();
+      });
       const totalCalls = calls.length;
       const connectedCalls = calls.filter(call => call.callStatus === 'Connected' || call.status === 'Connected').length;
       const totalLeads = leads.length;
@@ -155,6 +159,7 @@ const DashboardOverview = ({ user }) => {
       const pendingFollowupsLeads = leads.filter(lead => lead.status === 'Pending' || lead.status === 'Follow-up').length;
       const conversionRate = totalLeads > 0 ? Math.round((totalAdmissions / totalLeads) * 100) : 0;
 
+      // Course distribution
       const courseMap = new Map();
       leads.forEach(lead => {
         const course = lead.courseInterest || lead.course || 'Other';
@@ -165,6 +170,7 @@ const DashboardOverview = ({ user }) => {
         .map(([name, count]) => ({ name, count }))
         .slice(0, 4);
 
+      // Pending follow-ups
       const pendingData = leads
         .filter(lead => lead.status === 'Pending' || lead.status === 'Follow-up')
         .slice(0, 4)
@@ -176,6 +182,7 @@ const DashboardOverview = ({ user }) => {
           daysPending: Math.floor((new Date() - new Date(lead.createdAt || lead.enquiryDate)) / (1000 * 60 * 60 * 24))
         }));
 
+      // Recent activities
       const recentCallsData = calls.slice(0, 4).map(call => ({
         id: call._id,
         type: 'call',
@@ -434,18 +441,17 @@ const CounselorDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
-    // ✅ Force refresh user data from localStorage
     const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
+    const userData = getCurrentUser();
     
     console.log('=== COUNSELOR DASHBOARD ===');
     console.log('Token exists:', !!token);
     
     if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
-      console.log('✅ User loaded:', parsedUser.name);
-      console.log('✅ User Role:', parsedUser.role);
+      setUser(userData);
+      console.log('✅ User loaded:', userData.name);
+      console.log('✅ User Role:', userData.role);
+      console.log('✅ User ID:', getCurrentUserId());
     } else {
       console.log('❌ No user data found');
     }
@@ -456,7 +462,6 @@ const CounselorDashboard = () => {
   }, [navigate]);
 
   const handleLogout = () => {
-    // ✅ Clear ALL localStorage
     localStorage.clear();
     toast.success('Logged out successfully');
     navigate('/login');
@@ -485,7 +490,6 @@ const CounselorDashboard = () => {
     }
   };
 
-  // ✅ Get display name safely
   const displayName = user?.name || 'Counselor';
   const displayRole = user?.role === 'counselor' ? 'Counselor' : 
                       user?.role === 'admin_manager' ? 'Admin Manager' : 
@@ -493,6 +497,7 @@ const CounselorDashboard = () => {
 
   return (
     <div className={`${styles.app} ${sidebarCollapsed ? styles.appCollapsed : ''}`}>
+      {/* Sidebar */}
       <aside className={`${styles.sidebar} ${sidebarCollapsed ? styles.sidebarCollapsed : ''} ${mobileMenuOpen ? styles.sidebarMobile : ''}`}>
         <div className={styles.sidebarHeader}>
           <div className={styles.logo}>
@@ -540,6 +545,7 @@ const CounselorDashboard = () => {
         </div>
       </aside>
 
+      {/* Main Content */}
       <main className={styles.main}>
         <header className={styles.header}>
           <div className={styles.headerLeft}>

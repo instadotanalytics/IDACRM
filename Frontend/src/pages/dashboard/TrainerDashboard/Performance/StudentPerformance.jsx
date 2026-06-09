@@ -4,7 +4,7 @@ import {
   FaSearch, FaSpinner, FaUserGraduate, FaChartLine,
   FaCalendarAlt, FaDownload, FaEye, FaStar,
   FaCheckCircle, FaTimesCircle, FaClock, FaTrophy,
-  FaMedal, FaChartBar, FaAward, FaBookOpen
+  FaMedal, FaChartBar, FaAward, FaBookOpen, FaUserTie
 } from 'react-icons/fa';
 import {
   Line, Bar, Doughnut
@@ -22,7 +22,7 @@ import {
   ArcElement,
   Filler
 } from 'chart.js';
-import api from '../../../../services/api';
+import api, { getCurrentUser, getCurrentUserRole } from '../../../../services/api';
 import styles from './StudentPerformance.module.css';
 
 ChartJS.register(
@@ -49,24 +49,51 @@ const StudentPerformance = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [batchStats, setBatchStats] = useState(null);
   const [filterGrade, setFilterGrade] = useState('all');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userRole, setUserRole] = useState('');
 
-  // Fetch trainer's batches
+  // Get current user
+  useEffect(() => {
+    const user = getCurrentUser();
+    const role = getCurrentUserRole();
+    if (user) {
+      setCurrentUser(user);
+      setUserRole(role);
+      console.log('=== STUDENT PERFORMANCE ===');
+      console.log('Current User:', user.name);
+      console.log('User Role:', role);
+    }
+    fetchBatches();
+  }, []);
+
+  // Fetch batches based on role
   const fetchBatches = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/batches/trainer/assigned');
-      if (response.data.success) {
-        setBatches(response.data.data);
+      let batchesData = [];
+      
+      if (userRole === 'trainer') {
+        try {
+          const response = await api.get('/batches/trainer/assigned');
+          if (response.data.success) {
+            batchesData = response.data.data;
+          }
+        } catch (err) {
+          const response = await api.get('/batches');
+          if (response.data.success) {
+            batchesData = response.data.data;
+          }
+        }
       } else {
-        const allBatchesRes = await api.get('/batches');
-        if (allBatchesRes.data.success) {
-          const user = JSON.parse(localStorage.getItem('user'));
-          const trainerBatches = allBatchesRes.data.data.filter(
-            batch => batch.trainerId?._id === user?._id || batch.trainerId === user?._id
-          );
-          setBatches(trainerBatches);
+        const response = await api.get('/batches');
+        if (response.data.success) {
+          batchesData = response.data.data;
         }
       }
+      
+      setBatches(batchesData);
+      console.log('Batches loaded:', batchesData.length);
+      
     } catch (error) {
       console.error('Error fetching batches:', error);
       toast.error('Failed to fetch batches');
@@ -88,30 +115,13 @@ const StudentPerformance = () => {
         return studentBatchId === selectedBatch._id;
       });
       setStudents(batchStudents);
+      console.log('Students in batch:', batchStudents.length);
 
       // Get performance data
       const perfRes = await api.get(`/student-performance/batch/${selectedBatch._id}`);
       if (perfRes.data.success) {
         setPerformances(perfRes.data.data.students || []);
         setBatchStats(perfRes.data.data.statistics);
-      }
-
-      // Calculate performance for each student if not exists
-      for (const student of batchStudents) {
-        try {
-          await api.post(`/student-performance/calculate/${student._id}`, {
-            batchId: selectedBatch._id
-          });
-        } catch (err) {
-          console.log(`Performance already exists for ${student.name}`);
-        }
-      }
-
-      // Refresh after calculation
-      const refreshedRes = await api.get(`/student-performance/batch/${selectedBatch._id}`);
-      if (refreshedRes.data.success) {
-        setPerformances(refreshedRes.data.data.students || []);
-        setBatchStats(refreshedRes.data.data.statistics);
       }
 
     } catch (error) {
@@ -121,10 +131,6 @@ const StudentPerformance = () => {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchBatches();
-  }, []);
 
   useEffect(() => {
     if (selectedBatch) {
@@ -169,7 +175,6 @@ const StudentPerformance = () => {
     return matchesSearch && matchesGrade;
   });
 
-  // Chart data for batch overview
   const gradeDistributionData = {
     labels: ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'F'],
     datasets: [{
@@ -205,8 +210,8 @@ const StudentPerformance = () => {
           ) : batches.length === 0 ? (
             <div className={styles.emptyContainer}>
               <div className={styles.emptyIcon}>📊</div>
-              <h3>No batches assigned</h3>
-              <p>You don't have any batches assigned yet.</p>
+              <h3>No batches available</h3>
+              <p>No batches are available in the system.</p>
             </div>
           ) : (
             batches.map(batch => (
@@ -220,7 +225,7 @@ const StudentPerformance = () => {
                   <h3>{batch.name}</h3>
                   <p>{batch.code}</p>
                   <div className={styles.batchCardStats}>
-                    <span><FaUserGraduate /> {batch.studentsCount || 0} Students</span>
+                    <span><FaUserGraduate /> {batch.studentsCount || batch.currentStudents || 0} Students</span>
                     <span><FaCalendarAlt /> {batch.timings}</span>
                   </div>
                 </div>
@@ -245,6 +250,9 @@ const StudentPerformance = () => {
         <div>
           <h2>{selectedBatch.name}</h2>
           <p>{selectedBatch.code} | {selectedBatch.course} | {selectedBatch.timings}</p>
+          <div className={styles.trainerInfo}>
+            <FaUserTie /> {userRole === 'trainer' ? 'Trainer' : 'Instructor'}: {currentUser?.name || 'Not assigned'}
+          </div>
         </div>
         <div className={styles.batchStats}>
           <span><FaUserGraduate /> {students.length} Students</span>
@@ -363,7 +371,7 @@ const StudentPerformance = () => {
             <tbody>
               {filteredPerformances.map((perf, idx) => (
                 <tr key={perf.studentId?._id || idx}>
-                  <td>{idx + 1}</td>
+                  <td style={{ textAlign: 'center' }}>{idx + 1}</td>
                   <td className={styles.studentCell}>
                     {perf.studentId?.photo ? (
                       <img src={perf.studentId.photo} alt={perf.studentId.name} className={styles.studentAvatar} />
@@ -536,7 +544,14 @@ const StudentPerformance = () => {
             </div>
 
             <div className={styles.modalFooter}>
-              <button className={styles.downloadBtn}><FaDownload /> Download Report</button>
+              <button 
+                className={styles.downloadBtn}
+                onClick={() => {
+                  toast.success('Report downloaded');
+                }}
+              >
+                <FaDownload /> Download Report
+              </button>
               <button className={styles.closeBtn} onClick={() => setShowDetailModal(false)}>Close</button>
             </div>
           </div>

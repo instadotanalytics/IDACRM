@@ -6,7 +6,7 @@ import {
   updateLead,
   deleteLead,
   getLeadsByCounselor,
-  getLeadsByCounselorForDashboard  // ✅ Import this
+  getLeadsByCounselorForDashboard
 } from '../controllers/leadController.js';
 import { protect, counselorOnly, adminManagerOnly } from '../middleware/authMiddleware.js';
 
@@ -31,6 +31,6 @@ router.get('/', (req, res, next) => {
 router.get('/:id', getLeadById);
 router.post('/', createLead);
 router.put('/:id', updateLead);
-router.delete('/:id', adminManagerOnly, deleteLead);
+router.delete('/:id', deleteLead);
 
 export default router;

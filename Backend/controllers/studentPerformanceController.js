@@ -10,6 +10,7 @@ export const getBatchPerformance = async (req, res) => {
         const { batchId } = req.params;
         
         console.log('Fetching performance for batch:', batchId);
+        console.log('Requested by:', req.user.name, '- Role:', req.user.role);
         
         // Validate batchId
         if (!mongoose.Types.ObjectId.isValid(batchId)) {
@@ -28,7 +29,7 @@ export const getBatchPerformance = async (req, res) => {
             });
         }
         
-        // Get students in this batch from Admission model
+        // ✅ No role restriction - anyone can view performance
         let students = [];
         try {
             students = await Admission.find({ 
@@ -41,7 +42,6 @@ export const getBatchPerformance = async (req, res) => {
         
         console.log('Students found:', students.length);
         
-        // If no students, return empty data
         if (students.length === 0) {
             return res.json({
                 success: true,
@@ -62,7 +62,6 @@ export const getBatchPerformance = async (req, res) => {
             });
         }
         
-        // Get or create performance records
         const performances = [];
         let totalPercentage = 0;
         let passed = 0;
@@ -79,7 +78,6 @@ export const getBatchPerformance = async (req, res) => {
             });
             
             if (!performance) {
-                // Create default performance record without using pre-save middleware issues
                 performance = new StudentPerformance({
                     studentId: student._id,
                     batchId: batchId,
@@ -164,6 +162,9 @@ export const calculatePerformance = async (req, res) => {
         const { studentId } = req.params;
         const { batchId, attendanceData, assignmentData, testData } = req.body;
         
+        console.log('Calculating performance for student:', studentId);
+        console.log('Requested by:', req.user.name, '- Role:', req.user.role);
+        
         if (!batchId) {
             return res.status(400).json({
                 success: false,
@@ -183,7 +184,6 @@ export const calculatePerformance = async (req, res) => {
             });
         }
         
-        // Update attendance
         if (attendanceData) {
             performance.overallAttendance = attendanceData.overallAttendance || 0;
             performance.totalPresent = attendanceData.totalPresent || 0;
@@ -192,14 +192,12 @@ export const calculatePerformance = async (req, res) => {
             performance.totalLate = attendanceData.totalLate || 0;
         }
         
-        // Update assignments
         if (assignmentData) {
             performance.totalAssignments = assignmentData.totalAssignments || 0;
             performance.submittedAssignments = assignmentData.submittedAssignments || 0;
             performance.averageAssignmentScore = assignmentData.averageScore || 0;
         }
         
-        // Update tests
         if (testData) {
             performance.totalTests = testData.totalTests || 0;
             performance.averageTestScore = testData.averageScore || 0;
@@ -207,7 +205,6 @@ export const calculatePerformance = async (req, res) => {
             performance.lowestTestScore = testData.lowestScore || 0;
         }
         
-        // Manually calculate percentage and grade
         performance.overallPercentage = 
             (performance.overallAttendance * 0.2) + 
             (performance.averageAssignmentScore * 0.3) + 

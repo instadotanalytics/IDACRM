@@ -8,7 +8,7 @@ import {
   FaBars, FaSignOutAlt, FaBell, FaTimes, FaEye,
   FaDownload, FaPlus, FaEdit, FaTrash, FaStar,
   FaAward, FaTrophy, FaClipboardList, FaSpinner,
-  FaLayerGroup  // Add this for batch management icon
+  FaLayerGroup, FaUserTie
 } from 'react-icons/fa';
 import styles from './TrainerDashboard.module.css';
 import api from '../../../services/api';
@@ -16,8 +16,8 @@ import api from '../../../services/api';
 // Attendance Component
 import AttendanceTable from './AttendanceTable/TrainerAttendanceMarker';
 
-// Batch Management Component (import karo)
-import BatchManagement from '../../../pages/dashboard/TrainerDashboard/Betch/BatchManagement';
+// Batch Management Component
+import BatchManagement from './Betch/BatchManagement';
 import StudentPerformance from './Performance/StudentPerformance';
 import Assignments from './Performance/Assignments';
 import Tests from './Performance/Tests';
@@ -46,7 +46,11 @@ const TrainerDashboard = () => {
     useEffect(() => {
         const userData = localStorage.getItem('user');
         if (userData) {
-            setUser(JSON.parse(userData));
+            const parsedUser = JSON.parse(userData);
+            setUser(parsedUser);
+            console.log('=== TRAINER DASHBOARD ===');
+            console.log('✅ Trainer loaded:', parsedUser.name);
+            console.log('✅ Trainer Role:', parsedUser.role);
         }
         fetchTrainerData();
     }, []);
@@ -82,8 +86,7 @@ const TrainerDashboard = () => {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        localStorage.clear();
         toast.success('Logged out successfully');
         navigate('/login');
     };
@@ -115,6 +118,10 @@ const TrainerDashboard = () => {
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
+    // ✅ Get display name and role from user object
+    const displayName = user?.name || 'Trainer';
+    const displayRole = 'Trainer';
+
     // Sidebar Menu Items
     const menuItems = [
         { id: 'overview', label: 'Batch Overview', icon: FaChalkboardTeacher },
@@ -128,6 +135,17 @@ const TrainerDashboard = () => {
     // Overview Component
     const OverviewComponent = () => (
         <div className={styles.overviewContainer}>
+            {/* Trainer Welcome */}
+            <div className={styles.welcomeBanner}>
+                <div className={styles.welcomeContent}>
+                    <h2>Welcome back, {displayName}! 👋</h2>
+                    <p>Here's what's happening with your batches today.</p>
+                </div>
+                <div className={styles.trainerBadge}>
+                    <FaUserTie /> {displayRole}
+                </div>
+            </div>
+
             {/* Batch Management Button */}
             <div className={styles.batchManagementBtnContainer}>
                 <button 
@@ -363,6 +381,16 @@ const TrainerDashboard = () => {
                 </nav>
 
                 <div className={styles.sidebarFooter}>
+                    {/* ✅ Trainer Info in Sidebar */}
+                    <div className={styles.sidebarUserInfo}>
+                        <div className={styles.sidebarAvatar}>{getInitial(displayName)}</div>
+                        {!sidebarCollapsed && (
+                            <div className={styles.sidebarUserDetails}>
+                                <span className={styles.sidebarUserName}>{displayName}</span>
+                                <span className={styles.sidebarUserRole}>{displayRole}</span>
+                            </div>
+                        )}
+                    </div>
                     <button className={styles.logoutBtn} onClick={handleLogout}>
                         <FaSignOutAlt /> {!sidebarCollapsed && 'Logout'}
                     </button>
@@ -390,10 +418,10 @@ const TrainerDashboard = () => {
                             {unreadCount > 0 && <span className={styles.badge}>{unreadCount}</span>}
                         </button>
                         <div className={styles.userProfile}>
-                            <div className={styles.avatar}>{getInitial(user?.name)}</div>
+                            <div className={styles.avatar}>{getInitial(displayName)}</div>
                             <div className={styles.userInfo}>
-                                <span className={styles.userName}>{user?.name || 'Trainer'}</span>
-                                <span className={styles.userRole}>Trainer</span>
+                                <span className={styles.userName}>{displayName}</span>
+                                <span className={styles.userRole}>{displayRole}</span>
                             </div>
                         </div>
                     </div>

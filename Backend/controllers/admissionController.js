@@ -258,29 +258,55 @@ export const deleteAdmission = async (req, res) => {
     }
 };
 
-// @desc    Get admissions by counselor for dashboard (tracking)
+// @desc    Get admissions by counselor for dashboard
 // @route   GET /api/admissions/counselor/:counselorId
 export const getAdmissionsByCounselorForDashboard = async (req, res) => {
     try {
-        const counselorId = req.params.counselorId || req.user._id;
+        const counselorId = req.params.counselorId;
         
-        const admissions = await Admission.find({ counselorId })
-            .populate('batchId', 'name code')
-            .sort({ createdAt: -1 });
+        console.log('Fetching admissions for counselor:', counselorId);
+        console.log('Request user:', req.user?.name, 'Role:', req.user?.role);
+        
+        // ✅ Check permission: counselors can only view their own admissions
+        if (req.user.role === 'counselor' && req.user.id !== counselorId && req.user._id !== counselorId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied. You can only view your own admissions.'
+            });
+        }
+        
+        // ✅ Query admissions where counselorId matches (support both id and _id)
+        const admissions = await Admission.find({ 
+            $or: [
+                { counselorId: counselorId },
+                { counselorId: counselorId }
+            ]
+        }).populate('batchId', 'name code')
+          .sort({ createdAt: -1 });
+        
+        console.log(`Found ${admissions.length} admissions for counselor`);
         
         const stats = {
             total: admissions.length,
             active: admissions.filter(a => a.status === 'active').length,
-            completed: admissions.filter(a => a.status === 'completed').length
+            completed: admissions.filter(a => a.status === 'completed').length,
+            pending: admissions.filter(a => a.status === 'pending').length
         };
         
-        res.json({ success: true, data: admissions, stats });
+        res.json({ 
+            success: true, 
+            data: admissions, 
+            stats 
+        });
+        
     } catch (error) {
         console.error('getAdmissionsByCounselorForDashboard error:', error);
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
     }
 };
-
 // @desc    Get counselor wise admission statistics (Admin report)
 // @route   GET /api/admissions/counselor-stats
 export const getCounselorWiseAdmissionStats = async (req, res) => {

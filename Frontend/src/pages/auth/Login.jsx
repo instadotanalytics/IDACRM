@@ -29,12 +29,31 @@ const Login = () => {
             if (response.data.success) {
                 const { token, user } = response.data;
 
+                // ✅ Clear old data first
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('userRole');
+                
+                // ✅ Store user with both _id and id for compatibility
+                const userToStore = {
+                    ...user,
+                    _id: user._id || user.id,
+                    id: user.id || user._id
+                };
+                
                 localStorage.setItem('token', token);
-                localStorage.setItem('user', JSON.stringify(user));
+                localStorage.setItem('user', JSON.stringify(userToStore));
+                localStorage.setItem('userRole', user.role);
+
+                console.log('=== LOGIN SUCCESS ===');
+                console.log('User:', userToStore);
+                console.log('User Name:', userToStore.name);
+                console.log('User Role:', userToStore.role);
+                console.log('User ID:', userToStore._id || userToStore.id);
 
                 toast.success(`Welcome ${user.name}!`);
 
-                // Role-based redirect
+                // ✅ Role-based redirect
                 switch (user.role) {
                     case 'super_admin':
                         navigate('/super-admin-dashboard');
@@ -59,6 +78,7 @@ const Login = () => {
                 }
             }
         } catch (error) {
+            console.error('Login error:', error);
             toast.error(error.response?.data?.message || 'Login failed');
         } finally {
             setLoading(false);

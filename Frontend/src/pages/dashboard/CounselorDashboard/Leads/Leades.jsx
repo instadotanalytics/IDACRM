@@ -6,7 +6,7 @@ import {
     FaClock, FaCalendarAlt, FaUser, FaEnvelope, 
     FaBuilding, FaBookOpen, FaComments, FaChartLine
 } from 'react-icons/fa';
-import api from '../../../../services/api';
+import api, { getCurrentUser, getCurrentUserId, getCurrentUserRole } from '../../../../services/api';
 import styles from './Leads.module.css';
 
 const Leads = () => {
@@ -40,31 +40,34 @@ const Leads = () => {
         fetchLeads();
     }, [filterStatus, filterSource, searchTerm]);
 
-    // ✅ Get current user for tracking
-    const getCurrentUser = () => {
-        const userData = localStorage.getItem('user');
-        return userData ? JSON.parse(userData) : null;
-    };
-
     const fetchLeads = async () => {
         setLoading(true);
         try {
             const currentUser = getCurrentUser();
+            const userId = getCurrentUserId();
+            const userRole = getCurrentUserRole();
+            
+            console.log('Fetching leads for:', currentUser?.name);
+            console.log('User ID:', userId);
+            console.log('User Role:', userRole);
+            
             const params = {};
             if (filterStatus !== 'all') params.status = filterStatus;
             if (filterSource !== 'all') params.source = filterSource;
             if (searchTerm) params.search = searchTerm;
 
-            // ✅ Counselor sirf apne leads dekhega (filter by counselorId)
             let url = '/leads';
-            if (currentUser?.role === 'counselor') {
-                url = `/leads/counselor/${currentUser._id}`;
+            
+            // ✅ Counselor sirf apne leads dekhega
+            if ((userRole === 'counselor') && userId) {
+                url = `/leads/counselor/${userId}`;
             }
 
             const response = await api.get(url, { params });
             if (response.data.success) {
                 setLeads(response.data.data);
                 setStats(response.data.stats);
+                console.log('Leads fetched:', response.data.data.length);
             }
         } catch (error) {
             console.error('Error fetching leads:', error);
@@ -83,16 +86,19 @@ const Leads = () => {
         setLoading(true);
         try {
             const currentUser = getCurrentUser();
-            let response;
+            const userId = getCurrentUserId();
             
+            let response;
             if (editingLead) {
                 response = await api.put(`/leads/${editingLead._id}`, formData);
                 toast.success('Lead updated successfully');
             } else {
-                // ✅ counselorId auto add hoga backend se
+                // ✅ Auto assign to current user
                 const leadData = {
                     ...formData,
-                    assignedTo: currentUser?._id
+                    assignedTo: userId,
+                    counselorId: userId,
+                    counselorName: currentUser?.name
                 };
                 response = await api.post('/leads', leadData);
                 toast.success('Lead created successfully');
@@ -213,7 +219,7 @@ const Leads = () => {
                     <div className={styles.headerIcon}><FaUser /></div>
                     <div>
                         <h1 className={styles.headerTitle}>Leads Management</h1>
-                        <p className={styles.headerSub}>Track and manage all your leads from Just Dial and other sources</p>
+                        <p className={styles.headerSub}>Track and manage all your leads</p>
                     </div>
                 </div>
                 <button className={styles.createBtn} onClick={() => { setEditingLead(null); setShowModal(true); }}>
@@ -293,7 +299,6 @@ const Leads = () => {
                                 <th>Source</th>
                                 <th>Status</th>
                                 <th>Follow-up</th>
-                                <th>Assigned To</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -322,11 +327,6 @@ const Leads = () => {
                                             </div>
                                         )}
                                     </td>
-                                    <td>
-                                        <div className={styles.counselorCell}>
-                                            {lead.counselorName || lead.counselorId?.name || 'Not Assigned'}
-                                        </div>
-                                    </td>
                                     <td className={styles.actionBtns}>
                                         <button className={styles.btnView} onClick={() => { setSelectedLead(lead); setShowViewModal(true); }} title="View">
                                             <FaEye />
@@ -345,7 +345,7 @@ const Leads = () => {
                 )}
             </div>
 
-            {/* Create/Edit Modal - Same as before */}
+            {/* Create/Edit Modal */}
             {showModal && (
                 <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
                     <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -355,7 +355,6 @@ const Leads = () => {
                         </div>
                         <form onSubmit={handleSubmit}>
                             <div className={styles.modalBody}>
-                                {/* Same form fields as before */}
                                 <div className={styles.formRow}>
                                     <div className={styles.formGroup}>
                                         <label>Full Name *</label>
@@ -490,12 +489,8 @@ const Leads = () => {
                                 </div>
                             )}
                             <div className={styles.viewRow}>
-                                <div className={styles.viewLabel}>Created By</div>
-                                <div className={styles.viewValue}>{selectedLead.counselorName || selectedLead.counselorId?.name || 'System'}</div>
-                            </div>
-                            <div className={styles.viewRow}>
-                                <div className={styles.viewLabel}>Created Date</div>
-                                <div className={styles.viewValue}>{new Date(selectedLead.createdAt).toLocaleString()}</div>
+                                <div className={styles.viewLabel}>Assigned To</div>
+                                <div className={styles.viewValue}>{selectedLead.counselorName || selectedLead.assignedTo?.name || 'System'}</div>
                             </div>
                         </div>
                         <div className={styles.modalFooter}>
