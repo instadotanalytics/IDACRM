@@ -1,16 +1,18 @@
 import Test from '../models/Test.js';
-import { parseQuestionsFromPDF } from '../utils/pdfParser.js';
 import { deleteFromCloudinary } from '../middleware/uploadMiddleware.js';
 
-// @desc    Create test
+// @desc    Create test (with tracking)
 // @route   POST /api/tests
 export const createTest = async (req, res) => {
     try {
         const { title, description, course, batchId, duration, startDate, endDate, questions } = req.body;
 
-        console.log('📝 Creating test:', { title, course, batchId, duration });
+        console.log('=========================================');
+        console.log('📝 Creating Test by:', req.user.name);
+        console.log('👨‍🏫 Trainer ID:', req.user._id);
+        console.log('📋 Test Title:', title);
+        console.log('=========================================');
 
-        // Validation
         if (!title || !course || !batchId || !duration || !startDate || !endDate) {
             return res.status(400).json({
                 success: false,
@@ -21,21 +23,19 @@ export const createTest = async (req, res) => {
         let parsedQuestions = [];
         let pdfUrl = '';
         let pdfPublicId = '';
+        let totalMarks = 0;
 
-        // Check if PDF file uploaded
         if (req.file) {
-            console.log('📄 PDF file uploaded:', req.file.originalname);
             pdfUrl = req.file.path;
             pdfPublicId = req.file.filename;
         }
         
-        // Check if manual questions provided
         if (questions) {
             parsedQuestions = typeof questions === 'string' ? JSON.parse(questions) : questions;
-            console.log(`✅ Using ${parsedQuestions.length} manual questions`);
+            totalMarks = parsedQuestions.reduce((sum, q) => sum + (q.marks || 1), 0);
         }
 
-        // Create test (allow empty questions)
+        // ✅ Create test with tracking fields
         const test = await Test.create({
             title,
             description: description || '',
@@ -47,15 +47,21 @@ export const createTest = async (req, res) => {
             questions: parsedQuestions,
             pdfUrl,
             pdfPublicId,
-            createdBy: req.user._id
+            totalMarks,
+            createdBy: req.user._id,
+            createdByName: req.user.name,     // ✅ Who created
+            trainerId: req.user._id,           // ✅ Which trainer
+            trainerName: req.user.name         // ✅ Trainer name
         });
 
-        console.log(`✅ Test created successfully: ${test._id}`);
+        console.log(`✅ Test created by ${req.user.name}: ${test._id}`);
+        console.log(`📊 Total Marks: ${totalMarks}`);
+        console.log(`📝 Questions Count: ${parsedQuestions.length}`);
 
         res.status(201).json({
             success: true,
             data: test,
-            message: `Test created successfully with ${parsedQuestions.length} questions`
+            message: `Test "${title}" created by ${req.user.name} with ${parsedQuestions.length} questions`
         });
 
     } catch (error) {
@@ -64,7 +70,7 @@ export const createTest = async (req, res) => {
     }
 };
 
-// @desc    Get all tests
+// @desc    Get all tests (with tracking info)
 // @route   GET /api/tests
 export const getTests = async (req, res) => {
     try {
@@ -78,7 +84,6 @@ export const getTests = async (req, res) => {
             .populate('createdBy', 'name')
             .sort({ createdAt: -1 });
         
-        // Calculate stats for each test
         const now = new Date();
         const updatedTests = tests.map(test => {
             let status = 'upcoming';
@@ -95,7 +100,9 @@ export const getTests = async (req, res) => {
                 ...test.toObject(),
                 status,
                 totalStudents,
-                averageScore: parseFloat(averageScore)
+                averageScore: parseFloat(averageScore),
+                createdByName: test.createdByName,
+                trainerName: test.trainerName
             };
         });
         
@@ -155,6 +162,7 @@ export const updateTest = async (req, res) => {
             updateData.questions = typeof req.body.questions === 'string' 
                 ? JSON.parse(req.body.questions) 
                 : req.body.questions;
+            updateData.totalMarks = updateData.questions.reduce((sum, q) => sum + (q.marks || 1), 0);
         }
         
         const updatedTest = await Test.findByIdAndUpdate(
@@ -163,10 +171,12 @@ export const updateTest = async (req, res) => {
             { new: true }
         );
         
+        console.log(`✅ Test updated by ${req.user.name}: ${updatedTest._id}`);
+        
         res.json({
             success: true,
             data: updatedTest,
-            message: 'Test updated successfully'
+            message: `Test updated by ${req.user.name}`
         });
         
     } catch (error) {
@@ -191,7 +201,12 @@ export const deleteTest = async (req, res) => {
         
         await test.deleteOne();
         
-        res.json({ success: true, message: 'Test deleted successfully' });
+        console.log(`✅ Test "${test.title}" deleted by ${req.user.name}`);
+        
+        res.json({ 
+            success: true, 
+            message: `Test "${test.title}" deleted by ${req.user.name}` 
+        });
         
     } catch (error) {
         console.error('Delete test error:', error);
@@ -199,16 +214,22 @@ export const deleteTest = async (req, res) => {
     }
 };
 
-// @desc    Submit test
+// @desc    Submit test (with student tracking)
 // @route   POST /api/tests/:id/submit
 export const submitTest = async (req, res) => {
     try {
-        const { studentId, answers } = req.body;
+        const { studentId, studentName, answers } = req.body;
         const test = await Test.findById(req.params.id);
         
         if (!test) {
             return res.status(404).json({ success: false, message: 'Test not found' });
         }
+        
+        console.log('=========================================');
+        console.log('📝 Test Submission');
+        console.log('👨‍🎓 Student:', studentName);
+        console.log('📋 Test:', test.title);
+        console.log('=========================================');
         
         // Check if already submitted
         const existingResult = test.results.find(r => r.studentId.toString() === studentId);
@@ -235,6 +256,7 @@ export const submitTest = async (req, res) => {
         
         const result = {
             studentId,
+            studentName: studentName || 'Unknown Student',
             submittedAt: new Date(),
             answers: evaluatedAnswers,
             totalScore,
@@ -248,16 +270,20 @@ export const submitTest = async (req, res) => {
             existingResult.totalScore = result.totalScore;
             existingResult.percentage = result.percentage;
             existingResult.status = 'submitted';
+            existingResult.studentName = result.studentName;
         } else {
             test.results.push(result);
         }
         
         await test.save();
         
+        console.log(`✅ Test submitted by ${studentName}`);
+        console.log(`📊 Score: ${totalScore}/${test.totalMarks} (${percentage.toFixed(1)}%)`);
+        
         res.json({
             success: true,
             data: { score: totalScore, percentage: parseFloat(percentage.toFixed(2)), totalMarks: test.totalMarks },
-            message: 'Test submitted successfully'
+            message: `Test submitted by ${studentName}`
         });
         
     } catch (error) {

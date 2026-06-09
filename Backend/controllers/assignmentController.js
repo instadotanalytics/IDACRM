@@ -1,12 +1,17 @@
 import Assignment from '../models/Assignment.js';
 import { deleteFromCloudinary } from '../middleware/uploadMiddleware.js';
-import { v2 as cloudinary } from 'cloudinary';
 
-// @desc    Create assignment
+// @desc    Create assignment (with tracking)
 // @route   POST /api/assignments
 export const createAssignment = async (req, res) => {
     try {
         const { title, description, course, batchId, dueDate, totalMarks } = req.body;
+
+        console.log('=========================================');
+        console.log('📝 Creating Assignment by:', req.user.name);
+        console.log('👨‍🏫 Trainer ID:', req.user._id);
+        console.log('📋 Title:', title);
+        console.log('=========================================');
 
         if (!title || !course || !batchId || !dueDate) {
             return res.status(400).json({
@@ -24,6 +29,7 @@ export const createAssignment = async (req, res) => {
             });
         }
 
+        // ✅ Create assignment with tracking fields
         const assignment = await Assignment.create({
             title,
             description: description || '',
@@ -32,13 +38,19 @@ export const createAssignment = async (req, res) => {
             dueDate: new Date(dueDate),
             totalMarks: totalMarks || 100,
             attachments,
-            createdBy: req.user._id
+            createdBy: req.user._id,
+            createdByName: req.user.name,     // ✅ Who created
+            trainerId: req.user._id,           // ✅ Which trainer
+            trainerName: req.user.name         // ✅ Trainer name
         });
+
+        console.log('✅ Assignment created by:', req.user.name);
+        console.log('📌 Assignment ID:', assignment._id);
 
         res.status(201).json({
             success: true,
             data: assignment,
-            message: 'Assignment created successfully'
+            message: `Assignment "${title}" created by ${req.user.name}`
         });
 
     } catch (error) {
@@ -47,7 +59,7 @@ export const createAssignment = async (req, res) => {
     }
 };
 
-// @desc    Get all assignments
+// @desc    Get all assignments (with tracking info)
 // @route   GET /api/assignments
 export const getAssignments = async (req, res) => {
     try {
@@ -59,7 +71,6 @@ export const getAssignments = async (req, res) => {
         
         // If trainer, show only their batches
         if (req.user.role === 'trainer') {
-            // Get batches assigned to this trainer
             const Batch = await import('../models/Batch.js').then(m => m.default);
             const trainerBatches = await Batch.find({ trainerId: req.user._id });
             const batchIds = trainerBatches.map(b => b._id);
@@ -70,6 +81,7 @@ export const getAssignments = async (req, res) => {
         const assignments = await Assignment.find(query)
             .populate('batchId', 'name code')
             .populate('createdBy', 'name')
+            .populate('trainerId', 'name')
             .sort({ createdAt: -1 });
         
         // Calculate submission stats for each assignment
@@ -84,11 +96,17 @@ export const getAssignments = async (req, res) => {
                 ...assignment.toObject(),
                 totalSubmissions,
                 gradedSubmissions,
-                averageScore: avgScore
+                averageScore: avgScore,
+                createdByName: assignment.createdByName,
+                trainerName: assignment.trainerName
             };
         });
         
-        res.json({ success: true, data: assignmentsWithStats });
+        res.json({ 
+            success: true, 
+            data: assignmentsWithStats,
+            message: `Found ${assignments.length} assignments`
+        });
         
     } catch (error) {
         console.error('Get assignments error:', error);
@@ -103,7 +121,9 @@ export const getAssignmentById = async (req, res) => {
         const assignment = await Assignment.findById(req.params.id)
             .populate('batchId', 'name code')
             .populate('createdBy', 'name')
-            .populate('submissions.studentId', 'name email enrollmentId');
+            .populate('trainerId', 'name')
+            .populate('submissions.studentId', 'name email enrollmentId')
+            .populate('submissions.gradedBy', 'name');
         
         if (!assignment) {
             return res.status(404).json({ success: false, message: 'Assignment not found' });
@@ -131,7 +151,6 @@ export const updateAssignment = async (req, res) => {
         if (req.body.dueDate) updateData.dueDate = new Date(req.body.dueDate);
         
         if (req.file) {
-            // Delete old attachment if exists
             if (assignment.attachments.length > 0) {
                 await deleteFromCloudinary(assignment.attachments[0].publicId);
             }
@@ -151,7 +170,7 @@ export const updateAssignment = async (req, res) => {
         res.json({
             success: true,
             data: assignment,
-            message: 'Assignment updated successfully'
+            message: `Assignment updated by ${req.user.name}`
         });
         
     } catch (error) {
@@ -170,14 +189,12 @@ export const deleteAssignment = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Assignment not found' });
         }
         
-        // Delete attachments from cloudinary
         for (const attachment of assignment.attachments) {
             if (attachment.publicId) {
                 await deleteFromCloudinary(attachment.publicId);
             }
         }
         
-        // Delete all submission files
         for (const submission of assignment.submissions) {
             if (submission.filePublicId) {
                 await deleteFromCloudinary(submission.filePublicId);
@@ -186,7 +203,10 @@ export const deleteAssignment = async (req, res) => {
         
         await assignment.deleteOne();
         
-        res.json({ success: true, message: 'Assignment deleted successfully' });
+        res.json({ 
+            success: true, 
+            message: `Assignment "${assignment.title}" deleted by ${req.user.name}` 
+        });
         
     } catch (error) {
         console.error('Delete assignment error:', error);
@@ -194,11 +214,17 @@ export const deleteAssignment = async (req, res) => {
     }
 };
 
-// @desc    Submit assignment (for students)
+// @desc    Submit assignment (with student tracking)
 // @route   POST /api/assignments/submit
 export const submitAssignment = async (req, res) => {
     try {
-        const { assignmentId, studentId } = req.body;
+        const { assignmentId, studentId, studentName } = req.body;
+        
+        console.log('=========================================');
+        console.log('📤 Assignment Submission');
+        console.log('👨‍🎓 Student:', studentName);
+        console.log('📋 Assignment ID:', assignmentId);
+        console.log('=========================================');
         
         if (!assignmentId || !studentId) {
             return res.status(400).json({
@@ -225,8 +251,10 @@ export const submitAssignment = async (req, res) => {
             });
         }
         
-        let submissionData = {
+        // ✅ Track submission with student name
+        const submissionData = {
             studentId,
+            studentName: studentName || 'Unknown Student',
             submittedAt: new Date(),
             fileName: req.file?.originalname || '',
             fileUrl: req.file?.path || '',
@@ -236,9 +264,11 @@ export const submitAssignment = async (req, res) => {
         assignment.submissions.push(submissionData);
         await assignment.save();
         
+        console.log(`✅ Assignment submitted by ${studentName}`);
+        
         res.json({
             success: true,
-            message: 'Assignment submitted successfully',
+            message: `Assignment submitted by ${studentName}`,
             data: assignment
         });
         
@@ -248,7 +278,7 @@ export const submitAssignment = async (req, res) => {
     }
 };
 
-// @desc    Grade assignment
+// @desc    Grade assignment (with grader tracking)
 // @route   POST /api/assignments/:id/grade
 export const gradeAssignment = async (req, res) => {
     try {
@@ -270,15 +300,26 @@ export const gradeAssignment = async (req, res) => {
             });
         }
         
+        console.log('=========================================');
+        console.log('📝 Grading Assignment');
+        console.log('👨‍🏫 Graded by:', req.user.name);
+        console.log('👨‍🎓 Student:', submission.studentName);
+        console.log('📊 Marks:', marks);
+        console.log('=========================================');
+        
+        // ✅ Track grading information
         submission.marks = marks;
         submission.feedback = feedback || '';
         submission.graded = true;
+        submission.gradedBy = req.user._id;
+        submission.gradedByName = req.user.name;
+        submission.gradedAt = new Date();
         
         await assignment.save();
         
         res.json({
             success: true,
-            message: 'Grade submitted successfully',
+            message: `Grade submitted by ${req.user.name} for ${submission.studentName}`,
             data: assignment
         });
         
@@ -296,7 +337,8 @@ export const getStudentAssignments = async (req, res) => {
         
         const assignments = await Assignment.find({
             'submissions.studentId': studentId
-        }).populate('batchId', 'name code');
+        }).populate('batchId', 'name code')
+          .populate('trainerId', 'name');
         
         res.json({ success: true, data: assignments });
         

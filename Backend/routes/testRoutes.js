@@ -8,21 +8,24 @@ import {
     submitTest,
     getTestResults
 } from '../controllers/testController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, trainerOnly } from '../middleware/authMiddleware.js';
 import { uploadTestPDF } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
-// All routes require authentication
 router.use(protect);
 
-// Test routes
-router.post('/', uploadTestPDF.single('pdfFile'), createTest);
+// Trainer only routes
+router.post('/', trainerOnly, uploadTestPDF.single('pdfFile'), createTest);
+router.put('/:id', trainerOnly, uploadTestPDF.single('pdfFile'), updateTest);
+router.delete('/:id', trainerOnly, deleteTest);
+
+// Student submission
+router.post('/:id/submit', submitTest);
+
+// Get routes
 router.get('/', getTests);
 router.get('/:id', getTestById);
-router.put('/:id', uploadTestPDF.single('pdfFile'), updateTest);
-router.delete('/:id', deleteTest);
-router.post('/:id/submit', submitTest);
 router.get('/:id/results', getTestResults);
 
 export default router;

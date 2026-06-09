@@ -52,11 +52,27 @@ const courseMaterialSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    
+    // ✅ TRACKING FIELDS
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
+    createdByName: {
+        type: String,
+        default: ''
+    },
+    trainerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    trainerName: {
+        type: String,
+        default: ''
+    },
+    
     isActive: {
         type: Boolean,
         default: true

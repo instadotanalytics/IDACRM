@@ -33,20 +33,42 @@ const assignmentSchema = new mongoose.Schema({
         url: String,
         publicId: String
     }],
+    
+    // ✅ TRACKING FIELDS
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
+    createdByName: {
+        type: String,
+        default: ''
+    },
+    trainerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    trainerName: {
+        type: String,
+        default: ''
+    },
+    
     status: {
         type: String,
         enum: ['active', 'expired', 'draft'],
         default: 'active'
     },
+    
+    // ✅ SUBMISSION TRACKING
     submissions: [{
         studentId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Admission'
+        },
+        studentName: {
+            type: String,
+            default: ''
         },
         submittedAt: {
             type: Date,
@@ -66,11 +88,23 @@ const assignmentSchema = new mongoose.Schema({
         graded: {
             type: Boolean,
             default: false
+        },
+        gradedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        gradedByName: {
+            type: String,
+            default: ''
+        },
+        gradedAt: {
+            type: Date,
+            default: null
         }
     }]
 }, { timestamps: true });
 
-// ✅ FIXED: Remove 'next' parameter - use async function without next
+// Auto-update status
 assignmentSchema.pre('save', async function() {
     if (this.dueDate && this.dueDate < new Date()) {
         this.status = 'expired';

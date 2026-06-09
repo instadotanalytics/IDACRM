@@ -1,7 +1,7 @@
 import Batch from '../models/Batch.js';
 import User from '../models/User.js';
 
-// @desc    Create new batch
+// @desc    Create new batch (with trainer tracking)
 // @route   POST /api/batches
 export const createBatch = async (req, res) => {
     try {
@@ -10,8 +10,11 @@ export const createBatch = async (req, res) => {
             timings, days, capacity, description, room
         } = req.body;
 
-        console.log('Creating batch:', name);
-        console.log('Request body:', req.body);
+        console.log('=========================================');
+        console.log('📦 Creating batch by:', req.user.name);
+        console.log('🆔 Trainer ID:', req.user._id);
+        console.log('📋 Batch name:', name);
+        console.log('=========================================');
 
         // Validation
         if (!name || !course || !startDate || !endDate || !timings) {
@@ -21,7 +24,7 @@ export const createBatch = async (req, res) => {
             });
         }
 
-        // Check if batch code already exists (only if code provided)
+        // Check if batch code already exists
         if (code) {
             const existingBatch = await Batch.findOne({ code });
             if (existingBatch) {
@@ -40,11 +43,15 @@ export const createBatch = async (req, res) => {
             finalCode = `BATCH${year}${String(count + 1).padStart(3, '0')}`;
         }
 
+        // Determine assigned trainer (use provided or current user)
+        const assignedTrainerId = trainerId || req.user._id;
+
+        // ✅ Create batch with tracking fields
         const batch = await Batch.create({
             name,
             code: finalCode,
             course,
-            trainerId: trainerId || null,
+            trainerId: assignedTrainerId,
             startDate: new Date(startDate),
             endDate: new Date(endDate),
             timings,
@@ -53,18 +60,30 @@ export const createBatch = async (req, res) => {
             description: description || '',
             room: room || '',
             status: new Date(startDate) > new Date() ? 'upcoming' : 'active',
-            createdBy: req.user.id
+            createdBy: req.user._id,        // ✅ Who created this batch
+            createdByName: req.user.name     // ✅ Creator's name for quick display
         });
 
-        console.log('Batch created successfully:', batch._id);
+        // ✅ Add batch to trainer's assignedBatches array
+        await User.findByIdAndUpdate(
+            assignedTrainerId,
+            { $addToSet: { assignedBatches: batch._id } }
+        );
+
+        console.log('✅ Batch created successfully!');
+        console.log('📌 Batch ID:', batch._id);
+        console.log('👨‍🏫 Created by:', req.user.name);
+        console.log('👨‍🏫 Assigned to:', assignedTrainerId);
+        console.log('=========================================');
 
         res.status(201).json({
             success: true,
             message: 'Batch created successfully',
             data: batch
         });
+        
     } catch (error) {
-        console.error('Create batch error:', error);
+        console.error('❌ Create batch error:', error);
         res.status(500).json({
             success: false,
             message: error.message,
@@ -73,32 +92,69 @@ export const createBatch = async (req, res) => {
     }
 };
 
-// @desc    Get all batches
-// @route   GET /api/batches
-export const getAllBatches = async (req, res) => {
+// @desc    Get batches created by logged-in user (trainer/admin)
+// @route   GET /api/batches/my-created
+export const getMyCreatedBatches = async (req, res) => {
     try {
-        const batches = await Batch.find()
-            .populate('trainerId', 'name email')
-            .sort('-createdAt');
+        const batches = await Batch.find({ 
+            createdBy: req.user._id
+        }).populate('trainerId', 'name email')
+          .populate('createdBy', 'name email')
+          .sort('-createdAt');
+
+        console.log(`📊 Found ${batches.length} batches created by:`, req.user.name);
+
+        res.json({
+            success: true,
+            data: batches,
+            message: `Batches created by ${req.user.name}`
+        });
         
-        res.json({ success: true, data: batches });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error('Error getting my created batches:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
 // @desc    Get trainer's assigned batches
 // @route   GET /api/batches/trainer/assigned
-// Add this function to your batchController.js if not exists
-export const getTrainerBatches = async (req, res) => {
+export const getTrainerAssignedBatches = async (req, res) => {
     try {
-        const batches = await Batch.find({ trainerId: req.user._id })
+        const batches = await Batch.find({ 
+            trainerId: req.user._id 
+        }).populate('trainerId', 'name email')
+          .populate('createdBy', 'name email')
+          .sort('startDate');
+        
+        console.log(`📊 Found ${batches.length} batches assigned to trainer:`, req.user.name);
+
+        res.json({ 
+            success: true, 
+            data: batches 
+        });
+    } catch (error) {
+        console.error('Error getting trainer batches:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+};
+
+// @desc    Get all batches (admin only)
+// @route   GET /api/batches
+export const getAllBatches = async (req, res) => {
+    try {
+        const batches = await Batch.find()
             .populate('trainerId', 'name email')
-            .sort('startDate');
+            .populate('createdBy', 'name email')
+            .sort('-createdAt');
         
         res.json({ success: true, data: batches });
     } catch (error) {
-        console.error('Error getting trainer batches:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -108,7 +164,8 @@ export const getTrainerBatches = async (req, res) => {
 export const getBatchById = async (req, res) => {
     try {
         const batch = await Batch.findById(req.params.id)
-            .populate('trainerId', 'name email phone');
+            .populate('trainerId', 'name email phone')
+            .populate('createdBy', 'name email');
         
         if (!batch) {
             return res.status(404).json({ success: false, message: 'Batch not found' });
@@ -124,17 +181,19 @@ export const getBatchById = async (req, res) => {
 // @route   PUT /api/batches/:id
 export const updateBatch = async (req, res) => {
     try {
-        const batch = await Batch.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true, runValidators: true }
-        );
+        const batch = await Batch.findById(req.params.id);
         
         if (!batch) {
             return res.status(404).json({ success: false, message: 'Batch not found' });
         }
         
-        res.json({ success: true, message: 'Batch updated', data: batch });
+        const updatedBatch = await Batch.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true, runValidators: true }
+        );
+        
+        res.json({ success: true, message: 'Batch updated', data: updatedBatch });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

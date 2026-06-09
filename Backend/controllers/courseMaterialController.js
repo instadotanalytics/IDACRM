@@ -1,13 +1,17 @@
 import CourseMaterial from '../models/CourseMaterial.js';
 import { deleteFromCloudinary } from '../middleware/uploadMiddleware.js';
 
-// @desc    Create course material
+// @desc    Create course material (with tracking)
 // @route   POST /api/course-materials
 export const createMaterial = async (req, res) => {
     try {
         const { title, description, type, course, batchId, topic, externalLink, duration } = req.body;
 
-        console.log('📝 Creating course material:', { title, type, course, batchId });
+        console.log('=========================================');
+        console.log('📝 Creating Course Material by:', req.user.name);
+        console.log('📋 Title:', title);
+        console.log('📁 Type:', type);
+        console.log('=========================================');
 
         if (!title || !type || !course || !batchId) {
             return res.status(400).json({
@@ -28,6 +32,7 @@ export const createMaterial = async (req, res) => {
             fileSize = (req.file.size / (1024 * 1024)).toFixed(2) + ' MB';
         }
 
+        // ✅ Create material with tracking fields
         const material = await CourseMaterial.create({
             title,
             description: description || '',
@@ -41,13 +46,18 @@ export const createMaterial = async (req, res) => {
             externalLink: externalLink || '',
             duration: duration || '',
             size: fileSize,
-            createdBy: req.user._id
+            createdBy: req.user._id,
+            createdByName: req.user.name,     // ✅ Who created
+            trainerId: req.user._id,           // ✅ Which trainer
+            trainerName: req.user.name         // ✅ Trainer name
         });
+
+        console.log(`✅ Material created by ${req.user.name}: ${material._id}`);
 
         res.status(201).json({
             success: true,
             data: material,
-            message: 'Course material added successfully'
+            message: `Material "${title}" added by ${req.user.name}`
         });
 
     } catch (error) {
@@ -56,7 +66,7 @@ export const createMaterial = async (req, res) => {
     }
 };
 
-// @desc    Get all course materials
+// @desc    Get all course materials (with tracking info)
 // @route   GET /api/course-materials
 export const getMaterials = async (req, res) => {
     try {
@@ -72,7 +82,13 @@ export const getMaterials = async (req, res) => {
             .populate('createdBy', 'name')
             .sort({ createdAt: -1 });
         
-        res.json({ success: true, data: materials });
+        // Add createdByName to each material
+        const materialsWithTracking = materials.map(m => ({
+            ...m.toObject(),
+            createdByName: m.createdByName || m.createdBy?.name || 'System'
+        }));
+        
+        res.json({ success: true, data: materialsWithTracking });
         
     } catch (error) {
         console.error('Get materials error:', error);
@@ -128,10 +144,12 @@ export const updateMaterial = async (req, res) => {
             { new: true }
         );
         
+        console.log(`✅ Material updated by ${req.user.name}: ${material._id}`);
+        
         res.json({
             success: true,
             data: material,
-            message: 'Material updated successfully'
+            message: `Material updated by ${req.user.name}`
         });
         
     } catch (error) {
@@ -156,7 +174,12 @@ export const deleteMaterial = async (req, res) => {
         
         await material.deleteOne();
         
-        res.json({ success: true, message: 'Material deleted successfully' });
+        console.log(`✅ Material "${material.title}" deleted by ${req.user.name}`);
+        
+        res.json({ 
+            success: true, 
+            message: `Material "${material.title}" deleted by ${req.user.name}` 
+        });
         
     } catch (error) {
         console.error('Delete material error:', error);
@@ -174,7 +197,6 @@ export const getMaterialsByBatch = async (req, res) => {
             .populate('createdBy', 'name')
             .sort({ createdAt: -1 });
         
-        // Group by type
         const grouped = {
             videos: materials.filter(m => m.type === 'video'),
             pdfs: materials.filter(m => m.type === 'pdf'),

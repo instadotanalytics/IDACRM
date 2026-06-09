@@ -5,7 +5,8 @@ import {
   FaSpinner, FaTimes, FaCheck, FaDownload,
   FaUpload, FaFileAlt, FaCalendarAlt, FaClock,
   FaUserGraduate, FaBookOpen, FaPaperclip,
-  FaCloudUploadAlt, FaStar, FaChartLine
+  FaCloudUploadAlt, FaStar, FaChartLine,
+  FaUserTie, FaInfoCircle
 } from 'react-icons/fa';
 import api from '../../../../services/api';
 import styles from './Assignments.module.css';
@@ -26,6 +27,18 @@ const Assignments = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [file, setFile] = useState(null);
   const [submissionFile, setSubmissionFile] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // ✅ Get current user for tracking
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      setCurrentUser(user);
+      console.log('Current User:', user.name);
+      console.log('User Role:', user.role);
+    }
+  }, []);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -146,10 +159,10 @@ const Assignments = () => {
       let response;
       if (editingAssignment) {
         response = await api.put(`/assignments/${editingAssignment._id}`, submitData);
-        toast.success('Assignment updated successfully');
+        toast.success(`Assignment updated by ${currentUser?.name}`);
       } else {
         response = await api.post('/assignments', submitData);
-        toast.success('Assignment created successfully');
+        toast.success(`Assignment created by ${currentUser?.name}`);
       }
 
       if (response.data.success) {
@@ -181,7 +194,7 @@ const Assignments = () => {
       try {
         const response = await api.delete(`/assignments/${id}`);
         if (response.data.success) {
-          toast.success('Assignment deleted successfully');
+          toast.success(`Assignment "${title}" deleted by ${currentUser?.name}`);
           fetchAssignments();
         }
       } catch (error) {
@@ -193,15 +206,17 @@ const Assignments = () => {
     }
   };
 
-  const handleGradeSubmit = async (studentId, marks, feedback) => {
+  const handleGradeSubmit = async (studentId, marks, feedback, studentName) => {
     try {
-      await api.post(`/assignments/${selectedAssignment._id}/grade`, {
+      const response = await api.post(`/assignments/${selectedAssignment._id}/grade`, {
         studentId,
         marks,
         feedback
       });
-      toast.success('Grade submitted successfully');
-      fetchAssignments();
+      if (response.data.success) {
+        toast.success(`Grade submitted for ${studentName} by ${currentUser?.name}`);
+        fetchAssignments();
+      }
     } catch (error) {
       console.error('Grade submit error:', error);
       toast.error('Failed to submit grade');
@@ -220,11 +235,12 @@ const Assignments = () => {
       const submitData = new FormData();
       submitData.append('assignmentId', selectedAssignment._id);
       submitData.append('studentId', selectedStudent?._id);
+      submitData.append('studentName', selectedStudent?.name);
       submitData.append('submission', submissionFile);
 
       const response = await api.post('/assignments/submit', submitData);
       if (response.data.success) {
-        toast.success('Assignment submitted successfully');
+        toast.success(`Assignment submitted by ${selectedStudent?.name}`);
         setShowSubmitModal(false);
         setSubmissionFile(null);
         fetchAssignments();
@@ -306,11 +322,14 @@ const Assignments = () => {
         ← Back to Batches
       </button>
 
-      {/* Batch Header */}
+      {/* Batch Header with Trainer Info */}
       <div className={styles.batchHeader}>
         <div>
           <h2>{selectedBatch.name}</h2>
           <p>{selectedBatch.code} | {selectedBatch.course} | {selectedBatch.timings}</p>
+          <div className={styles.trainerInfo}>
+            <FaUserTie /> Trainer: {currentUser?.name || 'Not assigned'}
+          </div>
         </div>
         <div className={styles.batchStats}>
           <span><FaUserGraduate /> {students.length} Students</span>
@@ -371,6 +390,10 @@ const Assignments = () => {
                 <p><FaBookOpen /> Course: {assignment.course}</p>
                 <p><FaCalendarAlt /> Due: {new Date(assignment.dueDate).toLocaleDateString()}</p>
                 <p><FaStar /> Total Marks: {assignment.totalMarks}</p>
+                {/* ✅ TRACKING: Show who created this assignment */}
+                <p className={styles.trackingInfo}>
+                  <FaUserTie /> Created by: {assignment.createdByName || assignment.trainerName || currentUser?.name || 'System'}
+                </p>
                 <p className={styles.description}>{assignment.description}</p>
               </div>
               <div className={styles.assignmentStats}>
@@ -496,6 +519,10 @@ const Assignments = () => {
                     )}
                   </div>
                 </div>
+                {/* ✅ Tracking info in modal */}
+                <div className={styles.trackingNote}>
+                  <FaInfoCircle /> Assignment will be created as: {currentUser?.name}
+                </div>
               </div>
               <div className={styles.modalFooter}>
                 <button type="button" className={styles.cancelBtn} onClick={() => setShowModal(false)}>
@@ -524,6 +551,9 @@ const Assignments = () => {
                 <p><strong>Course:</strong> {selectedAssignment.course}</p>
                 <p><strong>Due Date:</strong> {new Date(selectedAssignment.dueDate).toLocaleString()}</p>
                 <p><strong>Total Marks:</strong> {selectedAssignment.totalMarks}</p>
+                {/* ✅ Tracking info */}
+                <p><strong>Created By:</strong> {selectedAssignment.createdByName || selectedAssignment.trainerName || 'System'}</p>
+                <p><strong>Created At:</strong> {new Date(selectedAssignment.createdAt).toLocaleString()}</p>
                 <p><strong>Description:</strong></p>
                 <p className={styles.descriptionText}>{selectedAssignment.description}</p>
                 {selectedAssignment.attachments?.length > 0 && (
@@ -549,6 +579,7 @@ const Assignments = () => {
                         <th>Submitted On</th>
                         <th>Marks</th>
                         <th>Status</th>
+                        <th>Graded By</th>
                         <th>Action</th>
                       </tr>
                     </thead>
@@ -573,7 +604,7 @@ const Assignments = () => {
                                   onBlur={(e) => {
                                     const marks = parseInt(e.target.value);
                                     if (!isNaN(marks)) {
-                                      handleGradeSubmit(student._id, marks, '');
+                                      handleGradeSubmit(student._id, marks, '', student.name);
                                     }
                                   }}
                                 />
@@ -586,6 +617,15 @@ const Assignments = () => {
                                 <span className={styles.submittedBadge}>Submitted</span>
                               ) : (
                                 <span className={styles.pendingBadge}>Pending</span>
+                              )}
+                            </td>
+                            <td>
+                              {submission?.gradedByName ? (
+                                <span className={styles.graderName}>
+                                  <FaUserTie /> {submission.gradedByName}
+                                </span>
+                              ) : (
+                                '-'
                               )}
                             </td>
                             <td>

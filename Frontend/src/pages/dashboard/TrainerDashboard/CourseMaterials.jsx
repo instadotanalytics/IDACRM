@@ -5,7 +5,8 @@ import {
   FaSpinner, FaTimes, FaCheck, FaCalendarAlt,
   FaClock, FaUserGraduate, FaBookOpen, FaFileAlt,
   FaVideo, FaFilePdf, FaLink, FaDownload,
-  FaUpload, FaCloudUploadAlt, FaChalkboardTeacher
+  FaUpload, FaCloudUploadAlt, FaChalkboardTeacher,
+  FaUserTie, FaInfoCircle
 } from 'react-icons/fa';
 import api from '../../../services/api';
 import styles from './CourseMaterials.module.css';
@@ -23,6 +24,18 @@ const CourseMaterials = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [file, setFile] = useState(null);
+  
+  // ✅ Get current user for tracking
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      setCurrentUser(user);
+      console.log('Current User:', user.name);
+    }
+  }, []);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -137,7 +150,7 @@ const CourseMaterials = () => {
       return;
     }
 
-    if (formData.type !== 'link' && !file) {
+    if (formData.type !== 'link' && !file && !editingMaterial) {
       toast.error('Please upload a file');
       return;
     }
@@ -167,10 +180,10 @@ const CourseMaterials = () => {
       let response;
       if (editingMaterial) {
         response = await api.put(`/course-materials/${editingMaterial._id}`, submitData);
-        toast.success('Material updated successfully');
+        toast.success(`Material updated by ${currentUser?.name}`);
       } else {
         response = await api.post('/course-materials', submitData);
-        toast.success('Material added successfully');
+        toast.success(`Material added by ${currentUser?.name}`);
       }
 
       if (response.data.success) {
@@ -203,7 +216,7 @@ const CourseMaterials = () => {
       try {
         const response = await api.delete(`/course-materials/${id}`);
         if (response.data.success) {
-          toast.success('Material deleted successfully');
+          toast.success(`Material "${title}" deleted by ${currentUser?.name}`);
           fetchMaterials();
         }
       } catch (error) {
@@ -305,11 +318,14 @@ const CourseMaterials = () => {
         ← Back to Batches
       </button>
 
-      {/* Batch Header */}
+      {/* Batch Header with Trainer Info */}
       <div className={styles.batchHeader}>
         <div>
           <h2>{selectedBatch.name}</h2>
           <p>{selectedBatch.code} | {selectedBatch.course} | {selectedBatch.timings}</p>
+          <div className={styles.trainerInfo}>
+            <FaUserTie /> Trainer: {currentUser?.name || 'Not assigned'}
+          </div>
         </div>
         <div className={styles.batchStats}>
           <span><FaBookOpen /> {materials.length} Materials</span>
@@ -379,6 +395,10 @@ const CourseMaterials = () => {
                 {material.description && <p className={styles.description}>{material.description}</p>}
                 {material.duration && <p className={styles.duration}>⏱️ Duration: {material.duration}</p>}
                 {material.size && <p className={styles.size}>📦 Size: {material.size}</p>}
+                {/* ✅ TRACKING: Show who created this material */}
+                <p className={styles.trackingInfo}>
+                  <FaUserTie /> Created by: {material.createdByName || material.createdBy?.name || currentUser?.name || 'System'}
+                </p>
               </div>
               <div className={styles.materialFooter}>
                 {material.fileUrl && (
@@ -468,6 +488,11 @@ const CourseMaterials = () => {
                     <label>Duration (optional)</label>
                     <input type="text" name="duration" value={formData.duration} onChange={handleChange} placeholder="e.g., 45 mins, 2 hours" />
                   </div>
+                </div>
+
+                {/* ✅ Tracking Note */}
+                <div className={styles.trackingNote}>
+                  <FaInfoCircle /> Material will be added by: {currentUser?.name}
                 </div>
               </div>
               <div className={styles.modalFooter}>

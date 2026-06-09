@@ -5,7 +5,7 @@ import {
   FaSpinner, FaTimes, FaCheck, FaUserTie, 
   FaCalendarAlt, FaClock, FaUsers, FaBookOpen,
   FaChalkboardTeacher, FaBuilding, FaArrowLeft,
-  FaUserCircle
+  FaUserCircle, FaInfoCircle
 } from 'react-icons/fa';
 import api from '../../../../services/api';
 import styles from './BatchManagement.module.css';
@@ -18,8 +18,12 @@ const BatchManagement = ({ onBack }) => {
     const [showTrainerDropdown, setShowTrainerDropdown] = useState(false);
     const [trainerSearchTerm, setTrainerSearchTerm] = useState('');
     const [showModal, setShowModal] = useState(false);
+    const [showViewModal, setShowViewModal] = useState(false);
+    const [selectedBatch, setSelectedBatch] = useState(null);
     const [editingBatch, setEditingBatch] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [userRole, setUserRole] = useState('');
+    const [currentUser, setCurrentUser] = useState(null);
     const trainerInputRef = useRef(null);
     
     const [formData, setFormData] = useState({
@@ -40,6 +44,15 @@ const BatchManagement = ({ onBack }) => {
     const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     useEffect(() => {
+        // Get current user
+        const userData = localStorage.getItem('user');
+        if (userData) {
+            const user = JSON.parse(userData);
+            setCurrentUser(user);
+            setUserRole(user.role);
+            console.log('Current User:', user.name);
+            console.log('User Role:', user.role);
+        }
         fetchBatches();
         fetchTrainers();
     }, []);
@@ -71,9 +84,17 @@ const BatchManagement = ({ onBack }) => {
     const fetchBatches = async () => {
         setLoading(true);
         try {
-            const response = await api.get('/batches');
+            let url = '/batches';
+            
+            // ✅ Trainer sirf apne batches dekhega
+            if (userRole === 'trainer') {
+                url = '/batches/trainer/assigned-with-count';
+            }
+            
+            const response = await api.get(url);
             if (response.data.success) {
                 setBatches(response.data.data);
+                console.log('Batches fetched:', response.data.data.length);
             }
         } catch (error) {
             console.error('Error fetching batches:', error);
@@ -216,7 +237,6 @@ const BatchManagement = ({ onBack }) => {
             }
         } catch (error) {
             console.error('Submit error:', error);
-            console.error('Error response:', error.response?.data);
             const errorMsg = error.response?.data?.message || 'Operation failed';
             toast.error(errorMsg);
         } finally {
@@ -271,9 +291,9 @@ const BatchManagement = ({ onBack }) => {
 
     const getStatusBadge = (status) => {
         switch(status) {
-            case 'active': return <span className={`${styles.badge} ${styles.active}`}>Active</span>;
-            case 'upcoming': return <span className={`${styles.badge} ${styles.upcoming}`}>Upcoming</span>;
-            case 'completed': return <span className={`${styles.badge} ${styles.completed}`}>Completed</span>;
+            case 'active': return <span className={`${styles.badge} ${styles.active}`}>✅ Active</span>;
+            case 'upcoming': return <span className={`${styles.badge} ${styles.upcoming}`}>⏳ Upcoming</span>;
+            case 'completed': return <span className={`${styles.badge} ${styles.completed}`}>🎓 Completed</span>;
             default: return <span className={styles.badge}>{status}</span>;
         }
     };
@@ -291,9 +311,11 @@ const BatchManagement = ({ onBack }) => {
                             <FaArrowLeft /> Back to Dashboard
                         </button>
                     )}
-                    <button className={styles.createBtn} onClick={() => { setEditingBatch(null); setShowModal(true); }}>
-                        <FaPlus /> Create Batch
-                    </button>
+                    {(userRole === 'admin_manager' || userRole === 'super_admin') && (
+                        <button className={styles.createBtn} onClick={() => { setEditingBatch(null); setShowModal(true); }}>
+                            <FaPlus /> Create Batch
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -315,8 +337,13 @@ const BatchManagement = ({ onBack }) => {
                 </div>
             ) : filteredBatches.length === 0 ? (
                 <div className={styles.emptyContainer}>
+                    <FaChalkboardTeacher className={styles.emptyIcon} />
                     <p>No batches found</p>
-                    <button onClick={() => { setEditingBatch(null); setShowModal(true); }}>Create your first batch</button>
+                    {(userRole === 'admin_manager' || userRole === 'super_admin') && (
+                        <button onClick={() => { setEditingBatch(null); setShowModal(true); }}>
+                            Create your first batch
+                        </button>
+                    )}
                 </div>
             ) : (
                 <div className={styles.batchesGrid}>
@@ -334,15 +361,111 @@ const BatchManagement = ({ onBack }) => {
                                 <p><FaUserTie /> <strong>Trainer:</strong> {batch.trainerId?.name || 'Not Assigned'}</p>
                                 <p><FaCalendarAlt /> <strong>Duration:</strong> {new Date(batch.startDate).toLocaleDateString()} - {new Date(batch.endDate).toLocaleDateString()}</p>
                                 <p><FaClock /> <strong>Timings:</strong> {batch.timings}</p>
-                                <p><FaUsers /> <strong>Capacity:</strong> {batch.currentStudents || 0}/{batch.capacity}</p>
+                                <p><FaUsers /> <strong>Capacity:</strong> {batch.currentStudents || batch.studentsCount || 0}/{batch.capacity}</p>
                                 {batch.room && <p><FaBuilding /> <strong>Room:</strong> {batch.room}</p>}
+                                
+                                {/* ✅ TRACKING: Show who created this batch */}
+                                {batch.createdBy && (
+                                    <p className={styles.trackingInfo}>
+                                        <FaInfoCircle /> <strong>Created By:</strong> {batch.createdBy?.name || batch.createdByName || 'System'}
+                                    </p>
+                                )}
                             </div>
                             <div className={styles.batchActions}>
-                                <button onClick={() => openEditModal(batch)} className={styles.editBtn}><FaEdit /> Edit</button>
-                                <button onClick={() => handleDelete(batch._id, batch.name)} className={styles.deleteBtn}><FaTrash /> Delete</button>
+                                <button onClick={() => { setSelectedBatch(batch); setShowViewModal(true); }} className={styles.viewBtn}>
+                                    <FaEye /> View
+                                </button>
+                                {(userRole === 'admin_manager' || userRole === 'super_admin') && (
+                                    <>
+                                        <button onClick={() => openEditModal(batch)} className={styles.editBtn}>
+                                            <FaEdit /> Edit
+                                        </button>
+                                        <button onClick={() => handleDelete(batch._id, batch.name)} className={styles.deleteBtn}>
+                                            <FaTrash /> Delete
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* View Batch Modal */}
+            {showViewModal && selectedBatch && (
+                <div className={styles.modalOverlay} onClick={() => setShowViewModal(false)}>
+                    <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.modalHeader}>
+                            <h3><FaEye /> Batch Details</h3>
+                            <button onClick={() => setShowViewModal(false)}><FaTimes /></button>
+                        </div>
+                        <div className={styles.modalBody}>
+                            <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Batch Name:</span>
+                                <span className={styles.detailValue}>{selectedBatch.name}</span>
+                            </div>
+                            <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Batch Code:</span>
+                                <span className={styles.detailValue}>{selectedBatch.code}</span>
+                            </div>
+                            <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Course:</span>
+                                <span className={styles.detailValue}>{selectedBatch.course}</span>
+                            </div>
+                            <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Trainer:</span>
+                                <span className={styles.detailValue}>{selectedBatch.trainerId?.name || 'Not Assigned'}</span>
+                            </div>
+                            <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Start Date:</span>
+                                <span className={styles.detailValue}>{new Date(selectedBatch.startDate).toLocaleDateString()}</span>
+                            </div>
+                            <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>End Date:</span>
+                                <span className={styles.detailValue}>{new Date(selectedBatch.endDate).toLocaleDateString()}</span>
+                            </div>
+                            <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Timings:</span>
+                                <span className={styles.detailValue}>{selectedBatch.timings}</span>
+                            </div>
+                            <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Days:</span>
+                                <span className={styles.detailValue}>{selectedBatch.days?.join(', ') || 'Not specified'}</span>
+                            </div>
+                            <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Capacity:</span>
+                                <span className={styles.detailValue}>{selectedBatch.currentStudents || 0}/{selectedBatch.capacity}</span>
+                            </div>
+                            <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Status:</span>
+                                <span className={styles.detailValue}>{getStatusBadge(selectedBatch.status)}</span>
+                            </div>
+                            <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Room:</span>
+                                <span className={styles.detailValue}>{selectedBatch.room || 'Not assigned'}</span>
+                            </div>
+                            {/* ✅ TRACKING: Show creator info */}
+                            <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Created By:</span>
+                                <span className={styles.detailValue}>
+                                    {selectedBatch.createdBy?.name || selectedBatch.createdByName || 'System'}
+                                </span>
+                            </div>
+                            <div className={styles.detailRow}>
+                                <span className={styles.detailLabel}>Created At:</span>
+                                <span className={styles.detailValue}>{new Date(selectedBatch.createdAt).toLocaleString()}</span>
+                            </div>
+                            {selectedBatch.description && (
+                                <div className={styles.detailRow}>
+                                    <span className={styles.detailLabel}>Description:</span>
+                                    <span className={styles.detailValue}>{selectedBatch.description}</span>
+                                </div>
+                            )}
+                        </div>
+                        <div className={styles.modalFooter}>
+                            <button className={styles.cancelBtn} onClick={() => setShowViewModal(false)}>Close</button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -390,50 +513,52 @@ const BatchManagement = ({ onBack }) => {
                                             required 
                                         />
                                     </div>
-                                    <div className={styles.formGroup} ref={trainerInputRef}>
-                                        <label>Assign Trainer</label>
-                                        <div className={styles.trainerSearchContainer}>
-                                            <FaUserCircle className={styles.trainerIcon} />
-                                            <input 
-                                                type="text"
-                                                placeholder="Type trainer name to search..."
-                                                value={trainerSearchTerm}
-                                                onChange={handleTrainerSearch}
-                                                onFocus={() => setShowTrainerDropdown(true)}
-                                                className={styles.trainerSearchInput}
-                                                autoComplete="off"
-                                            />
-                                            {showTrainerDropdown && filteredTrainers.length > 0 && (
-                                                <div className={styles.trainerDropdown}>
-                                                    {filteredTrainers.map(trainer => (
-                                                        <div 
-                                                            key={trainer._id}
-                                                            className={styles.trainerItem}
-                                                            onClick={() => selectTrainer(trainer)}
-                                                        >
-                                                            <FaUserCircle className={styles.trainerItemIcon} />
-                                                            <div className={styles.trainerItemInfo}>
-                                                                <div className={styles.trainerItemName}>{trainer.name}</div>
-                                                                <div className={styles.trainerItemEmail}>{trainer.email}</div>
+                                    {(userRole === 'admin_manager' || userRole === 'super_admin') && (
+                                        <div className={styles.formGroup} ref={trainerInputRef}>
+                                            <label>Assign Trainer</label>
+                                            <div className={styles.trainerSearchContainer}>
+                                                <FaUserCircle className={styles.trainerIcon} />
+                                                <input 
+                                                    type="text"
+                                                    placeholder="Type trainer name to search..."
+                                                    value={trainerSearchTerm}
+                                                    onChange={handleTrainerSearch}
+                                                    onFocus={() => setShowTrainerDropdown(true)}
+                                                    className={styles.trainerSearchInput}
+                                                    autoComplete="off"
+                                                />
+                                                {showTrainerDropdown && filteredTrainers.length > 0 && (
+                                                    <div className={styles.trainerDropdown}>
+                                                        {filteredTrainers.map(trainer => (
+                                                            <div 
+                                                                key={trainer._id}
+                                                                className={styles.trainerItem}
+                                                                onClick={() => selectTrainer(trainer)}
+                                                            >
+                                                                <FaUserCircle className={styles.trainerItemIcon} />
+                                                                <div className={styles.trainerItemInfo}>
+                                                                    <div className={styles.trainerItemName}>{trainer.name}</div>
+                                                                    <div className={styles.trainerItemEmail}>{trainer.email}</div>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            {showTrainerDropdown && trainerSearchTerm && filteredTrainers.length === 0 && (
-                                                <div className={styles.trainerDropdown}>
-                                                    <div className={styles.noTrainerFound}>
-                                                        No trainer found with name "{trainerSearchTerm}"
+                                                        ))}
                                                     </div>
+                                                )}
+                                                {showTrainerDropdown && trainerSearchTerm && filteredTrainers.length === 0 && (
+                                                    <div className={styles.trainerDropdown}>
+                                                        <div className={styles.noTrainerFound}>
+                                                            No trainer found with name "{trainerSearchTerm}"
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {formData.trainerId && (
+                                                <div className={styles.selectedTrainer}>
+                                                    Selected: <strong>{formData.trainerName}</strong>
                                                 </div>
                                             )}
                                         </div>
-                                        {formData.trainerId && (
-                                            <div className={styles.selectedTrainer}>
-                                                Selected: <strong>{formData.trainerName}</strong>
-                                            </div>
-                                        )}
-                                    </div>
+                                    )}
                                 </div>
 
                                 <div className={styles.formRow}>

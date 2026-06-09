@@ -5,7 +5,7 @@ import {
   FaSpinner, FaTimes, FaCheck, FaCalendarAlt,
   FaClock, FaUserGraduate, FaBookOpen, FaChartLine,
   FaTrophy, FaDownload, FaFilePdf, FaCloudUploadAlt,
-  FaQuestionCircle, FaListOl
+  FaQuestionCircle, FaListOl, FaUserTie, FaInfoCircle
 } from 'react-icons/fa';
 import api from '../../../../services/api';
 import styles from './Tests.module.css';
@@ -26,6 +26,19 @@ const Tests = () => {
   const [uploadMethod, setUploadMethod] = useState('manual');
   const [pdfFile, setPdfFile] = useState(null);
   const [questionsList, setQuestionsList] = useState([]);
+  
+  // ✅ Get current user for tracking
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      setCurrentUser(user);
+      console.log('Current User:', user.name);
+      console.log('User Role:', user.role);
+    }
+  }, []);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -208,7 +221,6 @@ const Tests = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation
     if (uploadMethod === 'manual' && questionsList.length === 0) {
       toast.error('Please add at least one question');
       return;
@@ -219,11 +231,10 @@ const Tests = () => {
       return;
     }
 
-    // Format dates correctly for datetime-local input
     const startDateTime = formData.startDate ? `${formData.startDate}T00:00` : '';
     const endDateTime = formData.endDate ? `${formData.endDate}T23:59` : '';
 
-    console.log('Submitting test:', { uploadMethod, questionsCount: questionsList.length, pdfFile: pdfFile?.name });
+    console.log('Submitting test by:', currentUser?.name);
 
     setLoading(true);
     try {
@@ -245,10 +256,10 @@ const Tests = () => {
       let response;
       if (editingTest) {
         response = await api.put(`/tests/${editingTest._id}`, submitData);
-        toast.success('Test updated successfully');
+        toast.success(`Test updated by ${currentUser?.name}`);
       } else {
         response = await api.post('/tests', submitData);
-        toast.success(response.data.message || 'Test created successfully');
+        toast.success(`Test created by ${currentUser?.name}`);
       }
 
       if (response.data.success) {
@@ -281,7 +292,7 @@ const Tests = () => {
       try {
         const response = await api.delete(`/tests/${id}`);
         if (response.data.success) {
-          toast.success('Test deleted successfully');
+          toast.success(`Test "${title}" deleted by ${currentUser?.name}`);
           fetchTests();
         }
       } catch (error) {
@@ -363,11 +374,14 @@ const Tests = () => {
         ← Back to Batches
       </button>
 
-      {/* Batch Header */}
+      {/* Batch Header with Trainer Info */}
       <div className={styles.batchHeader}>
         <div>
           <h2>{selectedBatch.name}</h2>
           <p>{selectedBatch.code} | {selectedBatch.course} | {selectedBatch.timings}</p>
+          <div className={styles.trainerInfo}>
+            <FaUserTie /> Trainer: {currentUser?.name || 'Not assigned'}
+          </div>
         </div>
         <div className={styles.batchStats}>
           <span><FaUserGraduate /> {students.length} Students</span>
@@ -432,6 +446,10 @@ const Tests = () => {
                 <p><FaClock /> Duration: {test.duration} minutes</p>
                 <p><FaQuestionCircle /> Questions: {test.questions?.length || 0}</p>
                 <p><FaTrophy /> Total Marks: {test.totalMarks}</p>
+                {/* ✅ TRACKING: Show who created this test */}
+                <p className={styles.trackingInfo}>
+                  <FaUserTie /> Created by: {test.createdByName || test.trainerName || currentUser?.name || 'System'}
+                </p>
               </div>
               <div className={styles.testStats}>
                 <div className={styles.stat}>
@@ -618,6 +636,11 @@ const Tests = () => {
                     )}
                   </div>
                 )}
+
+                {/* Tracking Note */}
+                <div className={styles.trackingNote}>
+                  <FaInfoCircle /> Test will be created as: {currentUser?.name}
+                </div>
               </div>
               <div className={styles.modalFooter}>
                 <button type="button" className={styles.cancelBtn} onClick={() => setShowModal(false)}>Cancel</button>
@@ -693,6 +716,9 @@ const Tests = () => {
                 <p><strong>End Date:</strong> {new Date(selectedTest.endDate).toLocaleString()}</p>
                 <p><strong>Total Marks:</strong> {selectedTest.totalMarks}</p>
                 <p><strong>Questions:</strong> {selectedTest.questions?.length || 0}</p>
+                {/* ✅ TRACKING: Show creator info */}
+                <p><strong>Created By:</strong> {selectedTest.createdByName || selectedTest.trainerName || currentUser?.name || 'System'}</p>
+                <p><strong>Created At:</strong> {new Date(selectedTest.createdAt).toLocaleString()}</p>
                 {selectedTest.pdfUrl && (
                   <p><strong>PDF:</strong> <a href={selectedTest.pdfUrl} target="_blank" rel="noopener noreferrer" className={styles.pdfLink}><FaFilePdf /> Download Question Paper</a></p>
                 )}

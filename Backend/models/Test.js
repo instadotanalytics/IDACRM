@@ -49,20 +49,42 @@ const testSchema = new mongoose.Schema({
         type: Date,
         required: true
     },
+    
+    // ✅ TRACKING FIELDS
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
+    createdByName: {
+        type: String,
+        default: ''
+    },
+    trainerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    trainerName: {
+        type: String,
+        default: ''
+    },
+    
     status: {
         type: String,
         enum: ['upcoming', 'active', 'completed', 'expired'],
         default: 'upcoming'
     },
+    
+    // ✅ RESULTS TRACKING
     results: [{
         studentId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Admission'
+        },
+        studentName: {
+            type: String,
+            default: ''
         },
         startedAt: Date,
         submittedAt: Date,

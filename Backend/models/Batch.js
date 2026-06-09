@@ -61,22 +61,17 @@ const batchSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    // ✅ TRACKING FIELDS
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'User',
+        required: true
+    },
+    createdByName: {
+        type: String,
+        default: ''
     }
 }, { timestamps: true });
-
-// Auto-generate batch code if not provided (remove pre-save to avoid issues)
-// batchSchema.pre('save', async function(next) {
-//     if (!this.code) {
-//         const year = new Date().getFullYear();
-//         const Batch = mongoose.model('Batch');
-//         const count = await Batch.countDocuments();
-//         this.code = `BATCH${year}${String(count + 1).padStart(3, '0')}`;
-//     }
-//     next();
-// });
 
 const Batch = mongoose.model('Batch', batchSchema);
 export default Batch;

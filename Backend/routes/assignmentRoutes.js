@@ -14,16 +14,15 @@ import { uploadAssignment } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
-// All routes require authentication
 router.use(protect);
 
-// Trainer only routes
+// Trainer routes with tracking
 router.post('/', trainerOnly, uploadAssignment.single('attachment'), createAssignment);
 router.put('/:id', trainerOnly, uploadAssignment.single('attachment'), updateAssignment);
 router.delete('/:id', trainerOnly, deleteAssignment);
 router.post('/:id/grade', trainerOnly, gradeAssignment);
 
-// Student submission route
+// Student submission
 router.post('/submit', uploadAssignment.single('submission'), submitAssignment);
 
 // Get routes
