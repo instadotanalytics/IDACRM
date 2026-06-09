@@ -1,275 +1,240 @@
+import mongoose from 'mongoose';
 import StudentPerformance from '../models/StudentPerformance.js';
-import Attendance from '../models/Attendance.js';
-import Assignment from '../models/Assignment.js';
-import Test from '../models/Test.js';
-import Student from '../models/Student.js';
 import Batch from '../models/Batch.js';
 import Admission from '../models/Admission.js';
 
-// @desc    Calculate and update student performance
+// @desc    Get all performances for a batch
+// @route   GET /api/student-performance/batch/:batchId
+export const getBatchPerformance = async (req, res) => {
+    try {
+        const { batchId } = req.params;
+        
+        console.log('Fetching performance for batch:', batchId);
+        
+        // Validate batchId
+        if (!mongoose.Types.ObjectId.isValid(batchId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid batch ID'
+            });
+        }
+        
+        // Check if batch exists
+        const batch = await Batch.findById(batchId);
+        if (!batch) {
+            return res.status(404).json({
+                success: false,
+                message: 'Batch not found'
+            });
+        }
+        
+        // Get students in this batch from Admission model
+        let students = [];
+        try {
+            students = await Admission.find({ 
+                batchId: batchId,
+                status: 'active'
+            }).select('_id name email enrollmentId photo');
+        } catch (err) {
+            console.log('Error fetching students:', err.message);
+        }
+        
+        console.log('Students found:', students.length);
+        
+        // If no students, return empty data
+        if (students.length === 0) {
+            return res.json({
+                success: true,
+                data: {
+                    students: [],
+                    statistics: {
+                        totalStudents: 0,
+                        averagePercentage: 0,
+                        totalPassed: 0,
+                        totalFailed: 0,
+                        passPercentage: 0,
+                        gradeDistribution: {
+                            'A+': 0, 'A': 0, 'B+': 0, 'B': 0,
+                            'C+': 0, 'C': 0, 'D': 0, 'F': 0
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Get or create performance records
+        const performances = [];
+        let totalPercentage = 0;
+        let passed = 0;
+        let failed = 0;
+        const gradeDistribution = {
+            'A+': 0, 'A': 0, 'B+': 0, 'B': 0,
+            'C+': 0, 'C': 0, 'D': 0, 'F': 0
+        };
+        
+        for (const student of students) {
+            let performance = await StudentPerformance.findOne({ 
+                studentId: student._id, 
+                batchId: batchId 
+            });
+            
+            if (!performance) {
+                // Create default performance record without using pre-save middleware issues
+                performance = new StudentPerformance({
+                    studentId: student._id,
+                    batchId: batchId,
+                    overallAttendance: 0,
+                    averageAssignmentScore: 0,
+                    averageTestScore: 0,
+                    overallPercentage: 0,
+                    overallGrade: 'F'
+                });
+                await performance.save();
+                console.log('Created performance for student:', student.name);
+            }
+            
+            performances.push({
+                _id: performance._id,
+                studentId: {
+                    _id: student._id,
+                    name: student.name,
+                    email: student.email,
+                    enrollmentId: student.enrollmentId,
+                    photo: student.photo
+                },
+                overallAttendance: performance.overallAttendance || 0,
+                averageAssignmentScore: performance.averageAssignmentScore || 0,
+                averageTestScore: performance.averageTestScore || 0,
+                overallPercentage: performance.overallPercentage || 0,
+                overallGrade: performance.overallGrade || 'F',
+                totalAssignments: performance.totalAssignments || 0,
+                submittedAssignments: performance.submittedAssignments || 0,
+                totalTests: performance.totalTests || 0,
+                totalPresent: performance.totalPresent || 0,
+                totalAbsent: performance.totalAbsent || 0,
+                totalLeave: performance.totalLeave || 0,
+                totalLate: performance.totalLate || 0,
+                highestTestScore: performance.highestTestScore || 0,
+                lowestTestScore: performance.lowestTestScore || 0,
+                remarks: performance.remarks || ''
+            });
+            
+            totalPercentage += (performance.overallPercentage || 0);
+            
+            if ((performance.overallPercentage || 0) >= 45) {
+                passed++;
+            } else {
+                failed++;
+            }
+            
+            const grade = performance.overallGrade || 'F';
+            gradeDistribution[grade] = (gradeDistribution[grade] || 0) + 1;
+        }
+        
+        const statistics = {
+            totalStudents: students.length,
+            averagePercentage: students.length > 0 ? totalPercentage / students.length : 0,
+            totalPassed: passed,
+            totalFailed: failed,
+            passPercentage: students.length > 0 ? (passed / students.length) * 100 : 0,
+            gradeDistribution: gradeDistribution
+        };
+        
+        res.json({
+            success: true,
+            data: {
+                students: performances,
+                statistics: statistics
+            }
+        });
+        
+    } catch (error) {
+        console.error('getBatchPerformance error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+// @desc    Calculate/update performance
 // @route   POST /api/student-performance/calculate/:studentId
 export const calculatePerformance = async (req, res) => {
     try {
         const { studentId } = req.params;
-        const { batchId } = req.body;
-
-        // Get attendance records
-        const attendanceRecords = await Attendance.find({ studentId });
-        const totalDays = attendanceRecords.length;
-        const present = attendanceRecords.filter(a => a.status === 'Present').length;
-        const absent = attendanceRecords.filter(a => a.status === 'Absent').length;
-        const leave = attendanceRecords.filter(a => a.status === 'Leave').length;
-        const late = attendanceRecords.filter(a => a.status === 'Late').length;
-        const attendancePercentage = totalDays > 0 ? (present / totalDays) * 100 : 0;
-
-        // Get assignments
-        const assignments = await Assignment.find({ 'submissions.studentId': studentId });
-        let totalAssignmentMarks = 0;
-        let assignmentCount = 0;
-        assignments.forEach(assignment => {
-            const submission = assignment.submissions.find(s => s.studentId.toString() === studentId);
-            if (submission && submission.marks) {
-                totalAssignmentMarks += (submission.marks / assignment.totalMarks) * 100;
-                assignmentCount++;
-            }
-        });
-        const avgAssignmentScore = assignmentCount > 0 ? totalAssignmentMarks / assignmentCount : 0;
-
-        // Get tests
-        const tests = await Test.find({ 'results.studentId': studentId });
-        let totalTestScore = 0;
-        let testCount = 0;
-        let highestScore = 0;
-        let lowestScore = 100;
-        tests.forEach(test => {
-            const result = test.results.find(r => r.studentId.toString() === studentId);
-            if (result && result.percentage) {
-                totalTestScore += result.percentage;
-                testCount++;
-                if (result.percentage > highestScore) highestScore = result.percentage;
-                if (result.percentage < lowestScore) lowestScore = result.percentage;
-            }
-        });
-        const avgTestScore = testCount > 0 ? totalTestScore / testCount : 0;
-
-        // Calculate overall percentage
-        const overallPercentage = (attendancePercentage * 0.3 + avgAssignmentScore * 0.35 + avgTestScore * 0.35);
+        const { batchId, attendanceData, assignmentData, testData } = req.body;
         
-        // Determine grade
-        let overallGrade = 'F';
-        if (overallPercentage >= 90) overallGrade = 'A+';
-        else if (overallPercentage >= 80) overallGrade = 'A';
-        else if (overallPercentage >= 75) overallGrade = 'B+';
-        else if (overallPercentage >= 70) overallGrade = 'B';
-        else if (overallPercentage >= 65) overallGrade = 'C+';
-        else if (overallPercentage >= 60) overallGrade = 'C';
-        else if (overallPercentage >= 50) overallGrade = 'D';
-        else overallGrade = 'F';
-
-        // Update or create performance record
-        let performance = await StudentPerformance.findOne({ studentId, batchId });
-        
-        if (performance) {
-            performance.overallAttendance = attendancePercentage;
-            performance.totalPresent = present;
-            performance.totalAbsent = absent;
-            performance.totalLeave = leave;
-            performance.totalLate = late;
-            performance.totalAssignments = assignmentCount;
-            performance.submittedAssignments = assignmentCount;
-            performance.averageAssignmentScore = avgAssignmentScore;
-            performance.totalTests = testCount;
-            performance.averageTestScore = avgTestScore;
-            performance.highestTestScore = highestScore;
-            performance.lowestTestScore = lowestScore;
-            performance.overallGrade = overallGrade;
-            performance.overallPercentage = overallPercentage;
-            performance.lastUpdated = new Date();
-            await performance.save();
-        } else {
-            performance = await StudentPerformance.create({
-                studentId,
-                batchId,
-                overallAttendance: attendancePercentage,
-                totalPresent: present,
-                totalAbsent: absent,
-                totalLeave: leave,
-                totalLate: late,
-                totalAssignments: assignmentCount,
-                submittedAssignments: assignmentCount,
-                averageAssignmentScore: avgAssignmentScore,
-                totalTests: testCount,
-                averageTestScore: avgTestScore,
-                highestTestScore: highestScore,
-                lowestTestScore: lowestScore,
-                overallGrade: overallGrade,
-                overallPercentage: overallPercentage
+        if (!batchId) {
+            return res.status(400).json({
+                success: false,
+                message: 'batchId is required'
             });
         }
-
+        
+        let performance = await StudentPerformance.findOne({ studentId, batchId });
+        
+        if (!performance) {
+            performance = new StudentPerformance({
+                studentId,
+                batchId,
+                overallAttendance: 0,
+                averageAssignmentScore: 0,
+                averageTestScore: 0
+            });
+        }
+        
+        // Update attendance
+        if (attendanceData) {
+            performance.overallAttendance = attendanceData.overallAttendance || 0;
+            performance.totalPresent = attendanceData.totalPresent || 0;
+            performance.totalAbsent = attendanceData.totalAbsent || 0;
+            performance.totalLeave = attendanceData.totalLeave || 0;
+            performance.totalLate = attendanceData.totalLate || 0;
+        }
+        
+        // Update assignments
+        if (assignmentData) {
+            performance.totalAssignments = assignmentData.totalAssignments || 0;
+            performance.submittedAssignments = assignmentData.submittedAssignments || 0;
+            performance.averageAssignmentScore = assignmentData.averageScore || 0;
+        }
+        
+        // Update tests
+        if (testData) {
+            performance.totalTests = testData.totalTests || 0;
+            performance.averageTestScore = testData.averageScore || 0;
+            performance.highestTestScore = testData.highestScore || 0;
+            performance.lowestTestScore = testData.lowestScore || 0;
+        }
+        
+        // Manually calculate percentage and grade
+        performance.overallPercentage = 
+            (performance.overallAttendance * 0.2) + 
+            (performance.averageAssignmentScore * 0.3) + 
+            (performance.averageTestScore * 0.5);
+        
+        if (performance.overallPercentage >= 90) performance.overallGrade = 'A+';
+        else if (performance.overallPercentage >= 80) performance.overallGrade = 'A';
+        else if (performance.overallPercentage >= 70) performance.overallGrade = 'B+';
+        else if (performance.overallPercentage >= 60) performance.overallGrade = 'B';
+        else if (performance.overallPercentage >= 50) performance.overallGrade = 'C+';
+        else if (performance.overallPercentage >= 45) performance.overallGrade = 'C';
+        else if (performance.overallPercentage >= 35) performance.overallGrade = 'D';
+        else performance.overallGrade = 'F';
+        
+        await performance.save();
+        
         res.json({
             success: true,
             data: performance,
             message: 'Performance calculated successfully'
         });
-
-    } catch (error) {
-        console.error('Calculate performance error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-// @desc    Get student performance
-// @route   GET /api/student-performance/:studentId
-export const getStudentPerformance = async (req, res) => {
-    try {
-        const { studentId } = req.params;
-        const { batchId } = req.query;
-
-        let query = { studentId };
-        if (batchId) query.batchId = batchId;
-
-        let performance = await StudentPerformance.findOne(query)
-            .populate('studentId', 'name email enrollmentId photo course')
-            .populate('batchId', 'name code course');
-
-        if (!performance) {
-            // Calculate if not exists
-            const calculateRes = await fetch(`${process.env.BACKEND_URL}/api/student-performance/calculate/${studentId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ batchId })
-            });
-            const data = await calculateRes.json();
-            performance = data.data;
-        }
-
-        res.json({ success: true, data: performance });
-
-    } catch (error) {
-        console.error('Get student performance error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-// @desc    Get batch performance (all students)
-// @route   GET /api/student-performance/batch/:batchId
-export const getBatchPerformance = async (req, res) => {
-    try {
-        const { batchId } = req.params;
-
-        // Get all students in batch
-        const students = await Admission.find({ batchId });
         
-        // Get performance for all students
-        const performances = await StudentPerformance.find({ batchId })
-            .populate('studentId', 'name email enrollmentId photo');
-
-        // Merge with students who don't have performance record
-        const allPerformances = students.map(student => {
-            const existing = performances.find(p => p.studentId._id.toString() === student._id.toString());
-            if (existing) return existing;
-            return {
-                studentId: student,
-                overallPercentage: 0,
-                overallGrade: 'F',
-                overallAttendance: 0,
-                averageAssignmentScore: 0,
-                averageTestScore: 0
-            };
-        });
-
-        // Calculate batch statistics
-        const totalStudents = allPerformances.length;
-        const avgBatchPercentage = allPerformances.reduce((sum, p) => sum + (p.overallPercentage || 0), 0) / totalStudents;
-        const gradeDistribution = {
-            'A+': allPerformances.filter(p => p.overallGrade === 'A+').length,
-            'A': allPerformances.filter(p => p.overallGrade === 'A').length,
-            'B+': allPerformances.filter(p => p.overallGrade === 'B+').length,
-            'B': allPerformances.filter(p => p.overallGrade === 'B').length,
-            'C+': allPerformances.filter(p => p.overallGrade === 'C+').length,
-            'C': allPerformances.filter(p => p.overallGrade === 'C').length,
-            'D': allPerformances.filter(p => p.overallGrade === 'D').length,
-            'F': allPerformances.filter(p => p.overallGrade === 'F').length
-        };
-
-        res.json({
-            success: true,
-            data: {
-                students: allPerformances,
-                statistics: {
-                    totalStudents,
-                    averagePercentage: avgBatchPercentage,
-                    gradeDistribution,
-                    topPerformer: allPerformances.sort((a, b) => b.overallPercentage - a.overallPercentage)[0],
-                    lowPerformer: allPerformances.sort((a, b) => a.overallPercentage - b.overallPercentage)[0]
-                }
-            }
-        });
-
     } catch (error) {
-        console.error('Get batch performance error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-// @desc    Update student remarks
-// @route   PUT /api/student-performance/:id/remarks
-export const updateRemarks = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { remarks } = req.body;
-
-        const performance = await StudentPerformance.findByIdAndUpdate(
-            id,
-            { remarks },
-            { new: true }
-        );
-
-        if (!performance) {
-            return res.status(404).json({ success: false, message: 'Performance record not found' });
-        }
-
-        res.json({ success: true, data: performance, message: 'Remarks updated successfully' });
-
-    } catch (error) {
-        console.error('Update remarks error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-// @desc    Get performance summary for dashboard
-// @route   GET /api/student-performance/summary/:batchId
-export const getPerformanceSummary = async (req, res) => {
-    try {
-        const { batchId } = req.params;
-
-        const performances = await StudentPerformance.find({ batchId })
-            .populate('studentId', 'name');
-
-        const totalStudents = performances.length;
-        const averageAttendance = performances.reduce((sum, p) => sum + (p.overallAttendance || 0), 0) / totalStudents;
-        const averageAssignment = performances.reduce((sum, p) => sum + (p.averageAssignmentScore || 0), 0) / totalStudents;
-        const averageTest = performances.reduce((sum, p) => sum + (p.averageTestScore || 0), 0) / totalStudents;
-        
-        const totalPassed = performances.filter(p => p.overallGrade !== 'F').length;
-        const totalFailed = performances.filter(p => p.overallGrade === 'F').length;
-
-        res.json({
-            success: true,
-            data: {
-                totalStudents,
-                averageAttendance,
-                averageAssignment,
-                averageTest,
-                totalPassed,
-                totalFailed,
-                passPercentage: totalStudents > 0 ? (totalPassed / totalStudents) * 100 : 0
-            }
+        console.error('calculatePerformance error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
         });
-
-    } catch (error) {
-        console.error('Get performance summary error:', error);
-        res.status(500).json({ success: false, message: error.message });
     }
 };

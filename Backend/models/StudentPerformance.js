@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const studentPerformanceSchema = new mongoose.Schema({
     studentId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Admission',
+        ref: 'User',
         required: true
     },
     batchId: {
@@ -11,7 +11,8 @@ const studentPerformanceSchema = new mongoose.Schema({
         ref: 'Batch',
         required: true
     },
-    // Overall Stats
+
+    // Attendance
     overallAttendance: {
         type: Number,
         default: 0
@@ -32,7 +33,8 @@ const studentPerformanceSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    // Assignment Stats
+
+    // Assignments
     totalAssignments: {
         type: Number,
         default: 0
@@ -45,7 +47,8 @@ const studentPerformanceSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    // Test Stats
+
+    // Tests
     totalTests: {
         type: Number,
         default: 0
@@ -62,28 +65,63 @@ const studentPerformanceSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    // Overall Grade
+
+    // Overall Performance
+    overallPercentage: {
+        type: Number,
+        default: 0
+    },
     overallGrade: {
         type: String,
         enum: ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'F'],
         default: 'F'
     },
-    overallPercentage: {
-        type: Number,
-        default: 0
-    },
+
     remarks: {
         type: String,
         default: ''
-    },
-    lastUpdated: {
-        type: Date,
-        default: Date.now
     }
-}, { timestamps: true });
 
-// Compound index for unique student-batch combination
-studentPerformanceSchema.index({ studentId: 1, batchId: 1 }, { unique: true });
+}, {
+    timestamps: true
+});
 
-const StudentPerformance = mongoose.model('StudentPerformance', studentPerformanceSchema);
+// Auto Calculate Performance Before Save
+studentPerformanceSchema.pre('save', function () {
+
+    this.overallPercentage =
+        (this.overallAttendance * 0.2) +
+        (this.averageAssignmentScore * 0.3) +
+        (this.averageTestScore * 0.5);
+
+    if (this.overallPercentage >= 90) {
+        this.overallGrade = 'A+';
+    } else if (this.overallPercentage >= 80) {
+        this.overallGrade = 'A';
+    } else if (this.overallPercentage >= 70) {
+        this.overallGrade = 'B+';
+    } else if (this.overallPercentage >= 60) {
+        this.overallGrade = 'B';
+    } else if (this.overallPercentage >= 50) {
+        this.overallGrade = 'C+';
+    } else if (this.overallPercentage >= 45) {
+        this.overallGrade = 'C';
+    } else if (this.overallPercentage >= 35) {
+        this.overallGrade = 'D';
+    } else {
+        this.overallGrade = 'F';
+    }
+});
+
+// One Performance Record Per Student Per Batch
+studentPerformanceSchema.index(
+    { studentId: 1, batchId: 1 },
+    { unique: true }
+);
+
+const StudentPerformance = mongoose.model(
+    'StudentPerformance',
+    studentPerformanceSchema
+);
+
 export default StudentPerformance;

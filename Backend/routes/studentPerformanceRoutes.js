@@ -1,24 +1,20 @@
 import express from 'express';
 import {
-    calculatePerformance,
-    getStudentPerformance,
     getBatchPerformance,
-    updateRemarks,
-    getPerformanceSummary
+    calculatePerformance
 } from '../controllers/studentPerformanceController.js';
 import { protect, trainerOnly } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
+// All routes require authentication
 router.use(protect);
+router.use(trainerOnly);
 
-// Trainer routes
-router.post('/calculate/:studentId', trainerOnly, calculatePerformance);
-router.put('/:id/remarks', trainerOnly, updateRemarks);
-router.get('/summary/:batchId', trainerOnly, getPerformanceSummary);
-router.get('/batch/:batchId', trainerOnly, getBatchPerformance);
+// Get batch performance
+router.get('/batch/:batchId', getBatchPerformance);
 
-// Get routes
-router.get('/:studentId', getStudentPerformance);
+// Calculate performance
+router.post('/calculate/:studentId', calculatePerformance);
 
 export default router;
