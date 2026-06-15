@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 import {
   FaBars, FaBell, FaEnvelope, FaSignOutAlt, FaChevronLeft, FaChevronRight,
   FaTachometerAlt, FaUsers, FaChartLine, FaFileAlt, FaPhoneAlt,
-  FaCog, FaClock, FaTimes, FaPhone, 
+  FaCog, FaClock, FaTimes, FaPhone,
   FaEnvelope as FaEnvelopeIcon, FaSpinner, FaArrowUp, FaArrowDown,
   FaCalendarAlt, FaUserGraduate, FaPhoneVolume, FaUserTie
 } from 'react-icons/fa';
@@ -59,7 +59,7 @@ const DashboardOverview = ({ user }) => {
     conversionRate: 0,
     weeklyData: [0, 0, 0, 0, 0, 0, 0]
   });
-  
+
   const [courses, setCourses] = useState([]);
   const [pendingFollowups, setPendingFollowups] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
@@ -74,12 +74,12 @@ const DashboardOverview = ({ user }) => {
       const currentUser = getCurrentUser();
       const userId = getCurrentUserId();
       const userRole = getCurrentUserRole();
-      
+
       console.log('=== DASHBOARD DEBUG ===');
       console.log('Current User:', currentUser?.name);
       console.log('User Role:', userRole);
       console.log('User ID:', userId);
-      
+
       let leads = [];
       let calls = [];
       let admissions = [];
@@ -110,25 +110,25 @@ const DashboardOverview = ({ user }) => {
             api.get('/calls'),
             api.get('/admissions')
           ]);
-          
+
           const allLeads = leadsRes.data.success ? leadsRes.data.data : [];
           const allCalls = callsRes.data.success ? callsRes.data.data : [];
           const allAdmissions = admissionsRes.data.success ? admissionsRes.data.data : [];
-          
-          leads = allLeads.filter(l => 
-            l.assignedTo === userId || 
-            l.counselorId === userId || 
+
+          leads = allLeads.filter(l =>
+            l.assignedTo === userId ||
+            l.counselorId === userId ||
             l.counselorId?._id === userId ||
             l.assignedTo?._id === userId
           );
-          
-          calls = allCalls.filter(c => 
-            c.counselorId === userId || 
+
+          calls = allCalls.filter(c =>
+            c.counselorId === userId ||
             c.counselorId?._id === userId
           );
-          
-          admissions = allAdmissions.filter(a => 
-            a.counselorId === userId || 
+
+          admissions = allAdmissions.filter(a =>
+            a.counselorId === userId ||
             a.counselorId?._id === userId
           );
         }
@@ -146,7 +146,7 @@ const DashboardOverview = ({ user }) => {
       today.setHours(0, 0, 0, 0);
       const thisWeekStart = new Date(today);
       thisWeekStart.setDate(today.getDate() - today.getDay());
-      
+
       const newLeadsThisWeek = leads.filter(lead => new Date(lead.createdAt || lead.enquiryDate) >= thisWeekStart).length;
       const todayCalls = calls.filter(call => {
         const callDate = new Date(call.callTime || call.createdAt);
@@ -165,7 +165,7 @@ const DashboardOverview = ({ user }) => {
         const course = lead.courseInterest || lead.course || 'Other';
         courseMap.set(course, (courseMap.get(course) || 0) + 1);
       });
-      
+
       const courseData = Array.from(courseMap.entries())
         .map(([name, count]) => ({ name, count }))
         .slice(0, 4);
@@ -214,11 +214,11 @@ const DashboardOverview = ({ user }) => {
         conversionRate,
         weeklyData
       });
-      
+
       setCourses(courseData);
       setPendingFollowups(pendingData);
       setRecentActivities(activities);
-      
+
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
@@ -443,10 +443,10 @@ const CounselorDashboard = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = getCurrentUser();
-    
+
     console.log('=== COUNSELOR DASHBOARD ===');
     console.log('Token exists:', !!token);
-    
+
     if (userData) {
       setUser(userData);
       console.log('✅ User loaded:', userData.name);
@@ -455,7 +455,7 @@ const CounselorDashboard = () => {
     } else {
       console.log('❌ No user data found');
     }
-    
+
     if (!token || !userData) {
       navigate('/login');
     }
@@ -491,9 +491,9 @@ const CounselorDashboard = () => {
   };
 
   const displayName = user?.name || 'Counselor';
-  const displayRole = user?.role === 'counselor' ? 'Counselor' : 
-                      user?.role === 'admin_manager' ? 'Admin Manager' : 
-                      user?.role === 'super_admin' ? 'Super Admin' : 'Counselor';
+  const displayRole = user?.role === 'counselor' ? 'Counselor' :
+    user?.role === 'admin_manager' ? 'Admin Manager' :
+      user?.role === 'super_admin' ? 'Super Admin' : 'Counselor';
 
   return (
     <div className={`${styles.app} ${sidebarCollapsed ? styles.appCollapsed : ''}`}>

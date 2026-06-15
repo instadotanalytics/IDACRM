@@ -14,7 +14,11 @@ import testRoutes from './routes/testRoutes.js';
 import assignmentRoutes from './routes/assignmentRoutes.js';
 import courseMaterialRoutes from './routes/courseMaterialRoutes.js';
 import studentPerformanceRoutes from './routes/studentPerformanceRoutes.js';
-
+import companyRoutes from './routes/companyRoutes.js';
+import placementDriveRoutes from './routes/placementDriveRoutes.js';
+import hrStudentRoutes from './routes/hrStudentsroutes.js';
+import hrInterviewRoutes from './routes/hrInterviewroutes.js';
+import hrDailyReportRoutes from './routes/hrReportroutes.js';
 
 dotenv.config();
 
@@ -53,6 +57,12 @@ app.use('/api/assignments', assignmentRoutes);
 app.use('/api/student-performance', studentPerformanceRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/course-materials', courseMaterialRoutes);
+app.use('/api/companies', companyRoutes);
+app.use('/api/placement-drives', placementDriveRoutes);
+app.use('/api/hr-students', hrStudentRoutes);
+app.use('/api/hr-interviews', hrInterviewRoutes);
+app.use('/api/hr-daily-reports', hrDailyReportRoutes);
+
 
 // Error handler — sabse neeche rakho
 app.use((err, req, res, next) => {
