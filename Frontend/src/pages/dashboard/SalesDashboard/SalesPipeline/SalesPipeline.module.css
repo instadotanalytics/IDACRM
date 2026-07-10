@@ -1,0 +1,545 @@
+/* SalesPipeline.module.css */
+
+.container {
+  animation: fadeUp 0.4s ease;
+}
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header h2 {
+  font-size: 22px;
+  color: #810b38;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+.subtext {
+  font-size: 13px;
+  color: #666;
+  margin: 0;
+}
+.subtext strong {
+  color: #810b38;
+}
+
+.primaryBtn {
+  background: #810b38;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+.primaryBtn:hover {
+  background: #6b0930;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(129, 11, 56, 0.3);
+}
+.primaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ─── KANBAN ─── */
+.kanban {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(270px, 1fr);
+  gap: 18px;
+  overflow-x: auto;
+  padding-bottom: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(129, 11, 56, 0.25) transparent;
+}
+.kanban::-webkit-scrollbar {
+  height: 7px;
+}
+.kanban::-webkit-scrollbar-thumb {
+  background: rgba(129, 11, 56, 0.25);
+  border-radius: 10px;
+}
+
+.column {
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 18px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 270px;
+}
+
+/* ─── COLUMN HEADER ─── */
+.colHeader {
+  padding: 14px 16px 12px;
+  background: white;
+  border-radius: 18px 18px 0 0;
+  border-top: 4px solid var(--stage-color, #810b38);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.colTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.colDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.colTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+.colMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.colCount {
+  background: #f1e2d1;
+  color: #810b38;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.colValue {
+  font-size: 13px;
+  color: #1a1a2e;
+  font-weight: 700;
+}
+
+/* ─── CARDS WRAPPER ─── */
+.cards {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 140px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* ─── DEAL CARD ─── */
+.dealCard {
+  position: relative;
+  background: white;
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+  border-left: 4px solid var(--stage-color, #810b38);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.22s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dealCard:hover {
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
+  transform: translateY(-3px);
+}
+.dealCard:hover .dealActions {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateY(0);
+}
+
+.dealActions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 2px;
+  background: white;
+  border-radius: 8px;
+  padding: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: all 0.18s ease;
+}
+.iconBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  font-size: 12px;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+}
+.iconBtn:hover {
+  background: #f1e2d1;
+  color: #810b38;
+}
+.editBtn:hover {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.delBtn:hover {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.dealName {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a2e;
+  line-height: 1.3;
+  padding-right: 60px;
+}
+
+.dealCompany {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #888;
+}
+.dealCompany svg {
+  font-size: 10px;
+  color: #aaa;
+}
+
+.dealValueRow {
+  margin-top: 2px;
+}
+.dealValue {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--stage-color, #810b38);
+  letter-spacing: -0.3px;
+}
+
+/* Probability bar */
+.probWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.probTrack {
+  flex: 1;
+  height: 6px;
+  background: #f0f0f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.probFill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.6s ease;
+}
+.probLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: #555;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* Footer: rep + date */
+.dealFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f0f0;
+}
+.repChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.repAvatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.repName {
+  font-size: 11px;
+  color: #666;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dealDate {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #999;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.dealDate svg {
+  font-size: 9px;
+}
+
+.emptyCol {
+  text-align: center;
+  color: #bbb;
+  padding: 30px 10px;
+  font-size: 12px;
+  border: 1.5px dashed #e0d4c4;
+  border-radius: 12px;
+}
+
+/* ─── MODALS ─── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.modal {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 580px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 22px;
+  border-bottom: 1px solid #eee;
+}
+.modalHeader h3 {
+  margin: 0;
+  font-size: 17px;
+  color: #810b38;
+  font-weight: 700;
+}
+.modalClose {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #666;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+.modalClose:hover {
+  background: #ffebee;
+  color: #c62828;
+}
+.modalBody {
+  padding: 22px;
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.formGroup.fullWidth {
+  grid-column: 1 / -1;
+}
+.formGroup label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+.formGroup input,
+.formGroup select,
+.formGroup textarea {
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  background: white;
+  resize: vertical;
+  font-family: inherit;
+}
+.formGroup input:focus,
+.formGroup select:focus,
+.formGroup textarea:focus {
+  border-color: #810b38;
+}
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 22px;
+  border-top: 1px solid #eee;
+}
+.cancelBtn {
+  background: #f5f5f5;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+}
+.cancelBtn:hover {
+  background: #eee;
+}
+
+.viewBody {
+  overflow: hidden;
+}
+.viewHeader {
+  padding: 24px;
+  color: white;
+  text-align: center;
+}
+.viewHeader h4 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+.viewHeader span {
+  font-size: 13px;
+  opacity: 0.9;
+}
+.viewGrid {
+  padding: 16px 22px;
+}
+.viewRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+}
+.viewKey {
+  color: #666;
+}
+.viewVal {
+  color: #1a1a2e;
+  font-weight: 600;
+}
+
+.confirmModal {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 340px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.2s ease;
+}
+.confirmModal h4 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #1a1a2e;
+}
+.confirmModal p {
+  color: #666;
+  font-size: 14px;
+  margin: 0 0 22px;
+}
+.confirmActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.deleteBtn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+.deleteBtn:hover {
+  background: #dc2626;
+}
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 992px) {
+  .kanban {
+    grid-auto-columns: minmax(240px, 1fr);
+  }
+}
+@media (max-width: 480px) {
+  .kanban {
+    grid-auto-columns: minmax(220px, 1fr);
+    gap: 12px;
+  }
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  .dealValue {
+    font-size: 17px;
+  }
+}

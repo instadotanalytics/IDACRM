@@ -19,6 +19,8 @@ import placementDriveRoutes from './routes/placementDriveRoutes.js';
 import hrStudentRoutes from './routes/hrStudentsroutes.js';
 import hrInterviewRoutes from './routes/hrInterviewroutes.js';
 import hrDailyReportRoutes from './routes/hrReportroutes.js';
+import salesDashboardRoutes from './routes/salesDashboardRoutes.js';
+
 
 dotenv.config();
 
@@ -62,6 +64,7 @@ app.use('/api/placement-drives', placementDriveRoutes);
 app.use('/api/hr-students', hrStudentRoutes);
 app.use('/api/hr-interviews', hrInterviewRoutes);
 app.use('/api/hr-daily-reports', hrDailyReportRoutes);
+app.use('/api/sales', salesDashboardRoutes);
 
 
 // Error handler — sabse neeche rakho

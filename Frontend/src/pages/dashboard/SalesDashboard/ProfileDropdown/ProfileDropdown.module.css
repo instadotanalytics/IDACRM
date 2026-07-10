@@ -1,0 +1,227 @@
+/* ProfileDropdown.module.css */
+
+.wrapper {
+  position: relative;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 40px;
+  padding: 6px 14px 6px 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+}
+.trigger:hover,
+.trigger.active {
+  background: rgba(255, 255, 255, 0.2);
+}
+.trigger:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: white;
+  flex-shrink: 0;
+}
+.info {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+.name {
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.role {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+.chevron {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  transition: transform 0.25s;
+  flex-shrink: 0;
+}
+.chevron.rotated {
+  transform: rotate(180deg);
+}
+
+/* Spin animation — shared by avatar and sign-out icon */
+.spin {
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ─── DROPDOWN ─── */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 260px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid rgba(129, 11, 56, 0.12);
+  border-radius: 18px;
+  box-shadow: 0 16px 48px rgba(129, 11, 56, 0.15);
+  overflow: hidden;
+  z-index: 1000;
+  opacity: 0;
+  transform: translateY(-10px) scale(0.97);
+  pointer-events: none;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dropdown.open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: all;
+}
+
+.profileSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 16px 12px;
+  background: rgba(129, 11, 56, 0.04);
+}
+.bigAvatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #810b38;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  color: white;
+  flex-shrink: 0;
+}
+.profileInfo {
+  display: flex;
+  flex-direction: column;
+}
+.profileName {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+.profileRole {
+  font-size: 12px;
+  color: #810b38;
+  font-weight: 500;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  font-size: 12px;
+  color: #555;
+}
+.metaRow svg {
+  color: #810b38;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.divider {
+  height: 1px;
+  background: rgba(129, 11, 56, 0.1);
+  margin: 6px 0;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1a1a2e;
+  transition: background 0.2s;
+  text-align: left;
+}
+.menuItem svg {
+  color: #810b38;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.menuItem:hover {
+  background: rgba(129, 11, 56, 0.06);
+  color: #810b38;
+}
+
+/* Sign Out button */
+.menuItem.logout {
+  color: #e53e3e;
+  margin-bottom: 4px;
+}
+.menuItem.logout svg {
+  color: #e53e3e;
+}
+.menuItem.logout:hover {
+  background: #fff5f5;
+}
+
+/* While sign-out is in progress */
+.menuItem.logoutBusy {
+  opacity: 0.65;
+  cursor: not-allowed;
+  color: #e53e3e;
+}
+.menuItem.logoutBusy:hover {
+  background: none;
+}
+.menuItem.logoutBusy svg {
+  color: #e53e3e;
+}
+
+@media (max-width: 768px) {
+  .info {
+    display: none;
+  }
+  .chevron {
+    display: none;
+  }
+  .trigger {
+    padding: 5px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+  }
+  .dropdown {
+    right: -10px;
+    width: 240px;
+  }
+}

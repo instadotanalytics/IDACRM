@@ -1,0 +1,386 @@
+/* TargetsTracker.module.css */
+.container {
+  animation: fadeUp 0.4s ease;
+}
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header h2 {
+  font-size: 22px;
+  color: #810b38;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-weight: 700;
+}
+
+.primaryBtn {
+  background: #810b38;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+.primaryBtn:hover {
+  background: #6b0930;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(129, 11, 56, 0.3);
+}
+.primaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ─── TARGET CARDS ─── */
+.targetsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.targetCard {
+  background: white;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.metricName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a2e;
+  display: block;
+}
+.metricPeriod {
+  font-size: 11px;
+  color: #888;
+}
+.cardActions {
+  display: flex;
+  gap: 4px;
+}
+.iconBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #bbb;
+  font-size: 13px;
+  padding: 5px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+}
+.iconBtn:hover {
+  background: #f1e2d1;
+  color: #810b38;
+}
+.delBtn:hover {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.values {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 10px;
+}
+.slash {
+  color: #bbb;
+  margin: 0 4px;
+}
+.targetVal {
+  color: #555;
+  font-weight: 500;
+}
+
+.barTrack {
+  height: 8px;
+  background: #eee;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.barFill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.8s ease;
+}
+
+.cardBottom {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.pctLabel {
+  font-weight: 700;
+}
+.repLabel {
+  color: #888;
+}
+
+/* ─── TABLE ─── */
+.tableCard {
+  background: white;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+.tableCard h3 {
+  margin: 0 0 16px;
+  font-size: 15px;
+  color: #1a1a2e;
+  font-weight: 600;
+}
+.tableWrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th {
+  text-align: left;
+  padding: 10px 12px;
+  background: #f8f8f8;
+  color: #810b38;
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+  color: #1a1a2e;
+}
+.table tbody tr:hover td {
+  background: rgba(129, 11, 56, 0.02);
+}
+
+.inlineBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.inlineFill {
+  height: 6px;
+  border-radius: 10px;
+  min-width: 40px;
+  transition: width 0.6s ease;
+}
+.inlineBar span {
+  font-size: 12px;
+  color: #555;
+  white-space: nowrap;
+}
+
+/* ─── MODALS ─── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.modal {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 22px;
+  border-bottom: 1px solid #eee;
+}
+.modalHeader h3 {
+  margin: 0;
+  font-size: 17px;
+  color: #810b38;
+  font-weight: 700;
+}
+.modalClose {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #666;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+}
+.modalClose:hover {
+  background: #ffebee;
+  color: #c62828;
+}
+.modalBody {
+  padding: 22px;
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.formGroup.fullWidth {
+  grid-column: 1 / -1;
+}
+.formGroup label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+.formGroup input,
+.formGroup select {
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  background: white;
+}
+.formGroup input:focus,
+.formGroup select:focus {
+  border-color: #810b38;
+}
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 22px;
+  border-top: 1px solid #eee;
+}
+.cancelBtn {
+  background: #f5f5f5;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #555;
+}
+.cancelBtn:hover {
+  background: #eee;
+}
+
+.confirmModal {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 320px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.2s ease;
+}
+.confirmModal h4 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #1a1a2e;
+}
+.confirmModal p {
+  color: #666;
+  font-size: 14px;
+  margin: 0 0 22px;
+}
+.confirmActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.deleteBtn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+.deleteBtn:hover {
+  background: #dc2626;
+}
+
+@media (max-width: 768px) {
+  .targetsGrid {
+    grid-template-columns: 1fr;
+  }
+  .table th,
+  .table td {
+    padding: 9px 8px;
+    font-size: 12px;
+  }
+}
+@media (max-width: 480px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
