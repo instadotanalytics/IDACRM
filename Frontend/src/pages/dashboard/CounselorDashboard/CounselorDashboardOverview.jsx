@@ -24,7 +24,7 @@ import {
   ArcElement,
   Filler,
 } from "chart.js";
-import styles from "./CounselorDashboard.module.css";
+import styles from "./CounselorDashboardOverview.module.css";
 import api, {
   getCurrentUser,
   getCurrentUserId,
@@ -237,7 +237,7 @@ const CounselorDashboardOverview = () => {
         label: "Leads",
         data: stats.weeklyData,
         borderColor: "#6366f1",
-        backgroundColor: "rgba(99, 102, 241, 0.1)",
+        backgroundColor: "rgba(99, 102, 241, 0.12)",
         fill: true,
         tension: 0.4,
         pointBackgroundColor: "#6366f1",
@@ -249,6 +249,9 @@ const CounselorDashboardOverview = () => {
     ],
   };
 
+  // Recalibrated for a LIGHT card background (the originals -
+  // rgba(255,255,255,0.1) gridlines and #a0a0a0 ticks - were tuned for
+  // a dark page and were barely visible here).
   const lineChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -258,11 +261,14 @@ const CounselorDashboardOverview = () => {
     },
     scales: {
       y: {
-        grid: { color: "rgba(255,255,255,0.1)" },
-        ticks: { color: "#a0a0a0" },
+        grid: { color: "rgba(22, 33, 62, 0.06)" },
+        ticks: { color: "#5b6478" },
         beginAtZero: true,
       },
-      x: { grid: { display: false }, ticks: { color: "#a0a0a0" } },
+      x: {
+        grid: { display: false },
+        ticks: { color: "#5b6478" },
+      },
     },
   };
 
@@ -273,10 +279,10 @@ const CounselorDashboardOverview = () => {
         data: courses.map((c) => c.count),
         backgroundColor: [
           "#6366f1",
-          "#10b981",
-          "#f59e0b",
-          "#ef4444",
-          "#8b5cf6",
+          "#3fae72",
+          "#f2b84b",
+          "#f0806c",
+          "#9b7ede",
         ],
         borderWidth: 0,
       },
@@ -290,7 +296,7 @@ const CounselorDashboardOverview = () => {
     plugins: {
       legend: {
         position: "bottom",
-        labels: { color: "#a0a0a0", font: { size: 11 } },
+        labels: { color: "#5b6478", font: { size: 11 } },
       },
     },
   };
@@ -344,11 +350,11 @@ const CounselorDashboardOverview = () => {
         <div className={styles.statCard}>
           <div
             className={styles.statIconWrapper}
-            style={{ background: "rgba(16, 185, 129, 0.15)" }}
+            style={{ background: "rgba(63, 174, 114, 0.15)" }}
           >
             <FaPhoneVolume
               className={styles.statIcon}
-              style={{ color: "#10b981" }}
+              style={{ color: "#3fae72" }}
             />
           </div>
           <div className={styles.statContent}>
@@ -364,9 +370,9 @@ const CounselorDashboardOverview = () => {
         <div className={styles.statCard}>
           <div
             className={styles.statIconWrapper}
-            style={{ background: "rgba(245, 158, 11, 0.15)" }}
+            style={{ background: "rgba(242, 184, 75, 0.18)" }}
           >
-            <FaClock className={styles.statIcon} style={{ color: "#f59e0b" }} />
+            <FaClock className={styles.statIcon} style={{ color: "#d9971f" }} />
           </div>
           <div className={styles.statContent}>
             <span className={styles.statValue}>{stats.pendingFollowups}</span>
@@ -380,11 +386,11 @@ const CounselorDashboardOverview = () => {
         <div className={styles.statCard}>
           <div
             className={styles.statIconWrapper}
-            style={{ background: "rgba(139, 92, 246, 0.15)" }}
+            style={{ background: "rgba(155, 126, 222, 0.15)" }}
           >
             <FaUserGraduate
               className={styles.statIcon}
-              style={{ color: "#8b5cf6" }}
+              style={{ color: "#9b7ede" }}
             />
           </div>
           <div className={styles.statContent}>

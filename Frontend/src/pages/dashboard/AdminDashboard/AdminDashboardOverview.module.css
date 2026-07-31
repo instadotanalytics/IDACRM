@@ -1,0 +1,294 @@
+/* AdminDashboardOverview.module.css
+   Dedicated, self-contained light theme for the embedded Tasks & Admin
+   overview widget (rendered inside SuperAdminDashboard's content area).
+   Several of these classes (chartsSection, donutChart, donutSegment,
+   placementStats, progressBar, statSub...) were referenced by the
+   component but never actually defined anywhere before - this file
+   defines all of them from scratch. Intentionally does NOT touch
+   AdminDashboard.module.css, which the full standalone Admin page may
+   still rely on for its dark theme. */
+
+/* Stats grid */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  background: #ffffff;
+  border: 1px solid #ecebe5;
+  border-radius: 18px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 1px 2px rgba(22, 33, 62, 0.04);
+  transition: all 0.25s ease;
+}
+
+.statCard:hover {
+  transform: translateY(-3px);
+  border-color: transparent;
+  box-shadow: 0 12px 28px -8px rgba(22, 33, 62, 0.12);
+}
+
+.statIcon {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+  flex-shrink: 0;
+}
+
+.statInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.statValue {
+  font-size: 25px;
+  font-weight: 700;
+  color: #16213e;
+  line-height: 1.2;
+}
+
+.statLabel {
+  font-size: 12.5px;
+  color: #5b6478;
+  font-weight: 600;
+}
+
+.statSub {
+  font-size: 11px;
+  color: #97a0b3;
+  margin-top: 2px;
+}
+
+/* Charts section - 3 cards in a row on wide screens */
+.chartsSection {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.chartCard {
+  background: #ffffff;
+  border: 1px solid #ecebe5;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 1px 2px rgba(22, 33, 62, 0.04);
+}
+
+.chartCard h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #16213e;
+  margin-bottom: 16px;
+}
+
+/* Attendance donut, rendered as a clean single stacked bar rather than
+   three separate full-width rows (which is what rendered before, since
+   these classes had no styling at all) */
+.donutChart {
+  display: flex;
+  align-items: stretch;
+  height: 38px;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f0eee8;
+  margin-top: 6px;
+}
+
+.donutSegment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+/* Sales conversion bar chart */
+.barChart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 14px;
+  height: 190px;
+  padding-top: 24px;
+  border-bottom: 1px solid #ecebe5;
+}
+
+.bar {
+  flex: 1;
+  max-width: 68px;
+  min-height: 24px;
+  border-radius: 8px 8px 3px 3px;
+  background: linear-gradient(180deg, #5fc98d, #3fae72);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8px;
+  transition: filter 0.2s ease;
+}
+
+.bar:hover {
+  filter: brightness(1.08);
+}
+
+.bar span {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.barLabelsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.barLabelsRow span {
+  flex: 1;
+  max-width: 68px;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #5b6478;
+}
+
+/* Placement analytics progress bars */
+.placementStats {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 6px;
+}
+
+.placementItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.placementItem span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #16213e;
+}
+
+.progressBar {
+  width: 100%;
+  height: 10px;
+  background: #f0eee8;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #5fc98d, #3fae72);
+  border-radius: 20px;
+  transition: width 0.5s ease;
+}
+
+/* Recent activities */
+.recentActivities {
+  background: #ffffff;
+  border: 1px solid #ecebe5;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 1px 2px rgba(22, 33, 62, 0.04);
+}
+
+.recentActivities h3 {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #16213e;
+  margin-bottom: 14px;
+}
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.activityItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px;
+  border-radius: 12px;
+  transition: background 0.2s ease;
+}
+
+.activityItem:hover {
+  background: #f7f6f2;
+}
+
+.activityIcon {
+  width: 40px;
+  height: 40px;
+  background: rgba(95, 201, 141, 0.14);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.activityContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.activityContent p {
+  font-size: 13.5px;
+  color: #16213e;
+  font-weight: 500;
+  margin-bottom: 3px;
+}
+
+.activityContent span {
+  font-size: 11px;
+  color: #97a0b3;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .chartsSection {
+    grid-template-columns: 1fr;
+  }
+
+  .statValue {
+    font-size: 21px;
+  }
+}

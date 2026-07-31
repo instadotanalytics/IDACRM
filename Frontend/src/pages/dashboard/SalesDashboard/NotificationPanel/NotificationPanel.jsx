@@ -1,5 +1,5 @@
-// NotificationPanel.jsx
-import React, { useEffect, useRef, useState } from "react";
+// NotificationPanel.jsx - UPDATED: removed defaultNotifs (was causing 500 errors on mark-as-read)
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   FaTimes,
   FaBell,
@@ -9,7 +9,13 @@ import {
   FaCheckCircle,
   FaArrowLeft,
   FaEnvelopeOpen,
+  FaWifi,
+  FaSignal,
 } from "react-icons/fa";
+import { useSocket } from "../../../../context/SocketContext";
+import { useSocketEvents } from "../../../../hooks/useSocketEvents";
+import { markNotificationRead, markAllNotificationsRead } from "../salesApi";
+import { toast } from "react-hot-toast";
 import styles from "./NotificationPanel.module.css";
 
 const iconMap = {
@@ -19,70 +25,31 @@ const iconMap = {
   default: <FaBell />,
 };
 
-const defaultNotifs = [
-  {
-    _id: "1",
-    type: "deal",
-    title: "Contract Signed",
-    message: "Shine Bright signed the contract for $100,000",
-    time: "2 hours ago",
-    read: false,
-  },
-  {
-    _id: "2",
-    type: "call",
-    title: "Missed Call",
-    message: "Rahul Sharma tried to reach you at 3:30 PM",
-    time: "3 hours ago",
-    read: false,
-  },
-  {
-    _id: "3",
-    type: "email",
-    title: "Proposal Viewed",
-    message: "Fabricatorz opened your proposal email",
-    time: "5 hours ago",
-    read: true,
-  },
-  {
-    _id: "4",
-    type: "deal",
-    title: "New Lead Assigned",
-    message: "Ankit Verma from Business Hub assigned to you",
-    time: "Yesterday",
-    read: true,
-  },
-  {
-    _id: "5",
-    type: "call",
-    title: "Follow-up Due",
-    message: "Follow-up call with Neha Gupta is due today",
-    time: "Yesterday",
-    read: true,
-  },
-];
-
 const VISIBLE_LIMIT = 4;
+
+// Stable reference so an omitted `notifications` prop doesn't create a new
+// array on every render (that was causing an infinite effect/re-render loop,
+// which is why useSocketEvents kept unregistering/re-registering rapidly).
+const EMPTY_NOTIFICATIONS = [];
 
 const NotificationPanel = ({
   isOpen,
   onClose,
-  notifications = [],
+  notifications = EMPTY_NOTIFICATIONS,
   onMarkRead,
   onMarkAll,
 }) => {
   const panelRef = useRef(null);
+  const { isConnected } = useSocket();
 
-  // Internal source of truth so read/unread state actually persists & re-renders.
-  const [notifList, setNotifList] = useState(() =>
-    notifications.length > 0 ? notifications : defaultNotifs,
-  );
+  // Internal state — starts from whatever the parent passes in (real data only)
+  const [notifList, setNotifList] = useState(notifications);
   const [showAll, setShowAll] = useState(false);
-  const [selected, setSelected] = useState(null); // notification being viewed in detail
+  const [selected, setSelected] = useState(null);
 
-  // If parent later supplies real notifications (e.g. after an API fetch), adopt them.
+  // Keep in sync whenever the parent supplies new/updated notifications
   useEffect(() => {
-    if (notifications.length > 0) setNotifList(notifications);
+    setNotifList(notifications);
   }, [notifications]);
 
   // Reset to list view + collapsed state whenever the panel closes
@@ -104,7 +71,7 @@ const NotificationPanel = ({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [isOpen, onClose]);
 
-  // Close on Escape (or go back from detail view first)
+  // Close on Escape
   useEffect(() => {
     const handleKey = (e) => {
       if (e.key !== "Escape") return;
@@ -115,14 +82,43 @@ const NotificationPanel = ({
     return () => document.removeEventListener("keydown", handleKey);
   }, [isOpen, onClose, selected]);
 
+  // Socket event handlers — wrapped in useCallback so their identity stays
+  // stable across renders. Without this, useSocketEvents (which likely
+  // depends on these functions) would tear down and re-register its
+  // listeners on every single render.
+  const handleNewNotification = useCallback((notification) => {
+    setNotifList((prev) => [notification, ...prev]);
+    toast(notification.title, { icon: "🔔" });
+  }, []);
+
+  const handleNotificationRead = useCallback((data) => {
+    setNotifList((prev) =>
+      prev.map((n) =>
+        n._id === data.notificationId ? { ...n, read: true } : n,
+      ),
+    );
+  }, []);
+
+  // Use socket events
+  useSocketEvents({
+    onNewNotification: handleNewNotification,
+    onNotificationRead: handleNotificationRead,
+  });
+
   const unreadCount = notifList.filter((n) => !n.read).length;
   const visibleList = showAll ? notifList : notifList.slice(0, VISIBLE_LIMIT);
 
-  const markRead = (id) => {
+  const markRead = async (id) => {
     setNotifList((prev) =>
       prev.map((n) => (n._id === id ? { ...n, read: true } : n)),
     );
     onMarkRead && onMarkRead(id);
+
+    try {
+      await markNotificationRead(id);
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
   };
 
   const markUnread = (id) => {
@@ -131,9 +127,16 @@ const NotificationPanel = ({
     );
   };
 
-  const handleMarkAll = () => {
+  const handleMarkAll = async () => {
     setNotifList((prev) => prev.map((n) => ({ ...n, read: true })));
     onMarkAll && onMarkAll();
+
+    try {
+      await markAllNotificationsRead();
+      toast.success("All notifications marked as read");
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
   };
 
   const openDetail = (notif) => {
@@ -156,6 +159,21 @@ const NotificationPanel = ({
         ref={panelRef}
         className={`${styles.panel} ${isOpen ? styles.open : ""}`}
       >
+        {/* Connection Status */}
+        <div className={styles.connectionStatus}>
+          {isConnected ? (
+            <>
+              <FaWifi className={styles.onlineIcon} />
+              <span className={styles.onlineText}>Live</span>
+            </>
+          ) : (
+            <>
+              <FaSignal className={styles.offlineIcon} />
+              <span className={styles.offlineText}>Offline</span>
+            </>
+          )}
+        </div>
+
         {/* ─── LIST HEADER ─── */}
         {!selected && (
           <div className={styles.header}>

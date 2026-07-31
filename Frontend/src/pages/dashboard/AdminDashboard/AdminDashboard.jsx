@@ -34,10 +34,18 @@ import {
   FaStar,
   FaRegCalendarAlt,
   FaRegFileAlt,
+  FaCheckCircle,
+  FaArrowLeft,
+  FaCircle,
 } from "react-icons/fa";
+import { FiSend } from "react-icons/fi";
 import { IoMdSettings } from "react-icons/io";
 import { MdOutlineAccountBalance } from "react-icons/md";
 import styles from "./AdminDashboard.module.css";
+import api from "../../../services/api";
+import { getToken, getUser, clearAuth } from "../../../services/auth";
+import { useSocket } from "../../../context/SocketContext";
+import { useSocketEvents } from "../../../hooks/useSocketEvents";
 import BatchManagement from "../TrainerDashboard/Betch/BatchManagement";
 import TrainerAttendanceMarker from "../TrainerDashboard/AttendanceTable/TrainerAttendanceMarker";
 import Assignments from "../TrainerDashboard/Performance/Assignments";
@@ -155,10 +163,238 @@ const AdminDashboard = () => {
 
   const sidebarRef = useRef(null);
 
+  // Notifications
+  const [notifications, setNotifications] = useState([]);
+
+  // Messaging
+  const [conversations, setConversations] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState([]);
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [chatHistory, setChatHistory] = useState({});
+  const [chatLoading, setChatLoading] = useState(false);
+  const [showNewChatList, setShowNewChatList] = useState(false);
+  const [newMessage, setNewMessage] = useState("");
+  const [typingFrom, setTypingFrom] = useState(null);
+  const [onlineUserIds, setOnlineUserIds] = useState([]);
+  const typingTimeoutRef = useRef(null);
+
+  const { isConnected, reconnectSocket } = useSocket();
+
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) setUser(JSON.parse(userData));
+    const userData = getUser();
+    if (userData) setUser(userData);
+    fetchNotifications();
+    fetchConversations();
   }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get("/notifications");
+      if (res.data.success) {
+        setNotifications(res.data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    }
+  };
+
+  // ─── SOCKET.IO: live notifications ───────────────────────────────
+  const handleNewNotification = React.useCallback((notification) => {
+    setNotifications((prev) => [notification, ...prev]);
+    toast(notification.title, { icon: "🔔" });
+  }, []);
+
+  const handleNotificationRead = React.useCallback((data) => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n._id === data.notificationId ? { ...n, read: true } : n,
+      ),
+    );
+  }, []);
+
+  const userId = user?._id || user?.id;
+
+  const fetchConversations = async () => {
+    try {
+      const res = await api.get("/messages/conversations");
+      if (res.data.success) setConversations(res.data.data || []);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+    }
+  };
+
+  const fetchAvailableUsers = async () => {
+    try {
+      const res = await api.get("/messages/users/list");
+      if (res.data.success) setAvailableUsers(res.data.data || []);
+    } catch (error) {
+      console.error("Error fetching users list:", error);
+    }
+  };
+
+  const openMessagesPanel = () => {
+    setShowChat(!showChat);
+    setSelectedChat(null);
+    setShowNewChatList(false);
+    fetchConversations();
+    fetchAvailableUsers();
+  };
+
+  const openChat = async (chatUser) => {
+    const chatId = String(chatUser._id);
+    setSelectedChat({ ...chatUser, _id: chatId });
+    setShowNewChatList(false);
+    if (!chatHistory[chatId]) {
+      setChatLoading(true);
+      try {
+        const res = await api.get(`/messages/${chatId}`);
+        if (res.data.success) {
+          setChatHistory((prev) => ({
+            ...prev,
+            [chatId]: res.data.data || [],
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching chat thread:", error);
+      } finally {
+        setChatLoading(false);
+      }
+    }
+    try {
+      await api.put(`/messages/read-all/${chatId}`);
+      setConversations((prev) =>
+        prev.map((c) =>
+          String(c.user?._id) === chatId ? { ...c, unreadCount: 0 } : c,
+        ),
+      );
+    } catch (error) {
+      console.error("Error marking messages read:", error);
+    }
+  };
+
+  const handleTypingInput = (value) => {
+    setNewMessage(value);
+    if (!selectedChat) return;
+    emit("typing", { receiverId: selectedChat._id });
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      emit("stop-typing", { receiverId: selectedChat._id });
+    }, 1500);
+  };
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !selectedChat) return;
+    const text = newMessage.trim();
+    const chatId = String(selectedChat._id);
+    setNewMessage("");
+    emit("stop-typing", { receiverId: chatId });
+    try {
+      const res = await api.post("/messages", { receiverId: chatId, text });
+      if (res.data.success) {
+        setChatHistory((prev) => ({
+          ...prev,
+          [chatId]: [...(prev[chatId] || []), res.data.data],
+        }));
+        setConversations((prev) =>
+          prev.map((c) =>
+            String(c.user?._id) === chatId
+              ? { ...c, lastMessage: res.data.data }
+              : c,
+          ),
+        );
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.error("Failed to send message");
+    }
+  };
+
+  const unreadMessageCount = conversations.reduce(
+    (sum, c) => sum + (c.unreadCount || 0),
+    0,
+  );
+
+  const { emit } = useSocketEvents({
+    onNewNotification: handleNewNotification,
+    onNotificationRead: handleNotificationRead,
+    onNewMessage: (message) => {
+      // Backend emits new-message ONLY to receiver — we are always the receiver here
+      const otherUserId = String(message.sender?._id || message.sender);
+
+      setSelectedChat((current) => {
+        if (current && String(current._id) === otherUserId) {
+          setChatHistory((prev) => ({
+            ...prev,
+            [otherUserId]: [...(prev[otherUserId] || []), message],
+          }));
+          api.put(`/messages/${message._id}/read`).catch(() => {});
+        }
+        return current;
+      });
+
+      setConversations((prev) => {
+        const idx = prev.findIndex((c) => String(c.user?._id) === otherUserId);
+        if (idx !== -1) {
+          const updated = [...prev];
+          updated[idx] = {
+            ...updated[idx],
+            lastMessage: message,
+            unreadCount: (updated[idx].unreadCount || 0) + 1,
+          };
+          return updated;
+        }
+        fetchConversations();
+        return prev;
+      });
+
+      toast(`${message.sender?.name || "New message"}: ${message.text}`, {
+        icon: "💬",
+      });
+    },
+    onMessageRead: (data) => {
+      setChatHistory((prev) => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach((key) => {
+          updated[key] = updated[key].map((m) =>
+            m._id === data.messageId || data.all ? { ...m, read: true } : m,
+          );
+        });
+        return updated;
+      });
+    },
+    onTyping: (data) => setTypingFrom(data.senderId),
+    onStopTyping: () => setTypingFrom(null),
+    onUserOnline: (data) =>
+      setOnlineUserIds((prev) =>
+        prev.includes(data.userId) ? prev : [...prev, data.userId],
+      ),
+    onUserOffline: (data) =>
+      setOnlineUserIds((prev) => prev.filter((id) => id !== data.userId)),
+    onOnlineUsers: (data) => setOnlineUserIds(data.userIds || []),
+  });
+
+  const unreadNotifCount = notifications.filter((n) => !n.read).length;
+
+  const markNotifRead = async (id) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n._id === id ? { ...n, read: true } : n)),
+    );
+    try {
+      await api.put(`/notifications/${id}/read`);
+    } catch (error) {
+      console.error("Error marking notification read:", error);
+    }
+  };
+
+  const markAllNotifsRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      await api.put("/notifications/read-all");
+      toast.success("All notifications marked as read");
+    } catch (error) {
+      console.error("Error marking all notifications read:", error);
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -212,8 +448,8 @@ const AdminDashboard = () => {
   }, [mobileMenuOpen]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    clearAuth();
+    if (reconnectSocket) reconnectSocket(null);
     toast.success("Logged out successfully");
     navigate("/login");
   };
@@ -753,18 +989,65 @@ const AdminDashboard = () => {
           <div className={styles.panelHeader}>
             <h3>
               <FaBell /> Notifications
+              {unreadNotifCount > 0 && (
+                <span
+                  style={{
+                    background: "#ef4444",
+                    color: "white",
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    padding: "1px 6px",
+                    borderRadius: "20px",
+                    marginLeft: "8px",
+                  }}
+                >
+                  {unreadNotifCount}
+                </span>
+              )}
             </h3>
-            <button onClick={() => setShowNotifications(false)}>
-              <FaTimes />
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  color: isConnected ? "#22c55e" : "#ef4444",
+                }}
+              >
+                {isConnected ? "● Live" : "● Offline"}
+              </span>
+              {unreadNotifCount > 0 && (
+                <button onClick={markAllNotifsRead} title="Mark all read">
+                  <FaCheckCircle />
+                </button>
+              )}
+              <button onClick={() => setShowNotifications(false)}>
+                <FaTimes />
+              </button>
+            </div>
           </div>
           <div className={styles.notificationList}>
-            <div className={styles.notificationItem}>
-              <div className={styles.notifContent}>
-                <h4>No new notifications</h4>
-                <p>You are all caught up!</p>
+            {notifications.length === 0 ? (
+              <div className={styles.notificationItem}>
+                <div className={styles.notifContent}>
+                  <h4>No new notifications</h4>
+                  <p>You are all caught up!</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              notifications.map((n) => (
+                <div
+                  key={n._id}
+                  className={styles.notificationItem}
+                  style={{ cursor: "pointer", opacity: n.read ? 0.6 : 1 }}
+                  onClick={() => !n.read && markNotifRead(n._id)}
+                >
+                  <div className={styles.notifContent}>
+                    <h4>{n.title}</h4>
+                    <p>{n.message}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -773,16 +1056,286 @@ const AdminDashboard = () => {
         <div className={styles.chatPanel}>
           <div className={styles.panelHeader}>
             <h3>
-              <FaEnvelope /> Messages
+              {selectedChat ? (
+                <>
+                  <button
+                    onClick={() => setSelectedChat(null)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "inherit",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <FaArrowLeft />
+                  </button>
+                  {selectedChat.name}
+                  {onlineUserIds.includes(selectedChat._id) && (
+                    <FaCircle style={{ fontSize: 8, color: "#10b981" }} />
+                  )}
+                </>
+              ) : (
+                <>
+                  <FaEnvelope /> Messages
+                  {unreadMessageCount > 0 && (
+                    <span
+                      style={{
+                        background: "#ef4444",
+                        color: "white",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: "1px 6px",
+                        borderRadius: 20,
+                      }}
+                    >
+                      {unreadMessageCount}
+                    </span>
+                  )}
+                </>
+              )}
             </h3>
-            <button onClick={() => setShowChat(false)}>
-              <FaTimes />
-            </button>
-          </div>
-          <div className={styles.chatMessages}>
-            <div className={styles.emptyChat}>
-              <p>Select a contact to start messaging</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: isConnected ? "#22c55e" : "#ef4444",
+                }}
+              >
+                {isConnected ? "● Live" : "● Offline"}
+              </span>
+              {!selectedChat && (
+                <button
+                  onClick={() => setShowNewChatList((s) => !s)}
+                  title="New chat"
+                >
+                  <FaUserPlus />
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setShowChat(false);
+                  setSelectedChat(null);
+                }}
+              >
+                <FaTimes />
+              </button>
             </div>
+          </div>
+
+          <div className={styles.chatMessages}>
+            {selectedChat ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%",
+                }}
+              >
+                <div
+                  style={{
+                    flex: 1,
+                    overflowY: "auto",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                  }}
+                >
+                  {chatLoading ? (
+                    <div className={styles.emptyChat}>
+                      <p>Loading...</p>
+                    </div>
+                  ) : (chatHistory[selectedChat._id] || []).length === 0 ? (
+                    <div className={styles.emptyChat}>
+                      <p>Say hello to {selectedChat.name}</p>
+                    </div>
+                  ) : (
+                    (chatHistory[selectedChat._id] || []).map((m, idx) => {
+                      const list = chatHistory[selectedChat._id] || [];
+                      const senderId = m.sender?._id || m.sender;
+                      const isMine =
+                        String(senderId) !== String(selectedChat._id);
+                      const senderName = isMine
+                        ? user?.name || "You"
+                        : m.sender?.name || selectedChat.name;
+                      const prev = idx > 0 ? list[idx - 1] : null;
+                      const prevSenderId = prev
+                        ? prev.sender?._id || prev.sender
+                        : null;
+                      const showName =
+                        !prev || String(prevSenderId) !== String(senderId);
+                      return (
+                        <div
+                          key={m._id}
+                          style={{
+                            display: "flex",
+                            justifyContent: isMine ? "flex-end" : "flex-start",
+                          }}
+                        >
+                          <div
+                            style={{
+                              maxWidth: "75%",
+                              padding: "8px 12px",
+                              borderRadius: isMine
+                                ? "14px 14px 4px 14px"
+                                : "14px 14px 14px 4px",
+                              background: isMine
+                                ? "#a78bfa"
+                                : "rgba(255,255,255,0.08)",
+                              color: isMine
+                                ? "#1e1b4b"
+                                : "rgba(255,255,255,0.9)",
+                              fontSize: 13,
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 2,
+                            }}
+                          >
+                            {showName && (
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  opacity: 0.75,
+                                }}
+                              >
+                                {senderName}
+                              </span>
+                            )}
+                            <span>{m.text}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  {typingFrom === selectedChat._id && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontStyle: "italic",
+                        color: "rgba(255,255,255,0.4)",
+                      }}
+                    >
+                      {selectedChat.name} is typing...
+                    </div>
+                  )}
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    paddingTop: 12,
+                    borderTop: "1px solid rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={newMessage}
+                    placeholder="Type a message..."
+                    onChange={(e) => handleTypingInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") sendMessage();
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "10px 14px",
+                      borderRadius: 20,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "rgba(255,255,255,0.04)",
+                      color: "rgba(255,255,255,0.9)",
+                      outline: "none",
+                    }}
+                  />
+                  <button
+                    onClick={sendMessage}
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: "50%",
+                      border: "none",
+                      background: "#a78bfa",
+                      color: "#1e1b4b",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <FiSend />
+                  </button>
+                </div>
+              </div>
+            ) : showNewChatList ? (
+              <div>
+                {availableUsers.map((u) => (
+                  <div
+                    key={u._id}
+                    className={styles.notificationItem}
+                    style={{ cursor: "pointer", marginBottom: 8 }}
+                    onClick={() => openChat(u)}
+                  >
+                    <div className={styles.notifContent}>
+                      <h4>
+                        {u.name}
+                        {onlineUserIds.includes(u._id) && (
+                          <FaCircle
+                            style={{
+                              fontSize: 8,
+                              color: "#10b981",
+                              marginLeft: 8,
+                            }}
+                          />
+                        )}
+                      </h4>
+                      <p>{u.role}</p>
+                    </div>
+                  </div>
+                ))}
+                {availableUsers.length === 0 && (
+                  <div className={styles.emptyChat}>
+                    <p>No users available</p>
+                  </div>
+                )}
+              </div>
+            ) : conversations.filter((c) => c.user).length === 0 ? (
+              <div className={styles.emptyChat}>
+                <p>Select a contact to start messaging</p>
+              </div>
+            ) : (
+              <div>
+                {conversations
+                  .filter((c) => c.user)
+                  .map((c) => (
+                    <div
+                      key={c.user._id}
+                      className={styles.notificationItem}
+                      style={{
+                        cursor: "pointer",
+                        marginBottom: 8,
+                        opacity: c.unreadCount > 0 ? 1 : 0.7,
+                      }}
+                      onClick={() => openChat(c.user)}
+                    >
+                      <div className={styles.notifContent}>
+                        <h4>
+                          {c.user.name}
+                          {onlineUserIds.includes(c.user._id) && (
+                            <FaCircle
+                              style={{
+                                fontSize: 8,
+                                color: "#10b981",
+                                marginLeft: 8,
+                              }}
+                            />
+                          )}
+                        </h4>
+                        <p>{c.lastMessage?.text}</p>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1037,17 +1590,20 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div className={styles.headerRight}>
-            <button
-              className={styles.iconBtn}
-              onClick={() => setShowChat(!showChat)}
-            >
+            <button className={styles.iconBtn} onClick={openMessagesPanel}>
               <FaEnvelope />
+              {unreadMessageCount > 0 && (
+                <span className={styles.badge}>{unreadMessageCount}</span>
+              )}
             </button>
             <button
               className={styles.iconBtn}
               onClick={() => setShowNotifications(!showNotifications)}
             >
               <FaBell />
+              {unreadNotifCount > 0 && (
+                <span className={styles.badge}>{unreadNotifCount}</span>
+              )}
             </button>
             <div className={styles.userProfile}>
               <div className={styles.avatarSmall}>{getInitial(user?.name)}</div>

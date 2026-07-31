@@ -1018,6 +1018,12 @@
     }
 }
 
+@media (max-width: 500px) {
+    .tabs{
+          margin-left: -20px;
+    }
+}
+
 /* Add these styles for tracking display */
 
 .counselorCell {

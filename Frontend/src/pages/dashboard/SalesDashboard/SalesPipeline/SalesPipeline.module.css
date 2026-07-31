@@ -64,23 +64,15 @@
   cursor: not-allowed;
 }
 
-/* ─── KANBAN ─── */
+/* ─── KANBAN ───
+   Was a single horizontally-scrolling row (grid-auto-flow: column) - now
+   a fixed 4-columns-per-row grid. With 6 stages this naturally wraps:
+   row 1 = Prospect/Assessment/Proposal/Contracts, row 2 = Closed Won/Lost.
+   Column count steps down on narrower screens (see media queries below). */
 .kanban {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(270px, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 18px;
-  overflow-x: auto;
-  padding-bottom: 14px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(129, 11, 56, 0.25) transparent;
-}
-.kanban::-webkit-scrollbar {
-  height: 7px;
-}
-.kanban::-webkit-scrollbar-thumb {
-  background: rgba(129, 11, 56, 0.25);
-  border-radius: 10px;
 }
 
 .column {
@@ -89,7 +81,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-width: 270px;
+  min-width: 0;
 }
 
 /* ─── COLUMN HEADER ─── */
@@ -525,15 +517,23 @@
   background: #dc2626;
 }
 
-/* ─── RESPONSIVE ─── */
-@media (max-width: 992px) {
+/* ─── RESPONSIVE ───
+   Step the kanban down from 4 -> 3 -> 2 -> 1 columns per row as the
+   viewport narrows, instead of shrinking columns into a horizontal
+   scrollbar. */
+@media (max-width: 1300px) {
   .kanban {
-    grid-auto-columns: minmax(240px, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
-@media (max-width: 480px) {
+@media (max-width: 992px) {
   .kanban {
-    grid-auto-columns: minmax(220px, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .kanban {
+    grid-template-columns: 1fr;
     gap: 12px;
   }
   .formGrid {

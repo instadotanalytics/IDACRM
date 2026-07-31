@@ -356,3 +356,39 @@
     width: 100vw;
   }
 }
+
+/* NotificationPanel.module.css - ADD THESE NEW STYLES */
+
+/* Connection Status Styles */
+.connectionStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(129, 11, 56, 0.04);
+  border-bottom: 1px solid rgba(129, 11, 56, 0.06);
+}
+
+.onlineIcon {
+  color: #10b981;
+  font-size: 12px;
+}
+
+.onlineText {
+  color: #10b981;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.offlineIcon {
+  color: #ef4444;
+  font-size: 12px;
+}
+
+.offlineText {
+  color: #ef4444;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Rest of your existing CSS stays the same */

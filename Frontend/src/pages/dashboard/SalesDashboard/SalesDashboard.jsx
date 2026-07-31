@@ -14,12 +14,14 @@ import {
   FaSearch,
   FaFileAlt,
   FaChevronLeft,
+  FaEnvelope,
 } from "react-icons/fa";
 import { FiTarget } from "react-icons/fi";
 import { HiOutlineUsers } from "react-icons/hi";
 import { RiCustomerService2Fill } from "react-icons/ri";
 
 import NotificationPanel from "../SalesDashboard/NotificationPanel/NotificationPanel";
+import MessagePanel from "../SalesDashboard/MessagePanel/MessagePanel";
 import ProfileDropdown from "../SalesDashboard/ProfileDropdown/ProfileDropdown";
 import DashboardOverview from "../SalesDashboard/DashboardOverview/DashboardOverview";
 import CallsTracker from "../SalesDashboard/CallsTracker/CallsTracker";
@@ -31,6 +33,10 @@ import CalendarView from "../SalesDashboard/CalendarView/CalendarView";
 import SettingsView from "../SalesDashboard/SettingsView/SettingsView";
 
 import styles from "./SalesDashboard.module.css";
+import { getToken, getUser, clearAuth } from "../../../services/auth";
+import api from "../../../services/api";
+import { useSocket } from "../../../context/SocketContext";
+import { useSocketEvents } from "../../../hooks/useSocketEvents";
 
 const menuItems = [
   { id: "dashboard", label: "Dashboard", icon: <FaTachometerAlt /> },
@@ -53,41 +59,234 @@ const SalesDashboard = () => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [notifCount, setNotifCount] = useState(3);
+  const [notifications, setNotifications] = useState([]);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  // Messaging
+  const [showMessages, setShowMessages] = useState(false);
+  const [conversations, setConversations] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState([]);
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [chatHistory, setChatHistory] = useState({});
+  const [chatLoading, setChatLoading] = useState(false);
+  const [showNewChatList, setShowNewChatList] = useState(false);
+  const [newMessage, setNewMessage] = useState("");
+  const [typingFrom, setTypingFrom] = useState(null);
+  const [onlineUserIds, setOnlineUserIds] = useState([]);
+  const typingTimeoutRef = React.useRef(null);
+
+  const { isConnected, reconnectSocket } = useSocket();
+
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    // If no user or token at all, redirect immediately to login
-    if (!localStorage.getItem("token") && !userData) {
+    const token = getToken();
+    const userData = getUser();
+    if (!token || !userData) {
       window.location.replace("/login");
       return;
     }
-    setUser(
-      userData
-        ? JSON.parse(userData)
-        : {
-            name: "Sales Manager",
-            role: "sales_executive",
-            email: "sales@ida.com",
-            avatar: "S",
-          },
-    );
+    setUser(userData);
+    fetchNotifications();
+    fetchConversations();
   }, []);
+
+  const userId = user?._id || user?.id;
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get("/notifications");
+      if (res.data.success) setNotifications(res.data.data || []);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    }
+  };
+
+  const fetchConversations = async () => {
+    try {
+      const res = await api.get("/messages/conversations");
+      if (res.data.success) setConversations(res.data.data || []);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+    }
+  };
+
+  const fetchAvailableUsers = async () => {
+    try {
+      const res = await api.get("/messages/users/list");
+      if (res.data.success) setAvailableUsers(res.data.data || []);
+    } catch (error) {
+      console.error("Error fetching users list:", error);
+    }
+  };
+
+  const openMessages = () => {
+    setShowMessages((s) => !s);
+    setNotifOpen(false);
+    setProfileOpen(false);
+    setSelectedChat(null);
+    setShowNewChatList(false);
+    fetchConversations();
+    fetchAvailableUsers();
+  };
+
+  const openChat = async (chatUser) => {
+    setSelectedChat(chatUser);
+    setShowNewChatList(false);
+    if (!chatHistory[chatUser._id]) {
+      setChatLoading(true);
+      try {
+        const res = await api.get(`/messages/${chatUser._id}`);
+        if (res.data.success) {
+          setChatHistory((prev) => ({
+            ...prev,
+            [chatUser._id]: res.data.data || [],
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching chat thread:", error);
+      } finally {
+        setChatLoading(false);
+      }
+    }
+    try {
+      await api.put(`/messages/read-all/${chatUser._id}`);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.user?._id === chatUser._id ? { ...c, unreadCount: 0 } : c,
+        ),
+      );
+    } catch (error) {
+      console.error("Error marking messages read:", error);
+    }
+  };
+
+  const handleTypingInput = (value) => {
+    setNewMessage(value);
+    if (!selectedChat) return;
+    emit("typing", { receiverId: selectedChat._id });
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      emit("stop-typing", { receiverId: selectedChat._id });
+    }, 1500);
+  };
+
+  const sendChatMessage = async () => {
+    if (!newMessage.trim() || !selectedChat) return;
+    const text = newMessage.trim();
+    const chatId = String(selectedChat._id);
+    setNewMessage("");
+    emit("stop-typing", { receiverId: chatId });
+    try {
+      const res = await api.post("/messages", { receiverId: chatId, text });
+      if (res.data.success) {
+        setChatHistory((prev) => ({
+          ...prev,
+          [chatId]: [...(prev[chatId] || []), res.data.data],
+        }));
+        setConversations((prev) => {
+          const exists = prev.find((c) => String(c.user?._id) === chatId);
+          if (exists) {
+            return prev.map((c) =>
+              String(c.user?._id) === chatId
+                ? { ...c, lastMessage: res.data.data }
+                : c,
+            );
+          }
+          return prev;
+        });
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.error("Failed to send message");
+    }
+  };
+
+  const unreadMessageCount = conversations.reduce(
+    (sum, c) => sum + (c.unreadCount || 0),
+    0,
+  );
+
+  const { emit } = useSocketEvents({
+    onNewNotification: (notification) => {
+      setNotifications((prev) => [notification, ...prev]);
+    },
+    onNotificationRead: (data) => {
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === data.notificationId ? { ...n, read: true } : n,
+        ),
+      );
+    },
+    onNewMessage: (message) => {
+      // Backend emits new-message ONLY to receiver — we are always the receiver here
+      const otherUserId = String(message.sender?._id || message.sender);
+
+      setSelectedChat((current) => {
+        if (current && String(current._id) === otherUserId) {
+          setChatHistory((prev) => ({
+            ...prev,
+            [otherUserId]: [...(prev[otherUserId] || []), message],
+          }));
+          api.put(`/messages/${message._id}/read`).catch(() => {});
+        }
+        return current;
+      });
+
+      setConversations((prev) => {
+        const exists = prev.find((c) => String(c.user?._id) === otherUserId);
+        if (exists) {
+          return prev.map((c) =>
+            String(c.user?._id) === otherUserId
+              ? {
+                  ...c,
+                  lastMessage: message,
+                  unreadCount: (c.unreadCount || 0) + 1,
+                }
+              : c,
+          );
+        }
+        fetchConversations();
+        return prev;
+      });
+
+      toast(`${message.sender?.name || "New message"}: ${message.text}`, {
+        icon: "💬",
+      });
+    },
+    onMessageRead: (data) => {
+      setChatHistory((prev) => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach((key) => {
+          updated[key] = updated[key].map((m) =>
+            m._id === data.messageId || data.all ? { ...m, read: true } : m,
+          );
+        });
+        return updated;
+      });
+    },
+    onTyping: (data) => setTypingFrom(data.senderId),
+    onStopTyping: () => setTypingFrom(null),
+    onUserOnline: (data) =>
+      setOnlineUserIds((prev) =>
+        prev.includes(data.userId) ? prev : [...prev, data.userId],
+      ),
+    onUserOffline: (data) =>
+      setOnlineUserIds((prev) => prev.filter((id) => id !== data.userId)),
+    onOnlineUsers: (data) => setOnlineUserIds(data.userIds || []),
+  });
 
   // ─── THE FIX: clear storage, show toast, then redirect ───────────────────
   const handleLogout = () => {
     if (isLoggingOut) return; // prevent double-click
     setIsLoggingOut(true);
 
-    // Clear all session data
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    sessionStorage.clear();
+    // Clear all session data (sessionStorage + localStorage via clearAuth)
+    clearAuth();
+
+    // Disconnect socket cleanly
+    if (reconnectSocket) reconnectSocket(null);
 
     toast.success("Logged out successfully", { duration: 1500 });
 
-    // Small delay so the toast is visible before the page changes
     setTimeout(() => {
       window.location.replace("/login");
     }, 1200);
@@ -114,11 +313,27 @@ const SalesDashboard = () => {
     setNotifOpen(false);
   };
 
-  const handleMarkRead = (id) => {
-    setNotifCount((prev) => Math.max(0, prev - 1));
+  const handleMarkRead = async (id) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n._id === id ? { ...n, read: true } : n)),
+    );
+    try {
+      await api.put(`/notifications/${id}/read`);
+    } catch (error) {
+      console.error("Error marking notification read:", error);
+    }
   };
 
-  const handleMarkAll = () => setNotifCount(0);
+  const handleMarkAll = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      await api.put("/notifications/read-all");
+    } catch (error) {
+      console.error("Error marking all notifications read:", error);
+    }
+  };
+
+  const notifCount = notifications.filter((n) => !n.read).length;
 
   return (
     <div className={styles.app}>
@@ -245,6 +460,14 @@ const SalesDashboard = () => {
             </div>
           </div>
           <div className={styles.headerRight}>
+            {/* Messages */}
+            <button className={styles.bellBtn} onClick={openMessages}>
+              <FaEnvelope />
+              {unreadMessageCount > 0 && (
+                <span className={styles.bellBadge}>{unreadMessageCount}</span>
+              )}
+            </button>
+
             {/* Bell */}
             <button className={styles.bellBtn} onClick={toggleBell}>
               <FaBell />
@@ -270,8 +493,35 @@ const SalesDashboard = () => {
         <NotificationPanel
           isOpen={notifOpen}
           onClose={() => setNotifOpen(false)}
+          notifications={notifications}
           onMarkRead={handleMarkRead}
           onMarkAll={handleMarkAll}
+        />
+
+        {/* Messages panel */}
+        <MessagePanel
+          isOpen={showMessages}
+          onClose={() => {
+            setShowMessages(false);
+            setSelectedChat(null);
+          }}
+          userId={userId}
+          currentUserName={user?.name}
+          isConnected={isConnected}
+          selectedChat={selectedChat}
+          onSelectChat={openChat}
+          onBack={() => setSelectedChat(null)}
+          conversations={conversations}
+          availableUsers={availableUsers}
+          showNewChatList={showNewChatList}
+          onToggleNewChatList={() => setShowNewChatList((s) => !s)}
+          chatHistory={chatHistory}
+          chatLoading={chatLoading}
+          typingFrom={typingFrom}
+          onlineUserIds={onlineUserIds}
+          newMessage={newMessage}
+          onTypingInput={handleTypingInput}
+          onSend={sendChatMessage}
         />
 
         {/* Content */}

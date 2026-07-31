@@ -7,7 +7,7 @@ import {
   FaCalendarCheck,
   FaTasks,
 } from "react-icons/fa";
-import styles from "./AdminDashboard.module.css";
+import styles from "./AdminDashboardOverview.module.css";
 
 const AdminDashboardOverview = () => {
   const stats = {
@@ -46,49 +46,71 @@ const AdminDashboardOverview = () => {
     },
   ];
 
+  // Each stat now carries its own accent color, same pattern used across
+  // the other dashboards - keeps this card visually consistent with the
+  // rest of the app instead of a plain, uncolored icon.
+  const statCards = [
+    {
+      icon: <FaUsers />,
+      val: stats.employees.total,
+      label: "Total Employees",
+      sub: `Active: ${stats.employees.active} | Inactive: ${stats.employees.inactive}`,
+      color: "#5b8def",
+    },
+    {
+      icon: <FaChalkboardTeacher />,
+      val: stats.trainers.total,
+      label: "Trainers",
+      sub: `Active Batches: ${stats.trainers.activeBatches}`,
+      color: "#9b7ede",
+    },
+    {
+      icon: <FaChartLine />,
+      val: stats.sales.totalLeads,
+      label: "Total Leads",
+      sub: `Converted: ${stats.sales.convertedLeads}`,
+      color: "#5fc98d",
+    },
+    {
+      icon: <FaBuilding />,
+      val: stats.hr.companies,
+      label: "Companies",
+      sub: `Drives: ${stats.hr.placementDrives}`,
+      color: "#f2b84b",
+    },
+    {
+      icon: <FaCalendarCheck />,
+      val: stats.attendance.present,
+      label: "Present Today",
+      sub: `Absent: ${stats.attendance.absent}`,
+      color: "#3fae72",
+    },
+    {
+      icon: <FaTasks />,
+      val: stats.tasks.pending,
+      label: "Pending Tasks",
+      sub: `Completed: ${stats.tasks.completed}`,
+      color: "#f0806c",
+    },
+  ];
+
+  const attendanceSegments = [
+    { label: "Present", value: 68, color: "#3fae72" },
+    { label: "Absent", value: 12, color: "#f0806c" },
+    { label: "Leave/Other", value: 20, color: "#f2b84b" },
+  ];
+
   return (
     <>
       <div className={styles.statsGrid}>
-        {[
-          {
-            icon: <FaUsers />,
-            val: stats.employees.total,
-            label: "Total Employees",
-            sub: `Active: ${stats.employees.active} | Inactive: ${stats.employees.inactive}`,
-          },
-          {
-            icon: <FaChalkboardTeacher />,
-            val: stats.trainers.total,
-            label: "Trainers",
-            sub: `Active Batches: ${stats.trainers.activeBatches}`,
-          },
-          {
-            icon: <FaChartLine />,
-            val: stats.sales.totalLeads,
-            label: "Total Leads",
-            sub: `Converted: ${stats.sales.convertedLeads}`,
-          },
-          {
-            icon: <FaBuilding />,
-            val: stats.hr.companies,
-            label: "Companies",
-            sub: `Drives: ${stats.hr.placementDrives}`,
-          },
-          {
-            icon: <FaCalendarCheck />,
-            val: stats.attendance.present,
-            label: "Present Today",
-            sub: `Absent: ${stats.attendance.absent}`,
-          },
-          {
-            icon: <FaTasks />,
-            val: stats.tasks.pending,
-            label: "Pending Tasks",
-            sub: `Completed: ${stats.tasks.completed}`,
-          },
-        ].map((s, i) => (
+        {statCards.map((s, i) => (
           <div key={i} className={styles.statCard}>
-            <div className={styles.statIcon}>{s.icon}</div>
+            <div
+              className={styles.statIcon}
+              style={{ background: `${s.color}1f`, color: s.color }}
+            >
+              {s.icon}
+            </div>
             <div className={styles.statInfo}>
               <span className={styles.statValue}>{s.val}</span>
               <span className={styles.statLabel}>{s.label}</span>
@@ -102,40 +124,40 @@ const AdminDashboardOverview = () => {
         <div className={styles.chartCard}>
           <h3>Attendance Overview</h3>
           <div className={styles.donutChart}>
-            <div
-              className={styles.donutSegment}
-              style={{ width: "68%", background: "#10b981" }}
-            >
-              Present 68%
-            </div>
-            <div
-              className={styles.donutSegment}
-              style={{ width: "12%", background: "#ef4444" }}
-            >
-              Absent 12%
-            </div>
-            <div
-              className={styles.donutSegment}
-              style={{ width: "20%", background: "#f59e0b" }}
-            >
-              Leave/Other 20%
-            </div>
+            {attendanceSegments.map((seg) => (
+              <div
+                key={seg.label}
+                className={styles.donutSegment}
+                style={{ width: `${seg.value}%`, background: seg.color }}
+              >
+                {seg.value >= 15
+                  ? `${seg.label} ${seg.value}%`
+                  : `${seg.value}%`}
+              </div>
+            ))}
           </div>
         </div>
+
         <div className={styles.chartCard}>
           <h3>Sales Conversion</h3>
           <div className={styles.barChart}>
             <div className={styles.bar} style={{ height: "45%" }}>
-              <span>Leads 45%</span>
+              <span>45%</span>
             </div>
             <div className={styles.bar} style={{ height: "30%" }}>
-              <span>Converted 30%</span>
+              <span>30%</span>
             </div>
             <div className={styles.bar} style={{ height: "25%" }}>
-              <span>Lost 25%</span>
+              <span>25%</span>
             </div>
           </div>
+          <div className={styles.barLabelsRow}>
+            <span>Leads</span>
+            <span>Converted</span>
+            <span>Lost</span>
+          </div>
         </div>
+
         <div className={styles.chartCard}>
           <h3>Placement Analytics</h3>
           <div className={styles.placementStats}>

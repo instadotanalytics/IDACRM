@@ -491,6 +491,21 @@
   border-color: rgba(167, 139, 250, 0.2);
 }
 
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 20px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1.5;
+}
+
 .iconBtn::after {
   content: "";
   position: absolute;
@@ -739,6 +754,10 @@
   cursor: pointer;
   font-family: inherit;
   outline: none;
+}
+.chartSelect option {
+  background: rgba(30, 27, 75, 0.95);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .chartSelect:focus {

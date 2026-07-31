@@ -1,145 +1,155 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
-import { authAPI } from '../../services/api';
-import styles from './Login.module.css';
+// pages/auth/Login.jsx - FIXED (sessionStorage for tab isolation)
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { toast } from "react-hot-toast";
+import {
+  FaGraduationCap,
+  FaEnvelope,
+  FaLock,
+  FaArrowRight,
+} from "react-icons/fa";
+import { authAPI } from "../../services/api";
+import { saveAuth, getToken, getUser } from "../../services/auth";
+import { useSocket } from "../../context/SocketContext";
+import styles from "./Login.module.css";
 
 const Login = () => {
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        email: '',
-        password: ''
-    });
+  const navigate = useNavigate();
+  const { reconnectSocket } = useSocket();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({ email: "", password: "" });
 
-    const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
-    };
+  // Redirect if already authenticated in THIS tab
+  useEffect(() => {
+    const token = getToken();
+    const user = getUser();
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
+    if (token && user?.role) {
+      const dashboardMap = {
+        super_admin: "/super-admin-dashboard",
+        admin_manager: "/admin-dashboard",
+        sales_executive: "/sales-dashboard",
+        hr_executive: "/hr-dashboard",
+        trainer: "/trainer-dashboard",
+        counselor: "/counselor-dashboard",
+      };
+      const path = dashboardMap[user.role];
+      if (path) navigate(path, { replace: true });
+    }
+  }, [navigate]);
 
-        try {
-            const response = await authAPI.login(formData);
+  const handleChange = (e) =>
+    setFormData({ ...formData, [e.target.name]: e.target.value });
 
-            if (response.data.success) {
-                const { token, user } = response.data;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-                // ✅ Clear old data first
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                localStorage.removeItem('userRole');
-                
-                // ✅ Store user with both _id and id for compatibility
-                const userToStore = {
-                    ...user,
-                    _id: user._id || user.id,
-                    id: user.id || user._id
-                };
-                
-                localStorage.setItem('token', token);
-                localStorage.setItem('user', JSON.stringify(userToStore));
-                localStorage.setItem('userRole', user.role);
+    try {
+      const response = await authAPI.login(formData);
 
-                console.log('=== LOGIN SUCCESS ===');
-                console.log('User:', userToStore);
-                console.log('User Name:', userToStore.name);
-                console.log('User Role:', userToStore.role);
-                console.log('User ID:', userToStore._id || userToStore.id);
+      if (response.data.success) {
+        const { token, user } = response.data;
 
-                toast.success(`Welcome ${user.name}!`);
+        // Save to sessionStorage (tab-isolated) — no more cross-tab contamination
+        saveAuth(token, user, false);
 
-                // ✅ Role-based redirect
-                switch (user.role) {
-                    case 'super_admin':
-                        navigate('/super-admin-dashboard');
-                        break;
-                    case 'admin_manager':
-                        navigate('/admin-dashboard');
-                        break;
-                    case 'sales_executive':
-                        navigate('/sales-dashboard');
-                        break;
-                    case 'hr_executive':
-                        navigate('/hr-dashboard');
-                        break;
-                    case 'trainer':
-                        navigate('/trainer-dashboard');
-                        break;
-                    case 'counselor':
-                        navigate('/counselor-dashboard');
-                        break;
-                    default:
-                        navigate('/dashboard');
-                }
-            }
-        } catch (error) {
-            console.error('Login error:', error);
-            toast.error(error.response?.data?.message || 'Login failed');
-        } finally {
-            setLoading(false);
-        }
-    };
+        // Reconnect socket in this tab with the new token
+        if (reconnectSocket) reconnectSocket(token);
 
-    return (
-        <div className={styles.container}>
-            <div className={styles.loginBox}>
-                <div className={styles.logo}>
-                    <div className={styles.logoIcon}>🏢</div>
-                    <div className={styles.title}>IDA ERP CRM</div>
-                    <div className={styles.subtitle}>Login to your account</div>
-                </div>
+        console.log("=== LOGIN SUCCESS ===");
+        console.log("Name:", user.name, "| Role:", user.role);
 
-                <form onSubmit={handleSubmit}>
-                    <div className={styles.inputGroup}>
-                        <label className={styles.label}>Email Address</label>
-                        <input
-                            type="email"
-                            name="email"
-                            className={styles.input}
-                            placeholder="Enter your email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
-                        />
-                    </div>
+        toast.success(`Welcome ${user.name}!`);
 
-                    <div className={styles.inputGroup}>
-                        <label className={styles.label}>Password</label>
-                        <input
-                            type="password"
-                            name="password"
-                            className={styles.input}
-                            placeholder="Enter your password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            required
-                        />
-                    </div>
+        const dashboardMap = {
+          super_admin: "/super-admin-dashboard",
+          admin_manager: "/admin-dashboard",
+          sales_executive: "/sales-dashboard",
+          hr_executive: "/hr-dashboard",
+          trainer: "/trainer-dashboard",
+          counselor: "/counselor-dashboard",
+        };
+        navigate(dashboardMap[user.role] || "/dashboard", { replace: true });
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error(error.response?.data?.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                    <Link to="/forgot-password" className={styles.forgotLink}>
-                        Forgot Password?
-                    </Link>
+  return (
+    <div className={styles.page}>
+      <div className={styles.blob1} aria-hidden="true" />
+      <div className={styles.blob2} aria-hidden="true" />
+      <div className={styles.blob3} aria-hidden="true" />
 
-                    <button 
-                        type="submit" 
-                        className={styles.button}
-                        disabled={loading}
-                    >
-                        {loading ? 'Logging in...' : 'Login'}
-                    </button>
-                </form>
-
-                <div className={styles.footer}>
-                    © 2024 IDA ERP CRM. All rights reserved.
-                </div>
-            </div>
+      <div className={styles.loginBox}>
+        <div className={styles.logo}>
+          <div className={styles.logoIcon}>
+            <FaGraduationCap />
+          </div>
+          <div className={styles.title}>IDA ERP CRM</div>
+          <div className={styles.subtitle}>Sign in to your account</div>
         </div>
-    );
+
+        <form onSubmit={handleSubmit}>
+          <div className={styles.inputGroup}>
+            <label className={styles.label}>Email Address</label>
+            <div className={styles.inputWrap}>
+              <FaEnvelope className={styles.inputIcon} />
+              <input
+                type="email"
+                name="email"
+                className={styles.input}
+                placeholder="Enter your email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
+
+          <div className={styles.inputGroup}>
+            <label className={styles.label}>Password</label>
+            <div className={styles.inputWrap}>
+              <FaLock className={styles.inputIcon} />
+              <input
+                type="password"
+                name="password"
+                className={styles.input}
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
+
+          <Link to="/forgot-password" className={styles.forgotLink}>
+            Forgot Password?
+          </Link>
+
+          <button type="submit" className={styles.button} disabled={loading}>
+            {loading ? (
+              "Logging in..."
+            ) : (
+              <>
+                {" "}
+                Login <FaArrowRight className={styles.buttonArrow} />{" "}
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className={styles.footer}>
+          © 2026 IDA ERP CRM. All rights reserved.
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Login;

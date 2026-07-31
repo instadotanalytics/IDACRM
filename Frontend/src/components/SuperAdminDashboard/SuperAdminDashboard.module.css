@@ -436,9 +436,9 @@ body {
 .headerLeft {
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex: 1;
+  gap: 14px;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .menuToggle {
@@ -456,6 +456,111 @@ body {
   font-size: 15px;
 }
 
+.headerTitle {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.headerCenter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+}
+
+/* Mobile-only round button that opens the slide-down search panel */
+.mobileSearchToggle {
+  display: none;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-light);
+  background: var(--bg-tertiary);
+  color: var(--primary);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all var(--transition-fast);
+}
+
+.mobileSearchToggle:hover,
+.mobileSearchToggleActive {
+  background: var(--primary);
+  color: var(--text-inverse);
+  border-color: var(--primary);
+}
+
+/* Slide-down search panel - sits in normal flow directly under the
+   header (i.e. "behind" it), and animates open/closed via max-height */
+.mobileSearchPanel {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin: 0 12px;
+  transition:
+    max-height var(--transition-base),
+    opacity var(--transition-fast),
+    margin var(--transition-base);
+}
+
+.mobileSearchPanelOpen {
+  max-height: 70px;
+  opacity: 1;
+  margin: 10px 12px 0;
+}
+
+.mobileSearchInner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 40px;
+  padding: 10px 16px;
+  box-shadow: var(--shadow-md);
+}
+
+.mobileSearchInner input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  min-width: 0;
+}
+
+.mobileSearchInner input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.mobileSearchClose {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 15px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobileSearchClose:hover {
+  color: var(--danger);
+}
+
 .searchBar {
   display: flex;
   align-items: center;
@@ -464,7 +569,9 @@ body {
   border: 1px solid var(--border-light);
   border-radius: 40px;
   padding: 9px 16px;
-  min-width: 280px;
+  width: 100%;
+  max-width: 320px;
+  min-width: 180px;
   transition: all var(--transition-fast);
 }
 
@@ -526,10 +633,22 @@ body {
   font-weight: 600;
   color: var(--text-secondary);
   white-space: nowrap;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .dateRangeHeader svg {
   color: var(--accent-dark);
+}
+
+/* Same calm hover treatment as .dateRange - color shift only, no
+   lift/shadow, and only on devices that truly support hover. */
+@media (hover: hover) and (pointer: fine) {
+  .dateRangeHeader:hover {
+    background: var(--accent-bg);
+    border-color: var(--accent);
+  }
 }
 
 /* Language switch, e.g. EN / HI */
@@ -565,6 +684,88 @@ body {
   height: 28px;
   background: var(--border-light);
   margin: 0 2px;
+}
+
+/* Notification pill - desktop only, mirrors the reference header */
+.notifPill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 40px;
+  padding: 6px 16px 6px 6px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.notifPill:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.notifPillIconWrap {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--text-inverse);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.notifPillIconWrap .badge {
+  border-width: 1.5px;
+}
+
+.notifPillText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.notifPillMessage {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.notifPillLink {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  white-space: nowrap;
+}
+
+/* Mobile-only bell icon (replaces the pill on small screens).
+   Fully self-contained styling (not just reusing .iconBtn) so the
+   display:none/flex toggle below can't lose a cascade-order fight. */
+.mobileNotifBtn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border-light);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.mobileNotifBtn:hover {
+  background: var(--primary);
+  color: var(--text-inverse);
+  border-color: var(--primary);
 }
 
 .iconBtn {
@@ -695,14 +896,16 @@ body {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-inverse);
-  cursor: pointer;
-  transition: all var(--transition-fast);
+  cursor: default;
+  user-select: none;
+  transition: background var(--transition-fast);
 }
 
+/* Calm, non-jumpy hover - this is a status badge, not a button,
+   so no translateY/shadow "lift"; identical on desktop and mobile. */
 .dateRange:hover {
   background: var(--primary-light);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  color: var(--gray-900);
 }
 
 /* Stats Grid */
@@ -843,6 +1046,7 @@ body {
 .donutRow {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 22px;
   flex-wrap: wrap;
 }
@@ -880,7 +1084,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  flex: 1;
+  flex: 0 1 auto;
+  width: 100%;
+  max-width: 190px;
   min-width: 130px;
 }
 
@@ -888,7 +1094,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 18px;
   font-size: 12.5px;
   color: var(--text-secondary);
 }
@@ -1290,6 +1496,243 @@ body {
   opacity: 0.4;
 }
 
+/* ─── Live notifications: header extras ─── */
+.notifHeaderBadge {
+  background: var(--danger, #ef4444);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 20px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.panelHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.liveStatusOn {
+  font-size: 11px;
+  font-weight: 600;
+  color: #10b981;
+  white-space: nowrap;
+}
+
+.liveStatusOff {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--danger, #ef4444);
+  white-space: nowrap;
+}
+
+.panelMarkAllBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panelMarkAllBtn:hover {
+  color: #10b981;
+  border-color: #10b981;
+}
+
+/* ─── Live notifications: item list ─── */
+.notifItemList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notifItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  transition: background 0.2s ease;
+}
+
+.notifItemUnread {
+  background: var(--bg-tertiary);
+  border-color: var(--primary, #5b8def);
+}
+
+.notifItemBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.notifItemTitle {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.notifItemMsg {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.notifItemDelete {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.notifItemDelete:hover {
+  color: var(--danger, #ef4444);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ─── Live messaging: chat thread ─── */
+.spinIcon {
+  animation: spin 0.8s linear infinite;
+}
+
+.chatBackBtn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  margin-right: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.chatBackBtn:hover {
+  color: var(--primary, #5b8def);
+}
+
+.onlineDot {
+  font-size: 8px;
+  color: #10b981;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.chatThreadWrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chatThreadMessages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 12px;
+}
+
+.chatBubbleRow {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.chatBubbleRowMine {
+  justify-content: flex-end;
+}
+
+.chatBubble {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 16px 16px 16px 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chatBubbleMine {
+  background: var(--primary, #5b8def);
+  color: #fff;
+  border-radius: 16px 16px 4px 16px;
+  align-items: flex-end;
+}
+
+.chatBubbleTime {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.chatSenderName {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.75;
+  margin-bottom: 1px;
+}
+
+.typingIndicator {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-tertiary);
+  padding: 4px 2px;
+}
+
+.chatInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--border-light);
+  padding-top: 12px;
+  margin-top: 8px;
+}
+
+.chatInputRow input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  outline: none;
+  font-size: 13.5px;
+}
+
+.chatInputRow button {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary, #5b8def);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.chatInputRow button:hover {
+  filter: brightness(1.08);
+}
+
 /* ============================================================ */
 /* MODAL STYLES
 /* ============================================================ */
@@ -1658,9 +2101,18 @@ body {
     padding: 0 14px;
   }
 
-  .searchBar {
-    min-width: auto;
-    flex: 1;
+  /* Full inline search bar is replaced by a round button + slide-down panel */
+  .headerCenter {
+    display: none;
+  }
+
+  .mobileSearchToggle {
+    display: flex;
+  }
+
+  .headerTitle {
+    max-width: 150px;
+    font-size: 16px;
   }
 
   .searchKbd {
@@ -1675,6 +2127,16 @@ body {
   .langSwitch,
   .headerDivider {
     display: none;
+  }
+
+  /* Notification pill (with "You have N new notifications / View Inbox"
+     text) is too wide for mobile - swap it for a compact bell button */
+  .notifPill {
+    display: none;
+  }
+
+  .mobileNotifBtn {
+    display: flex;
   }
 
   .statsGrid {
@@ -1739,10 +2201,33 @@ body {
 
   .header {
     margin: 10px 10px 0;
+    padding: 0 10px;
+  }
+
+  .headerRight {
+    gap: 6px;
+  }
+
+  .headerTitle {
+    max-width: 100px;
+    font-size: 14.5px;
+  }
+
+  .menuToggle,
+  .mobileSearchToggle,
+  .iconBtn,
+  .mobileNotifBtn {
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
   }
 
   .avatar {
     width: 36px;
     height: 36px;
+  }
+
+  .userProfile {
+    padding-left: 6px;
   }
 }

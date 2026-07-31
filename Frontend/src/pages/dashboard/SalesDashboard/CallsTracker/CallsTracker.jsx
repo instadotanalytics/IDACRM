@@ -1,4 +1,4 @@
-// CallsTracker.jsx
+// CallsTracker.jsx - UPDATED WITH CORRECT ICONS
 import React, { useState, useEffect } from "react";
 import {
   FaPhoneAlt,
@@ -12,6 +12,8 @@ import {
   FaTrash,
   FaTimes,
   FaSave,
+  FaWifi,
+  FaSignal,
 } from "react-icons/fa";
 import {
   getCalls,
@@ -21,6 +23,8 @@ import {
   getCallStats,
 } from "../salesApi";
 import { toast } from "react-hot-toast";
+import { useSocket } from "../../../../context/SocketContext";
+import { useSocketEvents } from "../../../../hooks/useSocketEvents";
 import styles from "./CallsTracker.module.css";
 
 const empty = {
@@ -89,16 +93,93 @@ const CallsTracker = () => {
   const [loading, setLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
+  // Socket.IO
+  const { socket, isConnected } = useSocket();
+
+  // Fetch initial data
   useEffect(() => {
     fetchCalls();
   }, []);
+
+  // Socket event handlers
+  const handleCallCreated = (data) => {
+    console.log("📞 New call received via socket:", data);
+    if (data.callLog) {
+      // For CallLog model
+      setCalls((prev) => [data.callLog, ...prev]);
+      toast.success(
+        `New call from ${data.callLog.leadName || data.callLog.customer}`,
+      );
+    } else if (data.call) {
+      // For SalesCall model
+      setCalls((prev) => [data.call, ...prev]);
+      toast.success(`New call scheduled with ${data.call.customer}`);
+    }
+  };
+
+  const handleCallUpdated = (data) => {
+    console.log("✏️ Call updated via socket:", data);
+    const updatedCall = data.callLog || data.call;
+    if (updatedCall) {
+      setCalls((prev) =>
+        prev.map((call) => (call._id === updatedCall._id ? updatedCall : call)),
+      );
+      toast.info(
+        `Call updated: ${updatedCall.leadName || updatedCall.customer}`,
+      );
+    }
+  };
+
+  const handleCallDeleted = (data) => {
+    console.log("🗑️ Call deleted via socket:", data);
+    const callId = data.callId || data._id;
+    if (callId) {
+      setCalls((prev) => prev.filter((call) => call._id !== callId));
+      toast.warning("A call was deleted");
+    }
+  };
+
+  const handleCallStatusChanged = (data) => {
+    console.log("📊 Call status changed via socket:", data);
+    const { callId, newStatus, callLog, call } = data;
+    const updatedCall = callLog || call;
+    if (updatedCall) {
+      setCalls((prev) =>
+        prev.map((c) =>
+          c._id === callId || c._id === updatedCall._id ? updatedCall : c,
+        ),
+      );
+      toast.success(
+        `Call status changed to ${newStatus || updatedCall.status}`,
+      );
+    }
+  };
+
+  const handleStatsUpdate = (stats) => {
+    console.log("📊 Stats update received:", stats);
+    // Update stats if needed
+  };
+
+  // Use socket events hook
+  const { emit } = useSocketEvents({
+    onCallLogCreated: handleCallCreated,
+    onCallLogUpdated: handleCallUpdated,
+    onCallLogDeleted: handleCallDeleted,
+    onCallStatusChanged: handleCallStatusChanged,
+    onSalesCallCreated: handleCallCreated,
+    onSalesCallUpdated: handleCallUpdated,
+    onSalesCallDeleted: handleCallDeleted,
+    onSalesCallStatusChanged: handleCallStatusChanged,
+    onStatsUpdate: handleStatsUpdate,
+  });
 
   const fetchCalls = async () => {
     try {
       const res = await getCalls();
       if (res.data?.data?.length > 0) setCalls(res.data.data);
-    } catch {
-      /* use defaults */
+    } catch (error) {
+      console.error("Error fetching calls:", error);
+      toast.error("Failed to load calls");
     }
   };
 
@@ -139,11 +220,13 @@ const CallsTracker = () => {
     setEditCall(null);
     setModalOpen(true);
   };
+
   const openEdit = (call) => {
     setForm({ ...call });
     setEditCall(call);
     setModalOpen(true);
   };
+
   const closeModal = () => {
     setModalOpen(false);
     setEditCall(null);
@@ -162,6 +245,13 @@ const CallsTracker = () => {
           prev.map((c) => (c._id === editCall._id ? updated : c)),
         );
         toast.success("Call updated");
+
+        // Emit socket event
+        emit("sales-call-updated", {
+          callId: editCall._id,
+          call: updated,
+          updatedBy: JSON.parse(localStorage.getItem("user"))?.name || "User",
+        });
       } else {
         const res = await createCall(form);
         const newCall = res.data?.data || {
@@ -170,6 +260,12 @@ const CallsTracker = () => {
         };
         setCalls((prev) => [newCall, ...prev]);
         toast.success("Call scheduled");
+
+        // Emit socket event
+        emit("sales-call-created", {
+          call: newCall,
+          createdBy: JSON.parse(localStorage.getItem("user"))?.name || "User",
+        });
       }
       closeModal();
     } catch (err) {
@@ -184,10 +280,36 @@ const CallsTracker = () => {
       await deleteCall(id);
       setCalls((prev) => prev.filter((c) => c._id !== id));
       toast.success("Call deleted");
+
+      // Emit socket event
+      emit("sales-call-deleted", {
+        callId: id,
+        deletedBy: JSON.parse(localStorage.getItem("user"))?.name || "User",
+      });
     } catch {
       toast.error("Delete failed");
     }
     setDeleteConfirm(null);
+  };
+
+  // Function to handle phone call
+  const handlePhoneCall = (phoneNumber) => {
+    const cleanNumber = phoneNumber.replace(/[\s\-\(\)]/g, "");
+    const formattedNumber = cleanNumber.startsWith("+")
+      ? cleanNumber
+      : `+91${cleanNumber}`;
+    window.open(`tel:${formattedNumber}`, "_blank");
+    toast.success(`Calling ${phoneNumber}...`);
+  };
+
+  // Function to handle WhatsApp
+  const handleWhatsApp = (phoneNumber) => {
+    const cleanNumber = phoneNumber.replace(/[\s\-\(\)]/g, "");
+    const formattedNumber = cleanNumber.startsWith("+")
+      ? cleanNumber.replace("+", "")
+      : `91${cleanNumber}`;
+    window.open(`https://wa.me/${formattedNumber}`, "_blank");
+    toast.success(`Opening WhatsApp for ${phoneNumber}...`);
   };
 
   return (
@@ -195,6 +317,21 @@ const CallsTracker = () => {
       <div className={styles.header}>
         <h2>
           <FaPhoneAlt /> Calls Tracker
+          {isConnected ? (
+            <span
+              className={styles.connectionStatus}
+              style={{ color: "#10b981" }}
+            >
+              <FaWifi /> Live
+            </span>
+          ) : (
+            <span
+              className={styles.connectionStatus}
+              style={{ color: "#ef4444" }}
+            >
+              <FaSignal /> Offline
+            </span>
+          )}
         </h2>
         <button className={styles.primaryBtn} onClick={openAdd}>
           <FaPlus /> Schedule Call
@@ -262,10 +399,18 @@ const CallsTracker = () => {
                   <td className={styles.notesCell}>{call.notes}</td>
                   <td>
                     <div className={styles.actions}>
-                      <button className={styles.iconBtn} title="Call">
+                      <button
+                        className={`${styles.iconBtn} ${styles.callBtn}`}
+                        onClick={() => handlePhoneCall(call.phone)}
+                        title="Call"
+                      >
                         <FaPhone />
                       </button>
-                      <button className={styles.iconBtn} title="WhatsApp">
+                      <button
+                        className={`${styles.iconBtn} ${styles.whatsappBtn}`}
+                        onClick={() => handleWhatsApp(call.phone)}
+                        title="WhatsApp"
+                      >
                         <FaWhatsapp />
                       </button>
                       <button

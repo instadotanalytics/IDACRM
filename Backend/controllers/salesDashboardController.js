@@ -1,4 +1,5 @@
 // controllers/salesDashboardController.js
+import mongoose from "mongoose";
 import SalesCall from "../models/SalesCall.js";
 import SalesLead from "../models/SalesLead.js";
 import SalesOpportunity from "../models/SalesOpportunity.js";
@@ -171,7 +172,7 @@ export const getPipelineOverview = async (req, res) => {
       status: ["Contracts", "Closed Won"].includes(o.stage)
         ? "🟢"
         : o.stage === "Proposal"
-          ? "�"
+          ? "🟡"
           : "🔴",
       primary: o.name,
       stage: o.stage,
@@ -626,10 +627,30 @@ export const getNotifications = async (req, res) => {
 
 export const markNotificationRead = async (req, res) => {
   try {
-    await SalesDashboardNotification.findByIdAndUpdate(req.params.id, {
-      read: true,
-    });
-    res.json({ success: true });
+    const { id } = req.params;
+
+    // Guard against non-ObjectId ids (e.g. leftover mock/frontend-only ids
+    // like "1", "2" — these used to hit findByIdAndUpdate and throw a
+    // CastError, which surfaced as a 500).
+    if (!mongoose.isValidObjectId(id)) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Notification not found" });
+    }
+
+    const notif = await SalesDashboardNotification.findByIdAndUpdate(
+      id,
+      { read: true },
+      { new: true },
+    );
+
+    if (!notif) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Notification not found" });
+    }
+
+    res.json({ success: true, data: notif });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

@@ -1,0 +1,410 @@
+/* CounselorDashboardOverview.module.css
+   Dedicated, self-contained light theme for the embedded Counselor
+   overview widget (rendered inside SuperAdminDashboard's content area).
+   Intentionally does NOT touch CounselorDashboard.module.css, which the
+   full standalone Counselor page may still rely on for its dark theme. */
+
+.dashboardOverview {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Loading state */
+.loadingContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 360px;
+  color: #5b6478;
+  font-size: 14px;
+}
+
+.spinner {
+  animation: spin 0.9s linear infinite;
+  font-size: 22px;
+  color: #5fc98d;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Welcome row */
+.welcomeSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.welcomeText h1 {
+  font-size: 23px;
+  font-weight: 700;
+  color: #16213e;
+  margin-bottom: 6px;
+}
+
+.welcomeText p {
+  color: #5b6478;
+  font-size: 13.5px;
+}
+
+.dateBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f7f6f2;
+  border: 1px solid #ecebe5;
+  border-radius: 40px;
+  color: #5b6478;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Stats grid */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  background: #ffffff;
+  border: 1px solid #ecebe5;
+  border-radius: 18px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 2px rgba(22, 33, 62, 0.04);
+  transition: all 0.25s ease;
+}
+
+.statCard:hover {
+  transform: translateY(-3px);
+  border-color: transparent;
+  box-shadow: 0 12px 28px -8px rgba(22, 33, 62, 0.12);
+}
+
+.statIconWrapper {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.statIcon {
+  font-size: 21px;
+}
+
+.statContent {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+.statValue {
+  font-size: 26px;
+  font-weight: 700;
+  color: #16213e;
+}
+
+.statLabel {
+  font-size: 13px;
+  color: #5b6478;
+  font-weight: 500;
+}
+
+.statTrend {
+  font-size: 12px;
+  font-weight: 600;
+  color: #3fae72;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.trendUp {
+  font-size: 10px;
+  color: #3fae72;
+}
+
+/* Charts row */
+.chartsRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.lineChartCard,
+.doughnutCard {
+  background: #ffffff;
+  border: 1px solid #ecebe5;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 1px 2px rgba(22, 33, 62, 0.04);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  gap: 10px;
+}
+
+.cardHeader h3 {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #16213e;
+}
+
+.headerBadge {
+  padding: 4px 12px;
+  background: rgba(95, 201, 141, 0.14);
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #3fae72;
+  white-space: nowrap;
+}
+
+.lineChartContainer {
+  height: 270px;
+}
+
+.doughnutContainer {
+  height: 250px;
+}
+
+/* Bottom section */
+.bottomSection {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.followupCard,
+.activityCard {
+  background: #ffffff;
+  border: 1px solid #ecebe5;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 1px 2px rgba(22, 33, 62, 0.04);
+}
+
+.viewAllBtn {
+  background: none;
+  border: none;
+  color: #3fae72;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.followupList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.followupItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f7f6f2;
+  border-radius: 14px;
+  transition: background 0.2s ease;
+}
+
+.followupItem:hover {
+  background: #f0eee8;
+}
+
+.followupAvatar {
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(135deg, #5fc98d, #3fae72);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.followupInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.followupName {
+  font-weight: 700;
+  color: #16213e;
+  margin-bottom: 3px;
+  font-size: 13.5px;
+}
+
+.followupDetails {
+  font-size: 12px;
+  color: #97a0b3;
+}
+
+.followupDays {
+  font-size: 11px;
+  color: #f2b84b;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.followupActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.callBtn,
+.messageBtn {
+  width: 33px;
+  height: 33px;
+  border-radius: 9px;
+  border: none;
+  background: #ecebe5;
+  color: #5b6478;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.callBtn:hover {
+  background: rgba(95, 201, 141, 0.16);
+  color: #3fae72;
+}
+
+.messageBtn:hover {
+  background: rgba(91, 141, 239, 0.16);
+  color: #5b8def;
+}
+
+/* Activity timeline */
+.activityTimeline {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.timelineItem {
+  display: flex;
+  gap: 14px;
+  position: relative;
+}
+
+.timelineDot {
+  width: 10px;
+  height: 10px;
+  background: #5fc98d;
+  border-radius: 50%;
+  margin-top: 6px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.timelineItem:not(:last-child) .timelineDot::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 4px;
+  width: 2px;
+  height: calc(100% + 18px);
+  background: #ecebe5;
+}
+
+.timelineContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.activityMessage {
+  font-weight: 600;
+  color: #16213e;
+  margin-bottom: 6px;
+  font-size: 13.5px;
+}
+
+.activityStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #5b6478;
+  margin-bottom: 4px;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.statusDot.success {
+  background: #3fae72;
+}
+
+.statusDot.warning {
+  background: #f2b84b;
+}
+
+.activityTime {
+  font-size: 11px;
+  color: #97a0b3;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 40px;
+  color: #97a0b3;
+  font-size: 13.5px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .chartsRow {
+    grid-template-columns: 1fr;
+  }
+
+  .bottomSection {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .welcomeText h1 {
+    font-size: 19px;
+  }
+}

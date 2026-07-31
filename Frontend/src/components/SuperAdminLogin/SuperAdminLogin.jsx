@@ -1,99 +1,85 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
+// SuperAdminLogin.jsx - FIXED (sessionStorage for tab isolation)
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import {
   FaEnvelope,
   FaLock,
   FaEye,
   FaEyeSlash,
-  FaUserShield,
+  FaCrown,
   FaChartLine,
   FaUsers,
   FaLockOpen,
   FaLayerGroup,
   FaCertificate,
   FaSignInAlt,
-} from 'react-icons/fa';
-import styles from './SuperAdminLogin.module.css';
-import { superAdminAPI } from '../../services/api';
+} from "react-icons/fa";
+import styles from "./SuperAdminLogin.module.css";
+import { superAdminAPI } from "../../services/api";
+import { saveAuth, getToken, getUser } from "../../services/auth";
+import { useSocket } from "../../context/SocketContext";
 
 const FEATURES = [
-  { icon: <FaLayerGroup />, text: 'Centralized dashboard control' },
-  { icon: <FaUsers />,      text: 'Multi-tenant user management' },
-  { icon: <FaChartLine />,  text: 'Real-time analytics & reports' },
-  { icon: <FaLockOpen />,   text: 'Role-based access control' },
+  { icon: <FaLayerGroup />, text: "Centralized dashboard control" },
+  { icon: <FaUsers />, text: "Multi-tenant user management" },
+  { icon: <FaChartLine />, text: "Real-time analytics & reports" },
+  { icon: <FaLockOpen />, text: "Role-based access control" },
 ];
 
 const SuperAdminLogin = () => {
   const navigate = useNavigate();
+  const { reconnectSocket } = useSocket();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
 
-  // Check if already logged in
+  // Redirect if already authenticated as super_admin in THIS tab
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
-      try {
-        const user = JSON.parse(userData);
-        if (user.role === 'super_admin') {
-          console.log('Already logged in, redirecting to dashboard');
-          navigate('/super-admin-dashboard');
-        }
-      } catch (e) {
-        console.error('Error checking existing session:', e);
-      }
+    const token = getToken();
+    const user = getUser();
+    if (token && user?.role === "super_admin") {
+      navigate("/super-admin-dashboard", { replace: true });
     }
   }, [navigate]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError('');
+    setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.email || !formData.password) {
-      setError('Please fill in all fields');
-      toast.error('Please fill in all fields');
+      setError("Please fill in all fields");
       return;
     }
-    
+
     setLoading(true);
-    setError('');
-    
+    setError("");
+
     try {
       const response = await superAdminAPI.login(formData);
-      console.log('Login Response:', response.data);
-      
+
       if (response.data.success) {
         const { token, user } = response.data;
-        
-        // Store in localStorage
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        
-        if (rememberMe) {
-          localStorage.setItem('rememberMe', 'true');
-        }
-        
-        console.log('Token stored:', !!localStorage.getItem('token'));
-        console.log('User stored:', !!localStorage.getItem('user'));
-        
+
+        // Save to sessionStorage (tab-isolated) — also to localStorage if rememberMe
+        saveAuth(token, user, rememberMe);
+
+        // Reconnect THIS tab's socket with the new token
+        if (reconnectSocket) reconnectSocket(token);
+
+        console.log("=== SUPER ADMIN LOGIN SUCCESS ===");
+        console.log("Name:", user.name, "| Role:", user.role);
+
         toast.success(`Welcome back, ${user.name}!`);
-        
-        // Use navigate instead of window.location for better React Router integration
-        setTimeout(() => {
-          navigate('/super-admin-dashboard');
-        }, 100);
+        navigate("/super-admin-dashboard", { replace: true });
       }
     } catch (err) {
-      console.error('Login error:', err);
-      const message = err.response?.data?.message || 'Login failed';
+      const message = err.response?.data?.message || "Login failed";
       setError(message);
       toast.error(message);
     } finally {
@@ -103,18 +89,20 @@ const SuperAdminLogin = () => {
 
   return (
     <div className={styles.page}>
+      <div className={styles.orb1} aria-hidden="true" />
+      <div className={styles.orb2} aria-hidden="true" />
+      <div className={styles.orb3} aria-hidden="true" />
+
       <div className={styles.card}>
-        {/* LEFT PANEL */}
+        {/* LEFT */}
         <div className={styles.left}>
           <div className={styles.leftInner}>
             <div className={styles.brandIcon}>
-              <FaUserShield />
+              <FaCrown />
             </div>
             <h1 className={styles.brandName}>IDA ERP CRM</h1>
             <p className={styles.brandTag}>Super Admin Portal</p>
-
             <div className={styles.dividerH} />
-
             <ul className={styles.featureList}>
               {FEATURES.map(({ icon, text }) => (
                 <li key={text} className={styles.featureItem}>
@@ -124,16 +112,24 @@ const SuperAdminLogin = () => {
               ))}
             </ul>
           </div>
-
           <span className={`${styles.circle} ${styles.circleTop}`} />
           <span className={`${styles.circle} ${styles.circleBottom}`} />
         </div>
 
-        {/* RIGHT PANEL */}
+        {/* RIGHT */}
         <div className={styles.right}>
+          <div className={styles.avatarBubble}>
+            <FaCrown />
+          </div>
+
           <div className={styles.welcome}>
-            <h2 className={styles.welcomeTitle}>Welcome back</h2>
-            <p className={styles.welcomeSub}>Sign in to your super admin account</p>
+            <h2 className={styles.welcomeTitle}>
+              Welcome Back,{" "}
+              <span className={styles.welcomeAccent}>Superadmin</span>
+            </h2>
+            <p className={styles.welcomeSub}>
+              Please sign in to access the dashboard
+            </p>
           </div>
 
           {error && <div className={styles.errorBanner}>{error}</div>}
@@ -141,8 +137,7 @@ const SuperAdminLogin = () => {
           <form onSubmit={handleSubmit} className={styles.form} noValidate>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="email">
-                <FaEnvelope className={styles.labelIcon} />
-                Email address
+                <FaEnvelope className={styles.labelIcon} /> Email address
               </label>
               <input
                 id="email"
@@ -158,13 +153,12 @@ const SuperAdminLogin = () => {
 
             <div className={styles.field}>
               <label className={styles.label} htmlFor="password">
-                <FaLock className={styles.labelIcon} />
-                Password
+                <FaLock className={styles.labelIcon} /> Password
               </label>
               <div className={styles.pwWrap}>
                 <input
                   id="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
@@ -193,6 +187,9 @@ const SuperAdminLogin = () => {
                 />
                 Remember me
               </label>
+              <Link to="/forgot-password" className={styles.forgot}>
+                Forgot Password?
+              </Link>
             </div>
 
             <button
@@ -202,13 +199,11 @@ const SuperAdminLogin = () => {
             >
               {loading ? (
                 <>
-                  <span className={styles.spinner} />
-                  Signing in…
+                  <span className={styles.spinner} /> Signing in…
                 </>
               ) : (
                 <>
-                  <FaSignInAlt />
-                  Sign in
+                  <FaSignInAlt /> Login to Dashboard
                 </>
               )}
             </button>
@@ -225,7 +220,9 @@ const SuperAdminLogin = () => {
             <span>256-bit SSL encrypted · Enterprise grade security</span>
           </div>
 
-          <p className={styles.footer}>© 2024 IDA ERP CRM. All rights reserved.</p>
+          <p className={styles.footer}>
+            © 2026 IDA CRM Portal. All rights reserved.
+          </p>
         </div>
       </div>
     </div>

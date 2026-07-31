@@ -48,10 +48,16 @@ import {
   FaComments,
   FaLanguage,
   FaWaveSquare,
+  FaArrowLeft,
+  FaCircle,
 } from "react-icons/fa";
 import { FiSend } from "react-icons/fi";
 import styles from "./SuperAdminDashboard.module.css";
 import { superAdminAPI } from "../../services/api";
+import { getToken, getUser, clearAuth } from "../../services/auth";
+import api from "../../services/api";
+import { useSocket } from "../../context/SocketContext";
+import { useSocketEvents } from "../../hooks/useSocketEvents";
 import TrainerManagement from "../../pages/dashboard/AdminDashboard/TrannerManagement/TrainerManagement";
 import Admission from "../../pages/dashboard/CounselorDashboard/Admission/Admission";
 import CounselorManagement from "./CounselorManagement";
@@ -80,6 +86,8 @@ import HRReportsAnalytics from "../../pages/dashboard/HRDashboard/Reports/hrRepo
 import CounselorDashboardOverview from "../../pages/dashboard/CounselorDashboard/CounselorDashboardOverview";
 import CounselorLeads from "../../pages/dashboard/CounselorDashboard/Leads/Leades";
 import CounselorCalls from "../../pages/dashboard/CounselorDashboard/CallsCounsler/Calls";
+import RevenueManagement from "../SuperAdminDashboard/RevenueManagement/RevenueManagement";
+import Reports from "../SuperAdminDashboard/ReportsAnalytics/Reports";
 
 /* ============================================================ */
 /* MENU ITEMS
@@ -98,7 +106,7 @@ const MENU_ITEMS = [
   { id: "employees", label: "Employee Monitoring", icon: FaEye },
   { id: "trainers", label: "Trainer & Batch", icon: FaChalkboardTeacher },
   // { id: "audit", label: "Audit Logs", icon: FaClipboard },
-  { id: "notifications", label: "Notifications", icon: FaBell },
+  // { id: "notifications", label: "Notifications", icon: FaBell },
   { id: "settings", label: "Settings", icon: FaCog },
 ];
 
@@ -176,7 +184,20 @@ const WeeklyActivityChart = () => {
   const height = 190;
   const paymentPoints = [40, 70, 55, 95, 80, 120, 100, 140, 118, 150, 130, 160];
   const expensePoints = [90, 60, 100, 70, 110, 85, 95, 75, 105, 80, 92, 70];
-  const days = ["1", "3", "5", "7", "9", "11", "13", "15", "17", "19", "21", "23"];
+  const days = [
+    "1",
+    "3",
+    "5",
+    "7",
+    "9",
+    "11",
+    "13",
+    "15",
+    "17",
+    "19",
+    "21",
+    "23",
+  ];
 
   const toPath = (points, close) => {
     const stepX = width / (points.length - 1);
@@ -214,7 +235,11 @@ const WeeklyActivityChart = () => {
             strokeWidth="1"
           />
         ))}
-        <path d={toPath(paymentPoints, true)} fill="url(#paymentFill)" stroke="none" />
+        <path
+          d={toPath(paymentPoints, true)}
+          fill="url(#paymentFill)"
+          stroke="none"
+        />
         <path
           d={toPath(paymentPoints, false)}
           fill="none"
@@ -238,7 +263,9 @@ const WeeklyActivityChart = () => {
             y={height + 18}
             fontSize="10"
             fill="#97a0b3"
-            textAnchor={i === 0 ? "start" : i === days.length - 1 ? "end" : "middle"}
+            textAnchor={
+              i === 0 ? "start" : i === days.length - 1 ? "end" : "middle"
+            }
           >
             {d}
           </text>
@@ -401,15 +428,25 @@ const DashboardContent = () => {
                 <FaWaveSquare style={{ marginRight: 8, color: "#3fae72" }} />
                 Daily Activity
               </h3>
-              <span className={styles.chartCardSub}>Payments vs. expenses, this month</span>
+              <span className={styles.chartCardSub}>
+                Payments vs. expenses, this month
+              </span>
             </div>
           </div>
           <div className={styles.chartLegend}>
             <span className={styles.legendItem}>
-              <span className={styles.legendDot} style={{ background: "#3fae72" }} /> Payment
+              <span
+                className={styles.legendDot}
+                style={{ background: "#3fae72" }}
+              />{" "}
+              Payment
             </span>
             <span className={styles.legendItem}>
-              <span className={styles.legendDot} style={{ background: "#f0806c" }} /> Expenses
+              <span
+                className={styles.legendDot}
+                style={{ background: "#f0806c" }}
+              />{" "}
+              Expenses
             </span>
           </div>
           <WeeklyActivityChart />
@@ -422,7 +459,9 @@ const DashboardContent = () => {
                 <FaChartPie style={{ marginRight: 8, color: "#3fae72" }} />
                 Leads Status
               </h3>
-              <span className={styles.chartCardSub}>Current pipeline breakdown</span>
+              <span className={styles.chartCardSub}>
+                Current pipeline breakdown
+              </span>
             </div>
           </div>
           <div className={styles.donutRow}>
@@ -431,7 +470,10 @@ const DashboardContent = () => {
               {statusSegments.map((seg) => (
                 <div key={seg.label} className={styles.donutLegendItem}>
                   <span className={styles.donutLegendLeft}>
-                    <span className={styles.legendDot} style={{ background: seg.color }} />
+                    <span
+                      className={styles.legendDot}
+                      style={{ background: seg.color }}
+                    />
                     {seg.label}
                   </span>
                   <span className={styles.donutLegendValue}>{seg.value}</span>
@@ -500,6 +542,36 @@ const DashboardContent = () => {
   );
 };
 
+// Friendly page title shown in the header (mirrors the reference design's
+// "Analytics Overview" style heading rather than a raw menu id).
+const getPageTitle = (menu) => {
+  if (menu.startsWith("sales")) return "Sales Overview";
+  if (menu.startsWith("hr")) return "HR & Placement";
+  if (menu.startsWith("admin") || menu === "tasks") return "Tasks & Admin";
+  if (menu.startsWith("counselor")) return "Counselor Overview";
+
+  switch (menu) {
+    case "dashboard":
+      return "Analytics Overview";
+    case "students":
+      return "Students";
+    case "revenue":
+      return "RevenueManagement";
+    case "reports":
+      return "Reports & Analytics";
+    case "employees":
+      return "Employee Monitoring";
+    case "trainers":
+      return "Trainer & Batch";
+    case "notifications":
+      return "Notifications";
+    case "settings":
+      return "Settings";
+    default:
+      return "Dashboard";
+  }
+};
+
 const SuperAdminDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -509,6 +581,7 @@ const SuperAdminDashboard = () => {
   const [hoveredItem, setHoveredItem] = useState(null);
   const [activeMenu, setActiveMenu] = useState("dashboard");
   const [activeLang, setActiveLang] = useState("EN");
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   // Sales dropdown states
   const [salesDropdownOpen, setSalesDropdownOpen] = useState(false);
@@ -558,6 +631,12 @@ const SuperAdminDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [messages, setMessages] = useState([]);
   const [chatHistory, setChatHistory] = useState({});
+  const [conversations, setConversations] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [showNewChatList, setShowNewChatList] = useState(false);
+  const [typingFrom, setTypingFrom] = useState(null);
+  const [onlineUserIds, setOnlineUserIds] = useState([]);
+  const { isConnected, reconnectSocket } = useSocket();
 
   // User Management States
   const [users, setUsers] = useState([]);
@@ -576,29 +655,147 @@ const SuperAdminDashboard = () => {
     isActive: true,
   });
 
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get("/notifications");
+      if (res.data.success) {
+        setNotifications(res.data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    }
+  };
+
+  // ─── SOCKET.IO: live notifications ───────────────────────────────
+  const handleNewNotification = React.useCallback((notification) => {
+    setNotifications((prev) => [notification, ...prev]);
+    toast(notification.title, { icon: "🔔" });
+  }, []);
+
+  const handleNotificationRead = React.useCallback((data) => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n._id === data.notificationId ? { ...n, read: true } : n,
+      ),
+    );
+  }, []);
+
+  const { emit } = useSocketEvents({
+    onNewNotification: handleNewNotification,
+    onNotificationRead: handleNotificationRead,
+    onNewMessage: (message) => {
+      // Use stable string IDs throughout — MongoDB ObjectId vs string
+      // mismatches are the root cause of wrong-side bubble rendering.
+      // Backend emits new-message ONLY to receiver's room.
+      // We need to handle both cases: we sent it (sender echo) or we received it.
+      const senderId = String(message.sender?._id || message.sender);
+      const receiverId = String(message.receiver?._id || message.receiver);
+      const myId = String(getUser()?._id || getUser()?.id || "");
+
+      // If we are the sender, skip — we already added it via the REST response
+      if (senderId === myId) return;
+
+      // We are the receiver — the other party is the sender
+      const otherUserId = senderId;
+
+      // If that thread is currently open, append it straight into the view.
+      setSelectedChat((current) => {
+        if (current && String(current._id) === otherUserId) {
+          setChatHistory((prev) => ({
+            ...prev,
+            [otherUserId]: [...(prev[otherUserId] || []), message],
+          }));
+          api.put(`/messages/${message._id}/read`).catch(() => {});
+        }
+        return current;
+      });
+
+      // Update conversation list preview inline — no full refetch needed.
+      setConversations((prev) => {
+        const exists = prev.find((c) => String(c.user?._id) === otherUserId);
+        if (exists) {
+          return prev.map((c) =>
+            String(c.user?._id) === otherUserId
+              ? {
+                  ...c,
+                  lastMessage: message,
+                  unreadCount: (c.unreadCount || 0) + 1,
+                }
+              : c,
+          );
+        }
+        // New conversation partner — trigger a background refresh once.
+        fetchConversations();
+        return prev;
+      });
+
+      // Always toast since we are the receiver
+      toast(`${message.sender?.name || "New message"}: ${message.text}`, {
+        icon: "💬",
+      });
+    },
+    onMessageRead: (data) => {
+      if (!data.conversationWith && !data.messageId) return;
+      setChatHistory((prev) => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach((key) => {
+          updated[key] = updated[key].map((m) =>
+            m._id === data.messageId || data.all ? { ...m, read: true } : m,
+          );
+        });
+        return updated;
+      });
+    },
+    onTyping: (data) => {
+      setTypingFrom(data.senderId);
+    },
+    onStopTyping: () => {
+      setTypingFrom(null);
+    },
+    onUserOnline: (data) => {
+      setOnlineUserIds((prev) =>
+        prev.includes(data.userId) ? prev : [...prev, data.userId],
+      );
+    },
+    onUserOffline: (data) => {
+      setOnlineUserIds((prev) => prev.filter((id) => id !== data.userId));
+    },
+    onOnlineUsers: (data) => {
+      setOnlineUserIds(data.userIds || []);
+    },
+  });
+
+  const fetchConversations = async () => {
+    try {
+      const res = await api.get("/messages/conversations");
+      if (res.data.success) {
+        setConversations(res.data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+    }
+  };
+
   // INITIAL LOAD
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
+    const token = getToken();
+    const parsedUser = getUser();
 
-    if (!token || !userData) {
+    if (!token || !parsedUser) {
       navigate("/super-admin-login");
       return;
     }
 
-    try {
-      const parsedUser = JSON.parse(userData);
-      if (parsedUser.role !== "super_admin") {
-        navigate("/super-admin-login");
-        return;
-      }
-      setUser(parsedUser);
-      setIsLoading(false);
-      fetchUsers();
-    } catch (error) {
-      console.error("Error parsing user data:", error);
+    if (parsedUser.role !== "super_admin") {
       navigate("/super-admin-login");
+      return;
     }
+
+    setUser(parsedUser);
+    setIsLoading(false);
+    fetchUsers();
+    fetchNotifications();
+    fetchConversations();
   }, []);
 
   // Cleanup dropdown timeouts on unmount
@@ -623,13 +820,14 @@ const SuperAdminDashboard = () => {
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth > 768 && mobileMenuOpen) {
-        setMobileMenuOpen(false);
+      if (window.innerWidth > 768) {
+        if (mobileMenuOpen) setMobileMenuOpen(false);
+        if (mobileSearchOpen) setMobileSearchOpen(false);
       }
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [mobileMenuOpen]);
+  }, [mobileMenuOpen, mobileSearchOpen]);
 
   // Fetch all users
   const fetchUsers = async () => {
@@ -742,8 +940,8 @@ const SuperAdminDashboard = () => {
   });
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    clearAuth();
+    if (reconnectSocket) reconnectSocket(null);
     toast.success("Logged out successfully");
     navigate("/super-admin-login");
   };
@@ -991,10 +1189,10 @@ const SuperAdminDashboard = () => {
       /* ---------------------------------------------- */
 
       case "revenue":
-        return <PlaceholderContent title="Revenue Management" />;
+        return <RevenueManagement />;
 
       case "reports":
-        return <PlaceholderContent title="Reports & Analytics" />;
+        return <Reports />;
 
       /* -------- Tasks & Admin (AdminDashboard) sub-modules -------- */
       case "tasks":
@@ -1175,7 +1373,11 @@ const SuperAdminDashboard = () => {
   const toggleMessages = () => {
     setShowMessages(!showMessages);
     if (showNotifications) setShowNotifications(false);
-    if (!showMessages) setSelectedChat(null);
+    if (!showMessages) {
+      setSelectedChat(null);
+      setShowNewChatList(false);
+      fetchConversations();
+    }
   };
 
   const closePanels = () => {
@@ -1184,43 +1386,129 @@ const SuperAdminDashboard = () => {
     setSelectedChat(null);
   };
 
-  const openChat = (message) => {
-    setSelectedChat(message);
+  const openChat = async (chatUser) => {
+    // Normalise _id to plain string to prevent ObjectId vs string comparison
+    // mismatches in the isMine check and chatHistory keying.
+    const normalised = { ...chatUser, _id: String(chatUser._id) };
+    setSelectedChat(normalised);
+    setShowNewChatList(false);
+
+    const chatId = String(chatUser._id);
+
+    // Fetch the thread if we don't already have it cached
+    if (!chatHistory[chatId]) {
+      setChatLoading(true);
+      try {
+        const res = await api.get(`/messages/${chatId}`);
+        if (res.data.success) {
+          setChatHistory((prev) => ({
+            ...prev,
+            [chatId]: res.data.data || [],
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching chat thread:", error);
+        toast.error("Failed to load messages");
+      } finally {
+        setChatLoading(false);
+      }
+    }
+
+    // Mark any unread messages from this person as read
+    try {
+      await api.put(`/messages/read-all/${chatId}`);
+      setConversations((prev) =>
+        prev.map((c) =>
+          String(c.user?._id) === chatId ? { ...c, unreadCount: 0 } : c,
+        ),
+      );
+    } catch (error) {
+      console.error("Error marking messages read:", error);
+    }
   };
 
-  const sendMessage = () => {
-    if (newMessage.trim() && selectedChat) {
-      const newChat = {
-        id: Date.now(),
-        text: newMessage,
-        sender: "admin",
-        time: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-      setChatHistory((prev) => ({
-        ...prev,
-        [selectedChat.id]: [...(prev[selectedChat.id] || []), newChat],
-      }));
-      toast.success(`Message sent to ${selectedChat.name}`);
-      setNewMessage("");
+  const typingTimeoutRef = useRef(null);
+  const handleTypingInput = (value) => {
+    setNewMessage(value);
+    if (!selectedChat) return;
+    emit("typing", { receiverId: selectedChat._id });
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      emit("stop-typing", { receiverId: selectedChat._id });
+    }, 1500);
+  };
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !selectedChat) return;
+
+    const text = newMessage.trim();
+    setNewMessage("");
+    emit("stop-typing", { receiverId: selectedChat._id });
+
+    try {
+      const res = await api.post("/messages", {
+        receiverId: selectedChat._id,
+        text,
+      });
+      if (res.data.success) {
+        // Append the message we just sent (from REST response).
+        // The socket server NO LONGER echoes new-message back to sender
+        // so this is the only place it gets added — no duplicates.
+        const chatId = String(selectedChat._id);
+        setChatHistory((prev) => ({
+          ...prev,
+          [chatId]: [...(prev[chatId] || []), res.data.data],
+        }));
+        // Update conversation preview without a full refetch.
+        setConversations((prev) => {
+          const exists = prev.find((c) => String(c.user?._id) === chatId);
+          if (exists) {
+            return prev.map((c) =>
+              String(c.user?._id) === chatId
+                ? { ...c, lastMessage: res.data.data }
+                : c,
+            );
+          }
+          return prev;
+        });
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.error("Failed to send message");
     }
   };
 
   const deleteNotification = (id) => {
-    setNotifications(notifications.filter((n) => n.id !== id));
+    setNotifications(notifications.filter((n) => n._id !== id));
     toast.success("Notification deleted");
   };
 
-  const markNotificationAsRead = (id) => {
+  const markNotificationAsRead = async (id) => {
     setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
+      notifications.map((n) => (n._id === id ? { ...n, read: true } : n)),
     );
+    try {
+      await api.put(`/notifications/${id}/read`);
+    } catch (error) {
+      console.error("Error marking notification read:", error);
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      await api.put("/notifications/read-all");
+      toast.success("All notifications marked as read");
+    } catch (error) {
+      console.error("Error marking all notifications read:", error);
+    }
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const unreadMessageCount = messages.filter((m) => m.unread).length;
+  const unreadMessageCount = conversations.reduce(
+    (sum, c) => sum + (c.unreadCount || 0),
+    0,
+  );
 
   // Show loading state
   if (isLoading) {
@@ -1343,16 +1631,63 @@ const SuperAdminDashboard = () => {
         <div className={styles.panelHeader}>
           <h3>
             <FaBell /> Notifications
+            {unreadCount > 0 && (
+              <span className={styles.notifHeaderBadge}>{unreadCount}</span>
+            )}
           </h3>
-          <button className={styles.panelClose} onClick={toggleNotifications}>
-            <FaTimes />
-          </button>
+          <div className={styles.panelHeaderActions}>
+            <span
+              className={
+                isConnected ? styles.liveStatusOn : styles.liveStatusOff
+              }
+            >
+              {isConnected ? "● Live" : "● Offline"}
+            </span>
+            {unreadCount > 0 && (
+              <button
+                className={styles.panelMarkAllBtn}
+                onClick={markAllNotificationsAsRead}
+                title="Mark all as read"
+              >
+                <FaCheckCircle />
+              </button>
+            )}
+            <button className={styles.panelClose} onClick={toggleNotifications}>
+              <FaTimes />
+            </button>
+          </div>
         </div>
         <div className={styles.panelContent}>
-          <div className={styles.emptyState}>
-            <FaBell size={40} />
-            <p>No notifications</p>
-          </div>
+          {notifications.length === 0 ? (
+            <div className={styles.emptyState}>
+              <FaBell size={40} />
+              <p>No notifications</p>
+            </div>
+          ) : (
+            <div className={styles.notifItemList}>
+              {notifications.map((n) => (
+                <div
+                  key={n._id}
+                  className={`${styles.notifItem} ${!n.read ? styles.notifItemUnread : ""}`}
+                >
+                  <div
+                    className={styles.notifItemBody}
+                    onClick={() => !n.read && markNotificationAsRead(n._id)}
+                  >
+                    <span className={styles.notifItemTitle}>{n.title}</span>
+                    <span className={styles.notifItemMsg}>{n.message}</span>
+                  </div>
+                  <button
+                    className={styles.notifItemDelete}
+                    onClick={() => deleteNotification(n._id)}
+                    title="Delete"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1361,18 +1696,216 @@ const SuperAdminDashboard = () => {
         className={`${styles.slidePanel} ${showMessages ? styles.slidePanelOpen : ""}`}
       >
         <div className={styles.panelHeader}>
-          <h3>
-            <FaEnvelope /> Messages
-          </h3>
-          <button className={styles.panelClose} onClick={toggleMessages}>
-            <FaTimes />
-          </button>
-        </div>
-        <div className={styles.panelContent}>
-          <div className={styles.emptyState}>
-            <FaEnvelope size={40} />
-            <p>No messages</p>
+          {selectedChat ? (
+            <h3>
+              <button
+                className={styles.chatBackBtn}
+                onClick={() => setSelectedChat(null)}
+              >
+                <FaArrowLeft />
+              </button>
+              {selectedChat.name}
+              {onlineUserIds.includes(selectedChat._id) && (
+                <FaCircle className={styles.onlineDot} />
+              )}
+            </h3>
+          ) : (
+            <h3>
+              <FaEnvelope /> Messages
+              {unreadMessageCount > 0 && (
+                <span className={styles.notifHeaderBadge}>
+                  {unreadMessageCount}
+                </span>
+              )}
+            </h3>
+          )}
+          <div className={styles.panelHeaderActions}>
+            <span
+              className={
+                isConnected ? styles.liveStatusOn : styles.liveStatusOff
+              }
+            >
+              {isConnected ? "● Live" : "● Offline"}
+            </span>
+            {!selectedChat && (
+              <button
+                className={styles.panelMarkAllBtn}
+                onClick={() => setShowNewChatList((s) => !s)}
+                title="New chat"
+              >
+                <FaUserPlus />
+              </button>
+            )}
+            <button className={styles.panelClose} onClick={toggleMessages}>
+              <FaTimes />
+            </button>
           </div>
+        </div>
+
+        <div className={styles.panelContent}>
+          {/* ─── ACTIVE CHAT THREAD ─── */}
+          {selectedChat ? (
+            <div className={styles.chatThreadWrapper}>
+              <div className={styles.chatThreadMessages}>
+                {chatLoading ? (
+                  <div className={styles.emptyState}>
+                    <FaSpinner className={styles.spinIcon} />
+                    <p>Loading conversation...</p>
+                  </div>
+                ) : (chatHistory[selectedChat._id] || []).length === 0 ? (
+                  <div className={styles.emptyState}>
+                    <FaEnvelope size={32} />
+                    <p>Say hello to {selectedChat.name}</p>
+                  </div>
+                ) : (
+                  (chatHistory[selectedChat._id] || []).map((m, idx) => {
+                    // Anchored on the known OTHER party's id rather than the
+                    // current user's id — this is correct for a 1:1 thread
+                    // no matter what shape/format the logged-in user object
+                    // happens to store its id in.
+                    const senderId = m.sender?._id || m.sender;
+                    const isMine =
+                      String(senderId) !== String(selectedChat._id);
+                    const senderName = isMine
+                      ? user?.name || "You"
+                      : m.sender?.name || selectedChat.name;
+
+                    // Only show the name label when the sender changes from
+                    // the previous message (WhatsApp-style grouping) —
+                    // always show it on the very first message.
+                    const prev =
+                      idx > 0
+                        ? (chatHistory[selectedChat._id] || [])[idx - 1]
+                        : null;
+                    const prevSenderId = prev
+                      ? prev.sender?._id || prev.sender
+                      : null;
+                    const showName =
+                      !prev || String(prevSenderId) !== String(senderId);
+
+                    return (
+                      <div
+                        key={m._id}
+                        className={`${styles.chatBubbleRow} ${isMine ? styles.chatBubbleRowMine : ""}`}
+                      >
+                        <div
+                          className={`${styles.chatBubble} ${isMine ? styles.chatBubbleMine : ""}`}
+                        >
+                          {showName && (
+                            <span className={styles.chatSenderName}>
+                              {senderName}
+                            </span>
+                          )}
+                          <span>{m.text}</span>
+                          <span className={styles.chatBubbleTime}>
+                            {new Date(m.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                {typingFrom === selectedChat._id && (
+                  <div className={styles.typingIndicator}>
+                    {selectedChat.name} is typing...
+                  </div>
+                )}
+              </div>
+              <div className={styles.chatInputRow}>
+                <input
+                  type="text"
+                  value={newMessage}
+                  placeholder="Type a message..."
+                  onChange={(e) => handleTypingInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") sendMessage();
+                  }}
+                />
+                <button onClick={sendMessage} title="Send">
+                  <FiSend />
+                </button>
+              </div>
+            </div>
+          ) : showNewChatList ? (
+            /* ─── START A NEW CHAT ─── */
+            <div className={styles.notifItemList}>
+              {users
+                .filter((u) => u._id !== user?._id)
+                .map((u) => (
+                  <div
+                    key={u._id}
+                    className={styles.notifItem}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => openChat(u)}
+                  >
+                    <div className={styles.notifItemBody}>
+                      <span className={styles.notifItemTitle}>
+                        {u.name}
+                        {onlineUserIds.includes(u._id) && (
+                          <FaCircle className={styles.onlineDot} />
+                        )}
+                      </span>
+                      <span className={styles.notifItemMsg}>{u.role}</span>
+                    </div>
+                  </div>
+                ))}
+              {users.length === 0 && (
+                <div className={styles.emptyState}>
+                  <p>No users available</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ─── CONVERSATION LIST ─── */
+            <>
+              {conversations.filter((c) => c.user).length === 0 ? (
+                <div className={styles.emptyState}>
+                  <FaEnvelope size={40} />
+                  <p>No messages yet</p>
+                  <button
+                    className={styles.panelMarkAllBtn}
+                    style={{ marginTop: "12px" }}
+                    onClick={() => setShowNewChatList(true)}
+                  >
+                    Start a conversation
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.notifItemList}>
+                  {conversations
+                    .filter((c) => c.user)
+                    .map((c) => (
+                      <div
+                        key={c.user._id}
+                        className={`${styles.notifItem} ${c.unreadCount > 0 ? styles.notifItemUnread : ""}`}
+                        style={{ cursor: "pointer" }}
+                        onClick={() => openChat(c.user)}
+                      >
+                        <div className={styles.notifItemBody}>
+                          <span className={styles.notifItemTitle}>
+                            {c.user.name}
+                            {onlineUserIds.includes(c.user._id) && (
+                              <FaCircle className={styles.onlineDot} />
+                            )}
+                          </span>
+                          <span className={styles.notifItemMsg}>
+                            {c.lastMessage?.text}
+                          </span>
+                        </div>
+                        {c.unreadCount > 0 && (
+                          <span className={styles.notifHeaderBadge}>
+                            {c.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -1575,6 +2108,13 @@ const SuperAdminDashboard = () => {
             >
               <FaBars />
             </button>
+            <span className={styles.headerTitle}>
+              {getPageTitle(activeMenu)}
+            </span>
+          </div>
+
+          {/* Centered search bar - desktop only, replaced by a button + slide-down panel on mobile */}
+          <div className={styles.headerCenter}>
             <div className={styles.searchBar}>
               <FaSearch className={styles.searchIcon} />
               <input
@@ -1585,6 +2125,7 @@ const SuperAdminDashboard = () => {
               <kbd className={styles.searchKbd}>⌘K</kbd>
             </div>
           </div>
+
           <div className={styles.headerRight}>
             <div className={styles.dateRangeHeader}>
               <FaCalendarAlt />
@@ -1613,18 +2154,53 @@ const SuperAdminDashboard = () => {
 
             <div className={styles.headerDivider}></div>
 
+            {/* Mobile-only: opens/closes the slide-down search panel that
+                sits directly underneath (visually "behind") the header */}
+            <button
+              className={`${styles.mobileSearchToggle} ${mobileSearchOpen ? styles.mobileSearchToggleActive : ""}`}
+              onClick={() => setMobileSearchOpen((prev) => !prev)}
+              aria-label={mobileSearchOpen ? "Close search" : "Open search"}
+              aria-expanded={mobileSearchOpen}
+            >
+              {mobileSearchOpen ? <FaTimes /> : <FaSearch />}
+            </button>
+
             <button className={styles.iconBtn} onClick={toggleMessages}>
               <FaEnvelope />
               {unreadMessageCount > 0 && (
                 <span className={styles.badge}>{unreadMessageCount}</span>
               )}
             </button>
-            <button className={styles.iconBtn} onClick={toggleNotifications}>
+
+            {/* Desktop notification pill, like the reference design */}
+            <button className={styles.notifPill} onClick={toggleNotifications}>
+              <span className={styles.notifPillIconWrap}>
+                <FaBell />
+                {unreadCount > 0 && (
+                  <span className={styles.badge}>{unreadCount}</span>
+                )}
+              </span>
+              <span className={styles.notifPillText}>
+                <span className={styles.notifPillMessage}>
+                  {unreadCount > 0
+                    ? `You have ${unreadCount} new notification${unreadCount > 1 ? "s" : ""}`
+                    : "No new notifications"}
+                </span>
+                <span className={styles.notifPillLink}>View Inbox</span>
+              </span>
+            </button>
+
+            {/* Mobile-only compact bell (the pill above is too wide for small screens) */}
+            <button
+              className={styles.mobileNotifBtn}
+              onClick={toggleNotifications}
+            >
               <FaBell />
               {unreadCount > 0 && (
                 <span className={styles.badge}>{unreadCount}</span>
               )}
             </button>
+
             <div className={styles.userProfile}>
               <div className={styles.avatar}>
                 {user?.name?.charAt(0) || "A"}
@@ -1636,6 +2212,28 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
         </header>
+
+        {/* Slide-down mobile search panel - lives right under the header so it
+            visually opens out from (and retracts back behind) the header bar */}
+        <div
+          className={`${styles.mobileSearchPanel} ${mobileSearchOpen ? styles.mobileSearchPanelOpen : ""}`}
+        >
+          <div className={styles.mobileSearchInner}>
+            <FaSearch className={styles.searchIcon} />
+            <input
+              type="text"
+              placeholder="Search anything..."
+              autoFocus={mobileSearchOpen}
+            />
+            <button
+              className={styles.mobileSearchClose}
+              onClick={() => setMobileSearchOpen(false)}
+              aria-label="Close search"
+            >
+              <FaTimes />
+            </button>
+          </div>
+        </div>
 
         <div className={styles.content}>{renderContent()}</div>
       </main>

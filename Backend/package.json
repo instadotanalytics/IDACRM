@@ -3,6 +3,7 @@
     "bcryptjs": "^3.0.3",
     "chart.js": "^4.5.1",
     "cloudinary": "^1.41.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -13,7 +14,16 @@
     "multer-storage-cloudinary": "^4.0.0",
     "nodemailer": "^8.0.9",
     "nodemon": "^3.1.14",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "pdf-parse": "^2.4.5",
-    "react-chartjs-2": "^5.3.1"
+    "qrcode": "^1.5.4",
+    "react-chartjs-2": "^5.3.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "speakeasy": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/socket.io": "^3.0.1"
   }
 }

@@ -1,0 +1,597 @@
+/* ReportsAnalytics.module.css
+   Tokens (matches existing RevenueManagement palette):
+   income #5fc98d  expense #f0806c  blue #5b8def  amber #f2b84b
+   purple #9b7ede  teal #4dd0c9  ink #16213e  text-soft #64748b
+   page bg #f8fafc  card #ffffff  border #eef1f6
+*/
+
+.reportsContainer {
+  padding: 24px;
+  background: #f8fafc;
+  min-height: 100%;
+  font-family:
+    "Inter",
+    -apple-system,
+    sans-serif;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.pageTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #16213e;
+  margin: 0 0 4px;
+}
+
+.pageSubtitle {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 0;
+}
+
+.headerActions {
+  display: flex;
+  gap: 10px;
+}
+
+.refreshBtn,
+.exportBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #e2e8f1;
+  transition:
+    background 0.15s,
+    transform 0.12s;
+}
+
+.refreshBtn {
+  background: #ffffff;
+  color: #16213e;
+}
+
+.refreshBtn:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.exportBtn {
+  background: #16213e;
+  color: #ffffff;
+  border-color: #16213e;
+}
+
+.exportBtn:hover:not(:disabled) {
+  background: #232c4f;
+}
+
+.refreshBtn:disabled,
+.exportBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinning {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Tabs ── */
+.tabNav {
+  display: flex;
+  gap: 4px;
+  background: #ffffff;
+  border: 1px solid #eef1f6;
+  border-radius: 14px;
+  padding: 6px;
+  margin-bottom: 22px;
+  overflow-x: auto;
+}
+
+.tabBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.tabBtn:hover {
+  background: #f1f5f9;
+  color: #16213e;
+}
+
+.tabActive {
+  background: #16213e;
+  color: #ffffff;
+}
+
+.tabActive:hover {
+  background: #16213e;
+  color: #ffffff;
+}
+
+.tabContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Stat cards ── */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.statCard {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid #eef1f6;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 2px 8px rgba(16, 21, 43, 0.03);
+}
+
+.statIcon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.statInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.statValue {
+  font-size: 19px;
+  font-weight: 700;
+  color: #16213e;
+  white-space: nowrap;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.statTrend {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* ── Chart cards ── */
+.overviewGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+}
+
+.categoriesGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.chartCard {
+  background: #ffffff;
+  border: 1px solid #eef1f6;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 2px 8px rgba(16, 21, 43, 0.03);
+}
+
+.chartCard h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #16213e;
+  margin: 0 0 18px;
+}
+
+.chartCardTotal {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* ── Bar chart ── */
+.barChart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  height: 200px;
+  padding-top: 10px;
+}
+
+.barGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.barContainer {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  width: 100%;
+  justify-content: center;
+}
+
+.barIncome,
+.barExpense {
+  width: 10px;
+  min-height: 3px;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+}
+
+.barIncome {
+  background: #5fc98d;
+}
+
+.barExpense {
+  background: #f0806c;
+}
+
+.barLabel {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.chartLegend {
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+  margin-top: 16px;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.chartLegend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* ── Trend controls & table ── */
+.trendControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.monthPill {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f1;
+  background: #ffffff;
+  color: #16213e;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.monthPill:hover {
+  background: #f1f5f9;
+}
+
+.monthPillActive {
+  background: #16213e;
+  color: #ffffff;
+  border-color: #16213e;
+}
+
+.trendTableWrap {
+  background: #ffffff;
+  border: 1px solid #eef1f6;
+  border-radius: 16px;
+  overflow-x: auto;
+}
+
+.trendTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.trendTable th {
+  text-align: left;
+  padding: 14px 18px;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #94a3b8;
+  border-bottom: 1px solid #eef1f6;
+  white-space: nowrap;
+}
+
+.trendTable td {
+  padding: 13px 18px;
+  color: #16213e;
+  border-bottom: 1px solid #f4f6f9;
+  white-space: nowrap;
+}
+
+.trendTable tr:last-child td {
+  border-bottom: none;
+}
+
+.incomeText {
+  color: #2f9e63;
+  font-weight: 600;
+}
+
+.expenseText {
+  color: #d6604a;
+  font-weight: 600;
+}
+
+/* ── Donut / staff distribution ── */
+.donutWrap {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.sourceLegend {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sourceItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.sourceColor {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sourceName {
+  flex: 1;
+  color: #16213e;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.sourceValue {
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Department bars ── */
+.deptList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.deptRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.deptName {
+  width: 110px;
+  font-size: 12.5px;
+  color: #16213e;
+  font-weight: 500;
+  text-transform: capitalize;
+  flex-shrink: 0;
+}
+
+.deptBarTrack {
+  flex: 1;
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.deptBarFill {
+  height: 100%;
+  background: #5b8def;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.deptCount {
+  width: 28px;
+  text-align: right;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #16213e;
+  flex-shrink: 0;
+}
+
+/* ── Category rows ── */
+.categoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.categoryRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.categoryRowTop {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #16213e;
+  font-weight: 500;
+}
+
+.categoryMeta {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+/* ── Loading ── */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 20px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.spinner {
+  font-size: 26px;
+  color: #16213e;
+  animation: spin 0.9s linear infinite;
+}
+
+/* ════════════════════════════
+   RESPONSIVE
+════════════════════════════ */
+@media (max-width: 1100px) {
+  .overviewGrid,
+  .categoriesGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .reportsContainer {
+    padding: 16px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .headerActions {
+    justify-content: stretch;
+  }
+
+  .refreshBtn,
+  .exportBtn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .donutWrap {
+    flex-direction: column;
+  }
+
+  .deptName {
+    width: 84px;
+    font-size: 11.5px;
+  }
+
+  .trendTable th,
+  .trendTable td {
+    padding: 11px 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .tabBtn {
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+
+  .barChart {
+    height: 160px;
+  }
+}

@@ -1,0 +1,59 @@
+/* components/ConnectionStatus.module.css */
+.container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.online {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.offline {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.icon {
+  font-size: 14px;
+}
+
+.text {
+  font-size: 12px;
+}
+
+.errorTooltip {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: #1a1a2e;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.errorTooltip::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  right: 12px;
+  border: 6px solid transparent;
+  border-bottom-color: #1a1a2e;
+}

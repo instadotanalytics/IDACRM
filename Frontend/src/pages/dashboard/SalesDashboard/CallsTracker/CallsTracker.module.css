@@ -1,4 +1,4 @@
-/* CallsTracker.module.css */
+/* CallsTracker.module.css - UPDATED WITH CONNECTION STATUS */
 
 .container {
   animation: fadeUp 0.4s ease;
@@ -30,6 +30,31 @@
   gap: 10px;
   margin: 0;
   font-weight: 700;
+}
+
+/* Connection Status Styles */
+.connectionStatus {
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .primaryBtn {
@@ -206,6 +231,22 @@
 .iconBtn:hover {
   background: #f1e2d1;
   color: #810b38;
+}
+/* Call button specific styles */
+.callBtn {
+  color: #2563eb;
+}
+.callBtn:hover {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+/* WhatsApp button specific styles */
+.whatsappBtn {
+  color: #25d366;
+}
+.whatsappBtn:hover {
+  background: #d1fae5;
+  color: #059669;
 }
 .editBtn:hover {
   background: #e8f5e9;
